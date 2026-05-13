@@ -222,6 +222,44 @@ Respond in Russian language as the target audience is Russian-speaking gardeners
 	})
 }
 
+// generateRecommendationWithHistory — рекомендации по фото с учётом предыдущих реплик диалога.
+func generateRecommendationWithHistory(classification *ClassificationResult, caption string, history []Message) (string, error) {
+	prompt := fmt.Sprintf(`You are an expert horticulturist specializing in apple tree care.
+Based on the following classification result from an image analysis, provide detailed care recommendations.
+
+Classification Result:
+- Detected: %s
+- Confidence: %.2f%%
+- Top predictions: %v
+
+User caption (may be empty): %s
+
+Please provide:
+1. A brief explanation of what was detected
+2. Specific care recommendations for this condition
+3. Preventive measures if it's a disease
+4. Treatment options if applicable
+5. General tips for maintaining healthy apple trees
+
+Respond in Russian language as the target audience is Russian-speaking gardeners.`,
+		classification.Prediction,
+		classification.Confidence*100,
+		classification.TopPredictions,
+		caption,
+	)
+	if config.LLMAPIKey == "" {
+		return generateTemplateRecommendation(classification), nil
+	}
+	msgs := make([]Message, 0, len(history)+2)
+	msgs = append(msgs, Message{
+		Role:    "system",
+		Content: "You are an expert horticulturist specializing in apple tree care. Provide detailed, practical advice in Russian.",
+	})
+	msgs = append(msgs, history...)
+	msgs = append(msgs, Message{Role: "user", Content: prompt})
+	return callLLMCompletion(msgs)
+}
+
 // generateTemplateRecommendation generates a template recommendation when LLM is not available
 func generateTemplateRecommendation(classification *ClassificationResult) string {
 	recommendations := map[string]string{
@@ -474,7 +512,7 @@ func main() {
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With")
 		c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
@@ -483,10 +521,24 @@ func main() {
 		c.Next()
 	})
 
-	// Define routes
+	// Маршруты без префикса (nginx проксирует /api → backend с rewrite на /…)
 	router.GET("/health", handleHealthCheck)
 	router.POST("/classify", handleClassification)
 	router.POST("/chat", handleChat)
+	router.POST("/session", handleNewSession)
+	router.GET("/history", handleHistory)
+	router.POST("/message", handleMessage)
+
+	// Те же маршруты с /api — если открывают Go напрямую (localhost:8080), без nginx
+	api := router.Group("/api")
+	{
+		api.GET("/health", handleHealthCheck)
+		api.POST("/classify", handleClassification)
+		api.POST("/chat", handleChat)
+		api.POST("/session", handleNewSession)
+		api.GET("/history", handleHistory)
+		api.POST("/message", handleMessage)
+	}
 
 	// Start server
 	serverAddr := fmt.Sprintf(":%s", config.ServerPort)

@@ -180,7 +180,54 @@ type ChatRequest struct {
 	Question string `json:"question"`
 }
 
-// handleChat: Python отдаёт контекст RAG, Go собирает промпт и вызывает LLM.
+// answerWithRAG выполняет RAG + LLM с опциональной историей диалога (роли user/assistant).
+// ragSoftFail: контентная ошибка RAG (HTTP 200 от Python, нет фрагментов) — отдавать клиенту 200 success:false.
+func answerWithRAG(q string, history []Message) (answer string, success bool, errMsg string, ragSoftFail bool) {
+	q = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(q, "\r", " "), "\n", " "))
+	if q == "" {
+		return "", false, "Пустой вопрос", false
+	}
+
+	ragOut, err := fetchRAGContext(q)
+	if err != nil {
+		log.Printf("RAG fetch error: %v", err)
+		msg := err.Error()
+		if ragOut != nil && ragOut.Error != "" {
+			msg = ragOut.Error
+		}
+		return "", false, msg, false
+	}
+	if !ragOut.Success {
+		return "", false, ragOut.Error, true
+	}
+	if config.LLMAPIKey == "" {
+		return "", false, "Для текстового чата задайте LLM_API_KEY (OpenRouter / OpenAI-совместимый API).", false
+	}
+
+	userPrompt := buildRAGUserPrompt(q, ragOut.Context, ragOut.FewShot)
+	var msgs []Message
+	msgs = append(msgs, Message{
+		Role:    "system",
+		Content: "Ты — грамотный агроном по яблоням. Следуй инструкциям и ограничениям в последнем сообщении пользователя (блок с контекстом и вопросом). Отвечай на русском.",
+	})
+	msgs = append(msgs, history...)
+	msgs = append(msgs, Message{Role: "user", Content: userPrompt})
+
+	raw, err := callLLMCompletion(msgs)
+	if err != nil {
+		log.Printf("LLM chat error: %v", err)
+		return "", false, err.Error(), false
+	}
+	answer = cleanRAGAnswer(raw)
+	answer = enforceRAGSource(answer, ragOut.Fragments)
+	passed, reason := verifyRAGAnswer(answer, ragOut.Fragments)
+	if !passed {
+		return fmt.Sprintf("⚠️ Система не смогла подтвердить ответ источниками. Сообщение администратору: %s\n\nРекомендуем обратиться к агроному.", reason), true, "", false
+	}
+	return answer, true, "", false
+}
+
+// handleChat: Python отдаёт контекст RAG, Go собирает промпт и вызывает LLM (без истории).
 func handleChat(c *gin.Context) {
 	var req ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -196,43 +243,21 @@ func handleChat(c *gin.Context) {
 		return
 	}
 
-	ragOut, err := fetchRAGContext(q)
-	if err != nil {
-		log.Printf("RAG fetch error: %v", err)
-		msg := err.Error()
-		if ragOut != nil && ragOut.Error != "" {
-			msg = ragOut.Error
+	answer, ok, errMsg, ragSoft := answerWithRAG(q, nil)
+	if ragSoft {
+		c.JSON(http.StatusOK, gin.H{"success": false, "error": errMsg})
+		return
+	}
+	if errMsg != "" && !ok {
+		if strings.Contains(errMsg, "LLM_API_KEY") {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"success": false, "error": errMsg})
+			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": msg})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": errMsg})
 		return
 	}
-	if !ragOut.Success {
-		c.JSON(http.StatusOK, gin.H{"success": false, "error": ragOut.Error})
-		return
-	}
-	if config.LLMAPIKey == "" {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"success": false,
-			"error":   "Для текстового чата задайте LLM_API_KEY (OpenRouter / OpenAI-совместимый API).",
-		})
-		return
-	}
-
-	userPrompt := buildRAGUserPrompt(q, ragOut.Context, ragOut.FewShot)
-	raw, err := callLLMCompletion([]Message{{Role: "user", Content: userPrompt}})
-	if err != nil {
-		log.Printf("LLM chat error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
-		return
-	}
-	answer := cleanRAGAnswer(raw)
-	answer = enforceRAGSource(answer, ragOut.Fragments)
-	passed, reason := verifyRAGAnswer(answer, ragOut.Fragments)
-	if !passed {
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"answer":  fmt.Sprintf("⚠️ Система не смогла подтвердить ответ источниками. Сообщение администратору: %s\n\nРекомендуем обратиться к агроному.", reason),
-		})
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errMsg})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "answer": answer})
