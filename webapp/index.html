@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Помощник Садовода - Яблони</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--tg-theme-button-color, #4CAF50);
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.7;
+            line-height: 1.5;
+        }
+
+        .camera-section {
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .camera-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background-color: var(--tg-theme-button-color, #4CAF50);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 300px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .preview-section {
+            display: none;
+            margin-bottom: 20px;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .preview-section.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .preview-image {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-section {
+            display: none;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .result-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .result-icon {
+            font-size: 32px;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .confidence-bar {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            height: 8px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            background: var(--tg-theme-button-color, #4CAF50);
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.5s ease;
+        }
+
+        .confidence-text {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .recommendation {
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .recommendation h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: var(--tg-theme-button-color, #4CAF50);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-top-color: var(--tg-theme-button-color, #4CAF50);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            display: none;
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .top-predictions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .prediction-label {
+            opacity: 0.8;
+        }
+
+        .prediction-confidence {
+            font-weight: 600;
+            color: var(--tg-theme-button-color, #4CAF50);
+        }
+
+        .info-text {
+            font-size: 13px;
+            opacity: 0.6;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .text-qa-section h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .question-input {
+            width: 100%;
+            max-width: 100%;
+            min-height: 110px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            margin-top: 12px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            box-sizing: border-box;
+        }
+
+        .question-input:focus {
+            outline: none;
+            border-color: var(--tg-theme-button-color, #4CAF50);
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+
+        .text-result-section {
+            display: none;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .text-result-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .text-answer {
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 10px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍏 Помощник Садовода</h1>
+            <p>ИИ-ассистент для ухода за яблонями<br>Фото: классификация и советы. Текст: ответы по статьям (RAG).</p>
+        </div>
+
+        <div class="camera-section text-qa-section">
+            <h2>Текстовый вопрос</h2>
+            <p class="info-text" style="margin-top: 0;">Спросите об удобрениях, сортах, склонах или уходе — ответ формируется по загруженным научным статьям.</p>
+            <textarea id="questionInput" class="question-input" maxlength="4000" placeholder="Например: какая рентабельность сорта Мелба на северном склоне?" aria-label="Текст вопроса"></textarea>
+            <button type="button" class="btn" id="askTextBtn" onclick="askTextQuestion()" style="margin-top: 14px;">
+                <span>💬</span>
+                <span>Спросить агронома</span>
+            </button>
+        </div>
+
+        <div class="loading" id="textLoading">
+            <div class="spinner"></div>
+            <p>Ищем в статьях и формируем ответ...</p>
+            <p style="font-size: 12px; opacity: 0.6; margin-top: 10px;">Первый запуск может занять больше времени</p>
+        </div>
+
+        <div class="text-result-section" id="textResultSection">
+            <h3 style="font-size: 16px; color: var(--tg-theme-button-color, #4CAF50);">Ответ по статьям</h3>
+            <div class="text-answer" id="textAnswer"></div>
+        </div>
+
+        <div class="camera-section">
+            <div class="camera-icon">📷</div>
+            <button class="btn" id="captureBtn" onclick="capturePhoto()">
+                <span>📸</span>
+                <span>Сделать фото</span>
+            </button>
+            <input type="file" id="fileInput" accept="image/*" capture="environment" style="display: none;" onchange="handleFileSelect(event)">
+            <p class="info-text">Наведите камеру на яблоко или лист яблони</p>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <img class="preview-image" id="previewImage" alt="Preview">
+            <button class="btn" id="analyzeBtn" onclick="analyzePhoto()">
+                <span>🔍</span>
+                <span>Анализировать</span>
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Анализируем изображение...</p>
+            <p style="font-size: 12px; opacity: 0.6; margin-top: 10px;">Это может занять несколько секунд</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="result-section" id="resultSection">
+            <div class="result-header">
+                <span class="result-icon" id="resultIcon">🍎</span>
+                <div>
+                    <div class="result-title" id="resultTitle">Здоровое яблоко</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                    </div>
+                    <div class="confidence-text" id="confidenceText">Уверенность: 0%</div>
+                </div>
+            </div>
+
+            <div class="top-predictions" id="topPredictions"></div>
+
+            <div class="recommendation">
+                <h3>💡 Рекомендации по уходу:</h3>
+                <div id="recommendationText"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Apply Telegram theme colors
+        document.documentElement.style.setProperty('--tg-theme-bg-color', tg.backgroundColor || '#ffffff');
+        document.documentElement.style.setProperty('--tg-theme-text-color', tg.textColor || '#000000');
+        document.documentElement.style.setProperty('--tg-theme-button-color', tg.buttonColor || '#4CAF50');
+        document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.buttonTextColor || '#ffffff');
+        document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.secondaryBackgroundColor || '#f5f5f5');
+
+        let selectedFile = null;
+        const API_URL = '/api'; // Проксируется на Go сервер через nginx
+
+        function capturePhoto() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                console.log('File selected:', file.name, file.type, file.size);
+                selectedFile = file;
+                showPreview(file);
+            } else {
+                console.error('No file selected');
+            }
+        }
+
+        function showPreview(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewImage = document.getElementById('previewImage');
+                previewImage.src = e.target.result;
+                
+                console.log('Preview loaded, showing preview section');
+                document.getElementById('previewSection').classList.add('active');
+                document.getElementById('resultSection').classList.remove('active');
+                hideError();
+                
+                // Показываем главную кнопку Telegram
+                if (tg.MainButton) {
+                    tg.MainButton.show();
+                }
+                
+                // Прокрутка к превью для мобильных устройств
+                setTimeout(() => {
+                    document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            };
+            reader.onerror = function(e) {
+                console.error('Error reading file:', e);
+                showError('Ошибка чтения файла');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function analyzePhoto() {
+            if (!selectedFile) {
+                showError('Пожалуйста, выберите изображение');
+                return;
+            }
+
+            console.log('Starting analysis with file:', selectedFile.name, selectedFile.type, selectedFile.size);
+
+            // Show loading state
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('resultSection').classList.remove('active');
+            hideError();
+            
+            // Скрываем кнопку Telegram во время анализа
+            if (tg.MainButton) {
+                tg.MainButton.hide();
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('image', selectedFile, selectedFile.name || 'upload.jpg');
+
+                console.log('Sending request to:', API_URL + '/classify');
+                console.log('FormData entries:', [...formData.entries()]);
+
+                const response = await fetch(API_URL + '/classify', {
+                    method: 'POST',
+                    body: formData,
+                    // Не устанавливаем Content-Type вручную - браузер сделает это сам с boundary
+                });
+
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error response:', errorText);
+                    throw new Error('Ошибка сервера: ' + response.status + ' - ' + errorText);
+                }
+
+                const result = await response.json();
+                console.log('Server response:', result);
+
+                if (result.success) {
+                    displayResult(result);
+                    // Переключаем кнопку в режим "Новое фото" после успешного анализа
+                    if (window.switchToNewPhotoMode) {
+                        window.switchToNewPhotoMode();
+                        tg.MainButton.show();
+                    }
+                } else {
+                    showError(result.error || 'Ошибка анализа');
+                }
+            } catch (error) {
+                console.error('Analysis error:', error);
+                let errorMessage = 'Ошибка соединения с сервером. Проверьте подключение к интернету.';
+                if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Не удалось подключиться к серверу. Убедитесь, что сервис запущен.';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                showError(errorMessage);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        function displayResult(result) {
+            const resultSection = document.getElementById('resultSection');
+            const resultTitle = document.getElementById('resultTitle');
+            const confidenceFill = document.getElementById('confidenceFill');
+            const confidenceText = document.getElementById('confidenceText');
+            const recommendationText = document.getElementById('recommendationText');
+            const topPredictionsDiv = document.getElementById('topPredictions');
+
+            // Format prediction name for display
+            const displayName = formatPredictionName(result.prediction);
+            resultTitle.textContent = displayName;
+
+            // Set icon based on prediction
+            const icon = getIconForPrediction(result.prediction);
+            document.getElementById('resultIcon').textContent = icon;
+
+            // Update confidence
+            const confidencePercent = Math.round(result.confidence * 100);
+            confidenceFill.style.width = confidencePercent + '%';
+            confidenceText.textContent = `Уверенность: ${confidencePercent}%`;
+
+            // Display top predictions
+            if (result.top_predictions && result.top_predictions.length > 0) {
+                let predictionsHTML = '<strong>Другие варианты:</strong><br>';
+                result.top_predictions.forEach((pred, index) => {
+                    if (index > 0) { // Skip the top prediction as it's already shown
+                        predictionsHTML += `
+                            <div class="prediction-item">
+                                <span class="prediction-label">${formatPredictionName(pred.label)}</span>
+                                <span class="prediction-confidence">${Math.round(pred.confidence * 100)}%</span>
+                            </div>
+                        `;
+                    }
+                });
+                topPredictionsDiv.innerHTML = predictionsHTML;
+                topPredictionsDiv.style.display = 'block';
+            } else {
+                topPredictionsDiv.style.display = 'none';
+            }
+
+            // Display recommendation
+            recommendationText.textContent = result.recommendation || 'Рекомендации недоступны';
+
+            // Show result section
+            resultSection.classList.add('active');
+
+            // Scroll to result
+            setTimeout(() => {
+                resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        function formatPredictionName(prediction) {
+            const names = {
+                'healthy_apple': 'Здоровое яблоко',
+                'apple_scab': 'Парша яблони',
+                'black_rot': 'Чёрная гниль',
+                'cedar_apple_rust': 'Кедрово-яблоневая ржавчина',
+                'healthy_leaf': 'Здоровый лист',
+                'powdery_mildew': 'Мучнистая роса',
+                'fire_blight': 'Бактериальный ожог',
+                'bitter_rot': 'Горькая гниль',
+                'blue_mold': 'Голубая плесень',
+                'brown_rot': 'Бурая гниль'
+            };
+            return names[prediction] || prediction.replace(/_/g, ' ');
+        }
+
+        function getIconForPrediction(prediction) {
+            const icons = {
+                'healthy_apple': '🍎',
+                'healthy_leaf': '🌿',
+                'apple_scab': '🍂',
+                'black_rot': '🖤',
+                'cedar_apple_rust': '🧡',
+                'powdery_mildew': '⚪',
+                'fire_blight': '🔥',
+                'bitter_rot': '💔',
+                'blue_mold': '💙',
+                'brown_rot': '🤎'
+            };
+            return icons[prediction] || '🍏';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('active');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('active');
+        }
+
+        // Handle main button from Telegram
+        tg.MainButton.setText("Анализировать");
+        tg.MainButton.onClick(function() {
+            analyzePhoto();
+        });
+        
+        // Функция для переключения кнопки в режим "Новое фото"
+        window.switchToNewPhotoMode = function() {
+            tg.MainButton.setText("Сделать новое фото");
+            tg.MainButton.onClick(function() {
+                document.getElementById('previewSection').classList.remove('active');
+                document.getElementById('resultSection').classList.remove('active');
+                document.getElementById('fileInput').value = '';
+                selectedFile = null;
+                tg.MainButton.hide();
+            });
+        };
+
+        async function askTextQuestion() {
+            hideError();
+            const raw = document.getElementById('questionInput').value || '';
+            const q = raw.trim().replace(/\s+/g, ' ');
+            if (!q) {
+                showError('Введите текст вопроса');
+                return;
+            }
+
+            document.getElementById('textLoading').classList.add('active');
+            document.getElementById('askTextBtn').disabled = true;
+            document.getElementById('textResultSection').classList.remove('active');
+
+            try {
+                const response = await fetch(API_URL + '/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({ question: raw.trim() })
+                });
+
+                const textBody = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(textBody);
+                } catch (e) {
+                    throw new Error('Сервер вернул не JSON: ' + textBody.slice(0, 200));
+                }
+
+                if (!response.ok) {
+                    throw new Error(result.error || ('Ошибка сервера: ' + response.status));
+                }
+
+                if (result.success) {
+                    document.getElementById('textAnswer').textContent = result.answer || '';
+                    document.getElementById('textResultSection').classList.add('active');
+                    setTimeout(function() {
+                        document.getElementById('textResultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                } else {
+                    showError(result.error || 'Не удалось получить ответ');
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                let msg = 'Ошибка соединения с сервером.';
+                if (error.message && error.message.includes('Failed to fetch')) {
+                    msg = 'Не удалось подключиться к серверу.';
+                } else if (error.message) {
+                    msg = error.message;
+                }
+                showError(msg);
+            } finally {
+                document.getElementById('textLoading').classList.remove('active');
+                document.getElementById('askTextBtn').disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

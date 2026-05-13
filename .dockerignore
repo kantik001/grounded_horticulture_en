@@ -1,0 +1,17 @@
+.git
+.gitignore
+*.md
+!README.md
+.env
+.env.example
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv
+env
+.DS_Store
+Thumbs.db
+server/main
+*.exe
