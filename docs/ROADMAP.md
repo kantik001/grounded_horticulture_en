@@ -35,8 +35,8 @@
 
 ## Фаза 3 — Качество RAG
 - [ ] 15–25 статей на яблоню
-- [ ] Скрипт переиндексации
-- [ ] Feedback 👍/👎
+- [x] Скрипт переиндексации (`scripts/reindex_rag.py`, admin reindex)
+- [x] Feedback 👍/👎
 - [ ] Qdrant (при росте объёма)
 
 ## Фаза 4 — Vision
@@ -46,3 +46,9 @@
 
 ## Фаза 5–10
 См. обсуждение в чате: UX, админка, монетизация, тесты/CI, пилот, агрономы, IoT.
+
+### Сессия 5 (UX + admin)
+- [x] Онбординг (`config/onboarding.json`)
+- [x] Feedback и analytics в Postgres
+- [x] Admin upload + RAG reindex
+- [x] `docs/LEARNING_SESSION_5.md`

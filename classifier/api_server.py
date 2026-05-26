@@ -17,6 +17,7 @@ load_dotenv(os.path.join(_root, ".env"))
 from classifier.registry import get_classifier_for_crop
 from rag.crops_config import list_crops, normalize_crop_id
 from rag.retrieval import retrieve_rag_context
+from rag import vector_store as vs
 
 app = Flask(__name__)
 CORS(app)
@@ -81,6 +82,22 @@ def crops_list():
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "healthy", "service": "garden-python"}), 200
+
+
+@app.route("/admin/reindex", methods=["POST"])
+def admin_reindex():
+    expected = os.environ.get("ADMIN_SECRET", "")
+    secret = request.headers.get("X-Admin-Secret", "")
+    if not expected or secret != expected:
+        return jsonify({"success": False, "error": "forbidden"}), 403
+    try:
+        vs.reset_vector_store()
+        store = vs.load_vector_store(force_reindex=True)
+        if store is None:
+            return jsonify({"success": False, "error": "Нет статей для индексации"}), 400
+        return jsonify({"success": True, "message": "RAG переиндексирован"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":

@@ -192,9 +192,11 @@ func handleMessage(c *gin.Context) {
 	}
 
 	if len(imageData) > 0 {
+		logAnalytics(c, "message_sent", map[string]any{"kind": "image", "crop_id": sessionCrop, "session_id": sid})
 		handleImageMessage(c, sid, sessionCrop, tgUser.ID, text, imageData)
 		return
 	}
+	logAnalytics(c, "message_sent", map[string]any{"kind": "text", "crop_id": sessionCrop, "session_id": sid})
 	handleTextMessage(c, sid, sessionCrop, tgUser.ID, text)
 }
 
@@ -222,19 +224,20 @@ func handleTextMessage(c *gin.Context, sid, cropID string, telegramID int64, tex
 	}
 	answer, ok, errMsg, ragSoft := answerWithRAG(text, cropID, prior)
 
-	if err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "user", Content: text, Kind: "text"}); err != nil {
+	if _, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "user", Content: text, Kind: "text"}); err != nil {
 		log.Printf("AppendMessage user: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сохранения"})
 		return
 	}
 
 	if ragSoft {
-		_ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errMsg, Kind: "assistant"})
+		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errMsg, Kind: "assistant"})
+		logAnalytics(c, "rag_answer", map[string]any{"crop_id": cropID, "soft_fail": true})
 		respondWithMessages(c, sid, cropID, telegramID, gin.H{"error": errMsg}, http.StatusOK)
 		return
 	}
 	if !ok {
-		_ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: "Ошибка: " + errMsg, Kind: "assistant"})
+		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: "Ошибка: " + errMsg, Kind: "assistant"})
 		status := http.StatusInternalServerError
 		if strings.Contains(errMsg, "LLM_API_KEY") {
 			status = http.StatusServiceUnavailable
@@ -243,11 +246,12 @@ func handleTextMessage(c *gin.Context, sid, cropID string, telegramID int64, tex
 		return
 	}
 
-	if err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: answer, Kind: "assistant"}); err != nil {
+	if _, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: answer, Kind: "assistant"}); err != nil {
 		log.Printf("AppendMessage assistant: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сохранения"})
 		return
 	}
+	logAnalytics(c, "rag_answer", map[string]any{"crop_id": cropID, "soft_fail": false})
 	respondWithMessages(c, sid, cropID, telegramID, nil, http.StatusOK)
 }
 
@@ -276,15 +280,16 @@ func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, ca
 			errText = classification.Error
 		}
 		log.Printf("Messenger classify error: %v", clsErr)
-		_ = chatStore.AppendMessage(ctx, sid, ChatMessage{
+		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{
 			Role: "user", Content: caption, Kind: "image", ImageToken: token,
 		})
-		_ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errText, Kind: "assistant"})
+		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errText, Kind: "assistant"})
+		logAnalytics(c, "photo_classified", map[string]any{"crop_id": cropID, "success": false})
 		respondWithMessages(c, sid, cropID, telegramID, gin.H{"error": errText}, http.StatusOK)
 		return
 	}
 
-	_ = chatStore.AppendMessage(ctx, sid, ChatMessage{
+	_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{
 		Role:            "user",
 		Content:         caption,
 		Kind:            "image",
@@ -299,6 +304,12 @@ func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, ca
 		recommendation = generateTemplateRecommendation(classification)
 	}
 
-	_ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: recommendation, Kind: "assistant"})
+	_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: recommendation, Kind: "assistant"})
+	logAnalytics(c, "photo_classified", map[string]any{
+		"crop_id":    cropID,
+		"success":    true,
+		"prediction": classification.Prediction,
+		"confidence": classification.Confidence,
+	})
 	respondWithMessages(c, sid, cropID, telegramID, nil, http.StatusOK)
 }

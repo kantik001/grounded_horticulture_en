@@ -9,6 +9,7 @@ import (
 
 // ChatMessage — одно сообщение в истории (для UI и восстановления контекста LLM).
 type ChatMessage struct {
+	ID              int64   `json:"id,omitempty"`
 	Role            string  `json:"role"`
 	Content         string  `json:"content"`
 	ImageDataURL    string  `json:"image_data_url,omitempty"` // legacy
@@ -17,6 +18,7 @@ type ChatMessage struct {
 	ClassPrediction string  `json:"class_prediction,omitempty"`
 	ClassConfidence float64 `json:"class_confidence,omitempty"`
 	Kind            string  `json:"kind,omitempty"`
+	FeedbackRating  *int    `json:"feedback_rating,omitempty"` // 1 или -1, если пользователь оценил
 }
 
 func trimHistoryMessages(msgs []Message, max int) []Message {
