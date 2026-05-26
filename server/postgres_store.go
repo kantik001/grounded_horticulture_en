@@ -213,10 +213,13 @@ func (st *ChatStore) ListMessages(ctx context.Context, sessionID string, telegra
 		return nil, errSessionNotFound
 	}
 	rows, err := st.pool.Query(ctx, `
-		SELECT role, content, kind, image_token, class_prediction, class_confidence
-		FROM messages
-		WHERE session_id = $1
-		ORDER BY created_at ASC, id ASC`, sessionID,
+		SELECT m.id, m.role, m.content, m.kind, m.image_token, m.class_prediction, m.class_confidence,
+		       mf.rating
+		FROM messages m
+		LEFT JOIN users u ON u.telegram_id = $2
+		LEFT JOIN message_feedback mf ON mf.message_id = m.id AND mf.user_id = u.id
+		WHERE m.session_id = $1
+		ORDER BY m.created_at ASC, m.id ASC`, sessionID, telegramID,
 	)
 	if err != nil {
 		return nil, err
@@ -229,7 +232,8 @@ func (st *ChatStore) ListMessages(ctx context.Context, sessionID string, telegra
 		var imageToken *string
 		var classPred *string
 		var classConf *float64
-		if err := rows.Scan(&m.Role, &m.Content, &m.Kind, &imageToken, &classPred, &classConf); err != nil {
+		var fbRating *int16
+		if err := rows.Scan(&m.ID, &m.Role, &m.Content, &m.Kind, &imageToken, &classPred, &classConf, &fbRating); err != nil {
 			return nil, err
 		}
 		if imageToken != nil && *imageToken != "" {
@@ -240,6 +244,10 @@ func (st *ChatStore) ListMessages(ctx context.Context, sessionID string, telegra
 		}
 		if classConf != nil {
 			m.ClassConfidence = *classConf
+		}
+		if fbRating != nil {
+			r := int(*fbRating)
+			m.FeedbackRating = &r
 		}
 		out = append(out, m)
 	}
@@ -253,15 +261,17 @@ func mediaURL(token string) string {
 var errSessionNotFound = fmt.Errorf("session not found")
 
 // AppendMessage сохраняет сообщение и обрезает историю до maxSessionMessages.
-func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m ChatMessage) error {
-	_, err := st.pool.Exec(ctx, `
+func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m ChatMessage) (int64, error) {
+	var id int64
+	err := st.pool.QueryRow(ctx, `
 		INSERT INTO messages (session_id, role, content, kind, image_token, class_prediction, class_confidence)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id`,
 		sessionID, m.Role, m.Content, m.Kind,
 		nullToken(m.ImageToken), nullIfEmpty(m.ClassPrediction), nullConfidence(m.ClassConfidence),
-	)
+	).Scan(&id)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	_, err = st.pool.Exec(ctx, `
 		DELETE FROM messages
@@ -273,7 +283,7 @@ func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m Chat
 			LIMIT $2
 		  )`, sessionID, maxSessionMessages,
 	)
-	return err
+	return id, err
 }
 
 func nullToken(s string) *string {

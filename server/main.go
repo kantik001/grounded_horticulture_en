@@ -34,6 +34,11 @@ type Config struct {
 	RateLimitPerMinute     int
 	DatabaseURL            string
 	UploadDir              string
+	DataDir                string
+	PythonBaseURL          string
+	AdminUser              string
+	AdminPassword          string
+	AdminSecret            string
 }
 
 // ClassificationResult represents the result from Python classifier
@@ -112,6 +117,11 @@ func loadConfig() *Config {
 		RateLimitPerMinute:     rateLimit,
 		DatabaseURL:            getEnv("DATABASE_URL", "postgres://gardener:gardener@postgres:5432/gardener?sslmode=disable"),
 		UploadDir:              getEnv("UPLOAD_DIR", "/data/uploads"),
+		DataDir:                getEnv("DATA_DIR", "/app/data"),
+		PythonBaseURL:          getEnv("PYTHON_BASE_URL", "http://classifier:5000"),
+		AdminUser:              getEnv("ADMIN_USER", "admin"),
+		AdminPassword:          getEnv("ADMIN_PASSWORD", ""),
+		AdminSecret:            getEnv("ADMIN_SECRET", ""),
 	}
 }
 
@@ -573,6 +583,9 @@ func main() {
 	if err := loadPromptCatalog(); err != nil {
 		log.Fatalf("Prompts config: %v", err)
 	}
+	if err := loadOnboardingConfig(); err != nil {
+		log.Fatalf("Onboarding config: %v", err)
+	}
 
 	chatStore, err = newChatStore(context.Background(), config.DatabaseURL, config.UploadDir)
 	if err != nil {
@@ -602,6 +615,10 @@ func main() {
 	router.GET("/api/health", handleHealthCheck)
 	router.GET("/crops", handleListCrops)
 	router.GET("/api/crops", handleListCrops)
+	router.GET("/onboarding", handleOnboarding)
+	router.GET("/api/onboarding", handleOnboarding)
+
+	registerAdminRoutes(router, config)
 
 	// Защищённые маршруты (Telegram initData + rate limit)
 	registerProtectedRoutes(router, config, rl)

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -116,6 +115,7 @@ func registerProtectedRoutes(router *gin.Engine, cfg *Config, rl *rateLimiter) {
 		r.POST("/session", auth, lim, handleNewSession)
 		r.GET("/history", auth, lim, handleHistory)
 		r.POST("/message", auth, lim, handleMessage)
+		r.POST("/feedback", auth, lim, handleFeedback)
 		r.GET("/media/:token", auth, lim, handleMedia)
 	}
 

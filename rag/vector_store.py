@@ -20,6 +20,12 @@ _vector_store = None
 _titles_cache = None
 
 
+def reset_vector_store():
+    """Сброс кэша in-memory перед принудительной переиндексацией."""
+    global _vector_store
+    _vector_store = None
+
+
 def _titles_map() -> dict:
     global _titles_cache
     if _titles_cache is not None:
