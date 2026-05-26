@@ -1,4 +1,4 @@
-.PHONY: build up down restart logs clean ps help
+.PHONY: build up down restart logs clean ps help test test-go test-py smoke
 
 # Имя проекта Docker Compose
 PROJECT_NAME := union_ai_apple_app
@@ -61,6 +61,21 @@ rebuild:
 health:
 	docker compose -p $(PROJECT_NAME) ps
 
+## Unit-тесты Go
+test-go:
+	cd server && go test -v -count=1 ./...
+
+## Unit-тесты Python
+test-py:
+	pip install -r tests/requirements-test.txt
+	pytest tests/ -v
+
+test: test-go test-py
+
+## Smoke API (localhost:8080, TELEGRAM_AUTH_DISABLED=true)
+smoke:
+	powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
+
 ## Помощь по доступным командам
 help:
 	@echo "Доступные команды:"
@@ -78,4 +93,8 @@ help:
 	@echo "  make clean          - Полная очистка (контейнеры, образы, тома)"
 	@echo "  make rebuild SERVICE=<name> - Пересборка и запуск одного сервиса"
 	@echo "  make health         - Проверка статуса сервисов"
+	@echo "  make test-go        - Unit-тесты Go (server/)"
+	@echo "  make test-py        - Unit-тесты Python (tests/)"
+	@echo "  make test           - test-go + test-py"
+	@echo "  make smoke          - Smoke API (localhost:8080)"
 	@echo "  make help           - Эта справка"

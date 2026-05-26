@@ -52,3 +52,10 @@
 - [x] Feedback и analytics в Postgres
 - [x] Admin upload + RAG reindex
 - [x] `docs/LEARNING_SESSION_5.md`
+
+### Сессия 6 (тесты + CI)
+- [x] Go unit-тесты (RAG verify, crops, admin)
+- [x] Python pytest (verifier, crops_config)
+- [x] Smoke-скрипты
+- [x] GitHub Actions CI
+- [x] `docs/LEARNING_SESSION_6.md`
