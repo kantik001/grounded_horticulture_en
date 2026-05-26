@@ -58,6 +58,12 @@
             line-height: 1.35;
         }
 
+        .chat-header .disclaimer {
+            font-size: 11px;
+            opacity: .75;
+            margin-top: 6px;
+        }
+
         .chat-scroll {
             flex: 1;
             min-height: 0;
@@ -254,6 +260,7 @@
     <header class="chat-header">
         <h1>🍏 Помощник Садовода</h1>
         <p>Текст — ответ по статьям (RAG). Фото — классификация и советы.</p>
+        <p class="disclaimer">Справочная информация. Не заменяет очный осмотр агронома. Решения по препаратам — с учётом инструкций и законодательства.</p>
     </header>
 
     <div class="chat-scroll" id="chatScroll" aria-live="polite">
@@ -336,6 +343,24 @@
             showToast._t = setTimeout(function() { el.toast.classList.remove('show'); }, 4200);
         }
 
+        /** initData от Telegram — криптографически подписанные данные пользователя (см. core.telegram.org/bots/webapps). */
+        function getTelegramInitData() {
+            if (tg && tg.initData) {
+                return String(tg.initData);
+            }
+            return '';
+        }
+
+        /** Заголовки для API: initData уходит на Go для проверки подписи ботом. */
+        function withAuthHeaders(extra) {
+            var h = Object.assign({}, extra || {});
+            var initData = getTelegramInitData();
+            if (initData) {
+                h['X-Telegram-Init-Data'] = initData;
+            }
+            return h;
+        }
+
         function dedupeApiBases(list) {
             var out = [];
             var seen = {};
@@ -408,6 +433,7 @@
                 var res;
                 try {
                     var opts = init ? Object.assign({}, init) : {};
+                    opts.headers = withAuthHeaders(opts.headers);
                     if (!opts.signal && url.indexOf(':8080') !== -1 &&
                         typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
                         opts.signal = AbortSignal.timeout(5000);
