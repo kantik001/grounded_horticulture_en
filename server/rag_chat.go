@@ -71,14 +71,14 @@ const ragUserPromptTpl = `<system>%s</system>
 <examples>%s</examples>
 <task>Ответь на вопрос пользователя чётко, по делу, грамотно.</task>
 <constraints>
-- НЕ ВЫДУМЫВАЙ. Если ответа нет в контексте — скажи: "В предоставленных статьях нет информации по вашему вопросу."
+- НЕ ВЫДУМЫВАЙ. Если ответа нет в контексте — скажи: "В справочных материалах нет информации по вашему вопросу."
 - Отвечай только на русском языке, литературно, без ошибок.
 - НЕ используй слова "скорее всего", "вероятно", "возможно", "наверное".
 - НЕ используй слова "аботчик", "Я думаю", "мне нужно ответить", "давайте посмотрим".
 - Если в контексте есть конкретные цифры, дозировки, табличные данные — обязательно включи их в ответ.
-- Ответ должен быть развёрнутым, полезным, содержать все детали из источника.
+- Ответ должен быть развёрнутым, полезным, содержать все детали из контекста.
 - Завершай ответ полностью, не обрывай на полуслове.
-- В конце ответа укажи источник: Источник: "Название статьи".
+- НЕ указывай названия статей, журналов, авторов и ссылки на публикации.
 </constraints>
 <output_format>
 Ответ должен начинаться сразу с факта, без лишних вступлений. Будь подробным и грамотным.
@@ -90,6 +90,9 @@ func buildRAGUserPrompt(question, context, fewShot, taskIntro string) string {
 	return fmt.Sprintf(ragUserPromptTpl, taskIntro, context, fewShot, question)
 }
 
+// ragAnswerDisclaimer — общий дисклеймер в конце ответа (без названий статей).
+const ragAnswerDisclaimer = "Справочная информация из базы знаний. Не заменяет очный осмотр агронома; решения по препаратам — с учётом инструкций и законодательства."
+
 var (
 	reNumberWord = regexp.MustCompile(`\b\d+(?:\.\d+)?\b`)
 	reMultiSpace = regexp.MustCompile(`\s+`)
@@ -98,6 +101,7 @@ var (
 	reSystemTag  = regexp.MustCompile(`(?i)</?system>`)
 	reAbot       = regexp.MustCompile(`(?i)\bаботчик\b`)
 	reIntro      = regexp.MustCompile(`(?i)^(Хорошо|Давайте посмотрим|Итак|Я думаю|мне нужно ответить|Из контекста видно|Теперь я понимаю|Из таблицы видно)[,:.]?\s*`)
+	reSourceLine = regexp.MustCompile(`(?im)^\s*Источник:.*\n?`)
 )
 
 func extractNumbersFromText(s string) []float64 {
@@ -128,30 +132,38 @@ func cleanRAGAnswer(text string) string {
 	return text
 }
 
-func enforceRAGSource(answer string, fragments []RAGFragment) string {
-	if strings.Contains(answer, "Источник:") {
-		return answer
+func stripSourceAttribution(answer string) string {
+	s := reSourceLine.ReplaceAllString(answer, "")
+	return strings.TrimSpace(reMultiSpace.ReplaceAllString(s, " "))
+}
+
+func appendRAGDisclaimer(answer string) string {
+	body := stripSourceAttribution(answer)
+	if body == "" {
+		return ragAnswerDisclaimer
 	}
-	if len(fragments) > 0 {
-		src := fragments[0].Filename
-		return fmt.Sprintf("%s\n\nИсточник: \"%s\"", strings.TrimSpace(answer), src)
+	if strings.Contains(body, "Не заменяет очный осмотр агронома") {
+		return body
 	}
-	return answer
+	return body + "\n\n" + ragAnswerDisclaimer
+}
+
+func answerBodyForVerification(answer string) string {
+	s := stripSourceAttribution(answer)
+	s = strings.ReplaceAll(s, ragAnswerDisclaimer, "")
+	return strings.TrimSpace(s)
 }
 
 func verifyRAGAnswer(answer string, fragments []RAGFragment) (bool, string) {
 	if answer == "" {
 		return false, "Ответ отсутствует"
 	}
-	if !strings.Contains(answer, "Источник:") {
-		return false, "В ответе отсутствует ссылка на источник (формат 'Источник: \"Название статьи\"')."
-	}
 	var ctx strings.Builder
 	for _, f := range fragments {
 		ctx.WriteString(f.Content)
 		ctx.WriteByte('\n')
 	}
-	numsAns := extractNumbersFromText(answer)
+	numsAns := extractNumbersFromText(answerBodyForVerification(answer))
 	if len(numsAns) == 0 {
 		return true, "Верификация пройдена"
 	}
@@ -225,7 +237,7 @@ func answerWithRAG(q, cropID string, history []Message) (answer string, success 
 		return "", false, err.Error(), false
 	}
 	answer = cleanRAGAnswer(raw)
-	answer = enforceRAGSource(answer, ragOut.Fragments)
+	answer = appendRAGDisclaimer(answer)
 	passed, reason := verifyRAGAnswer(answer, ragOut.Fragments)
 	if !passed {
 		return fmt.Sprintf("⚠️ Система не смогла подтвердить ответ источниками. Сообщение администратору: %s\n\nРекомендуем обратиться к агроному.", reason), true, "", false

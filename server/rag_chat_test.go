@@ -17,7 +17,7 @@ func TestExtractNumbersFromText(t *testing.T) {
 
 func TestVerifyRAGAnswer_NoNumbersOK(t *testing.T) {
 	fragments := []RAGFragment{{Filename: "Статья", Content: "Парша проявляется пятнами."}}
-	answer := "Парша проявляется пятнами на листьях.\n\nИсточник: \"Статья\""
+	answer := appendRAGDisclaimer("Парша проявляется пятнами на листьях.")
 	ok, reason := verifyRAGAnswer(answer, fragments)
 	if !ok {
 		t.Fatalf("expected pass, got: %s", reason)
@@ -26,7 +26,7 @@ func TestVerifyRAGAnswer_NoNumbersOK(t *testing.T) {
 
 func TestVerifyRAGAnswer_NumberInContextOK(t *testing.T) {
 	fragments := []RAGFragment{{Filename: "Таблица", Content: "Среднее значение 77 и повторность 3-72."}}
-	answer := "Среднее 77.\n\nИсточник: \"Таблица\""
+	answer := appendRAGDisclaimer("Среднее 77.")
 	ok, reason := verifyRAGAnswer(answer, fragments)
 	if !ok {
 		t.Fatalf("expected pass, got: %s", reason)
@@ -35,7 +35,7 @@ func TestVerifyRAGAnswer_NumberInContextOK(t *testing.T) {
 
 func TestVerifyRAGAnswer_HallucinatedNumberFails(t *testing.T) {
 	fragments := []RAGFragment{{Filename: "Статья", Content: "Без цифр в тексте."}}
-	answer := "Рентабельность 72%.\n\nИсточник: \"Статья\""
+	answer := appendRAGDisclaimer("Рентабельность 72%.")
 	ok, reason := verifyRAGAnswer(answer, fragments)
 	if ok {
 		t.Fatal("expected verification to fail for hallucinated number")
@@ -45,17 +45,14 @@ func TestVerifyRAGAnswer_HallucinatedNumberFails(t *testing.T) {
 	}
 }
 
-func TestVerifyRAGAnswer_MissingSourceFails(t *testing.T) {
-	ok, _ := verifyRAGAnswer("Только текст.", nil)
-	if ok {
-		t.Fatal("expected fail without Источник:")
+func TestAppendRAGDisclaimer_StripsSourceAndAddsDisclaimer(t *testing.T) {
+	raw := "Ответ по теме.\n\nИсточник: \"Секретная статья\""
+	out := appendRAGDisclaimer(raw)
+	if strings.Contains(out, "Источник:") || strings.Contains(out, "Секретная статья") {
+		t.Fatalf("source attribution should be removed: %q", out)
 	}
-}
-
-func TestEnforceRAGSource_AppendsWhenMissing(t *testing.T) {
-	out := enforceRAGSource("Ответ.", []RAGFragment{{Filename: "Моя статья", Content: "x"}})
-	if !strings.Contains(out, "Источник:") || !strings.Contains(out, "Моя статья") {
-		t.Fatalf("expected source appended, got: %q", out)
+	if !strings.Contains(out, "Не заменяет очный осмотр агронома") {
+		t.Fatalf("expected disclaimer, got: %q", out)
 	}
 }
 
