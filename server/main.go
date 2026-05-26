@@ -124,8 +124,7 @@ func getEnv(key, defaultValue string) string {
 }
 
 // sendToClassifier sends image to Python classification service
-func sendToClassifier(imageData []byte) (*ClassificationResult, error) {
-	// Create multipart form
+func sendToClassifier(imageData []byte, cropID string) (*ClassificationResult, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -138,6 +137,7 @@ func sendToClassifier(imageData []byte) (*ClassificationResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to write image  %v", err)
 	}
+	_ = writer.WriteField("crop_id", cropID)
 
 	err = writer.Close()
 	if err != nil {
@@ -215,8 +215,9 @@ func callLLMCompletion(messages []Message) (string, error) {
 }
 
 // generateRecommendation generates care recommendations using LLM
-func generateRecommendation(classification *ClassificationResult) (string, error) {
-	prompt := fmt.Sprintf(`You are an expert horticulturist specializing in apple tree care.
+func generateRecommendation(classification *ClassificationResult, cropID string) (string, error) {
+	prompts := promptsForCrop(cropID)
+	prompt := fmt.Sprintf(`%s
 Based on the following classification result from an image analysis, provide detailed care recommendations.
 
 Classification Result:
@@ -229,30 +230,28 @@ Please provide:
 2. Specific care recommendations for this condition
 3. Preventive measures if it's a disease
 4. Treatment options if applicable
-5. General tips for maintaining healthy apple trees
+5. General tips for maintaining healthy trees
 
 Respond in Russian language as the target audience is Russian-speaking gardeners.`,
+		prompts.PhotoUserIntro,
 		classification.Prediction,
 		classification.Confidence*100,
 		classification.TopPredictions,
 	)
 
-	// If LLM API key is not configured, return a template response
 	if config.LLMAPIKey == "" {
 		return generateTemplateRecommendation(classification), nil
 	}
 	return callLLMCompletion([]Message{
-		{
-			Role:    "system",
-			Content: "You are an expert horticulturist specializing in apple tree care. Provide detailed, practical advice in Russian.",
-		},
+		{Role: "system", Content: prompts.PhotoSystem},
 		{Role: "user", Content: prompt},
 	})
 }
 
 // generateRecommendationWithHistory — рекомендации по фото с учётом предыдущих реплик диалога.
-func generateRecommendationWithHistory(classification *ClassificationResult, caption string, history []Message) (string, error) {
-	prompt := fmt.Sprintf(`You are an expert horticulturist specializing in apple tree care.
+func generateRecommendationWithHistory(classification *ClassificationResult, caption string, history []Message, cropID string) (string, error) {
+	prompts := promptsForCrop(cropID)
+	prompt := fmt.Sprintf(`%s
 Based on the following classification result from an image analysis, provide detailed care recommendations.
 
 Classification Result:
@@ -267,9 +266,10 @@ Please provide:
 2. Specific care recommendations for this condition
 3. Preventive measures if it's a disease
 4. Treatment options if applicable
-5. General tips for maintaining healthy apple trees
+5. General tips for maintaining healthy trees
 
 Respond in Russian language as the target audience is Russian-speaking gardeners.`,
+		prompts.PhotoUserIntro,
 		classification.Prediction,
 		classification.Confidence*100,
 		classification.TopPredictions,
@@ -279,10 +279,7 @@ Respond in Russian language as the target audience is Russian-speaking gardeners
 		return generateTemplateRecommendation(classification), nil
 	}
 	msgs := make([]Message, 0, len(history)+2)
-	msgs = append(msgs, Message{
-		Role:    "system",
-		Content: "You are an expert horticulturist specializing in apple tree care. Provide detailed, practical advice in Russian.",
-	})
+	msgs = append(msgs, Message{Role: "system", Content: prompts.PhotoSystem})
 	msgs = append(msgs, history...)
 	msgs = append(msgs, Message{Role: "user", Content: prompt})
 	return callLLMCompletion(msgs)
@@ -472,8 +469,13 @@ func handleClassification(c *gin.Context) {
 
 	log.Printf("Received image: %s (%d bytes)", header.Filename, len(imageData))
 
-	// Send to Python classifier
-	classification, err := sendToClassifier(imageData)
+	cropID, err := normalizeCropID(c.PostForm("crop_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	classification, err := sendToClassifier(imageData, cropID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -491,7 +493,7 @@ func handleClassification(c *gin.Context) {
 	}
 
 	// Generate recommendations
-	recommendation, err := generateRecommendation(classification)
+	recommendation, err := generateRecommendation(classification, cropID)
 	if err != nil {
 		log.Printf("Warning: Failed to generate LLM recommendation: %v", err)
 		// Continue with template recommendation
@@ -556,21 +558,29 @@ func main() {
 	if err != nil {
 		log.Fatalf("PostgreSQL: %v", err)
 	}
-	migPath, err := findMigrationsSQL()
+	migDir, err := findMigrationsDir()
 	if err != nil {
 		log.Fatalf("Migrations: %v", err)
 	}
-	if err := runMigrations(ctx, pool, migPath); err != nil {
+	if err := runAllMigrations(ctx, pool, migDir); err != nil {
 		log.Fatalf("Apply migrations: %v", err)
 	}
 	pool.Close()
+
+	if err := loadCropCatalog(); err != nil {
+		log.Fatalf("Crops config: %v", err)
+	}
+	if err := loadPromptCatalog(); err != nil {
+		log.Fatalf("Prompts config: %v", err)
+	}
 
 	chatStore, err = newChatStore(context.Background(), config.DatabaseURL, config.UploadDir)
 	if err != nil {
 		log.Fatalf("ChatStore: %v", err)
 	}
 	defer chatStore.Close()
-	log.Printf("PostgreSQL: connected, migrations applied from %s", migPath)
+	log.Printf("PostgreSQL: connected, migrations from %s", migDir)
+	log.Printf("Crops loaded: %d, default=%s", len(cropCatalog.Crops), cropCatalog.DefaultCrop)
 
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
@@ -590,6 +600,8 @@ func main() {
 	// Публичные маршруты (без Telegram auth)
 	router.GET("/health", handleHealthCheck)
 	router.GET("/api/health", handleHealthCheck)
+	router.GET("/crops", handleListCrops)
+	router.GET("/api/crops", handleListCrops)
 
 	// Защищённые маршруты (Telegram initData + rate limit)
 	registerProtectedRoutes(router, config, rl)

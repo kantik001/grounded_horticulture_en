@@ -5,8 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -57,23 +59,50 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool, sqlPath string) erro
 	return nil
 }
 
-func findMigrationsSQL() (string, error) {
+func runAllMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("read migrations dir %s: %w", dir, err)
+	}
+	var files []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if strings.HasSuffix(name, ".sql") {
+			files = append(files, filepath.Join(dir, name))
+		}
+	}
+	sort.Strings(files)
+	if len(files) == 0 {
+		return fmt.Errorf("no .sql migrations in %s", dir)
+	}
+	for _, f := range files {
+		if err := runMigrations(ctx, pool, f); err != nil {
+			return fmt.Errorf("%s: %w", f, err)
+		}
+		log.Printf("Applied migration: %s", filepath.Base(f))
+	}
+	return nil
+}
+
+func findMigrationsDir() (string, error) {
 	if p := os.Getenv("MIGRATIONS_DIR"); p != "" {
-		candidate := filepath.Join(p, "001_init.sql")
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate, nil
+		if st, err := os.Stat(p); err == nil && st.IsDir() {
+			return p, nil
 		}
 	}
 	for _, candidate := range []string{
-		"/migrations/001_init.sql",
-		filepath.Join("..", "migrations", "001_init.sql"),
-		filepath.Join("migrations", "001_init.sql"),
+		"/migrations",
+		filepath.Join("..", "migrations"),
+		filepath.Join("migrations"),
 	} {
-		if _, err := os.Stat(candidate); err == nil {
+		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
 			return candidate, nil
 		}
 	}
-	return "", fmt.Errorf("migrations/001_init.sql not found")
+	return "", fmt.Errorf("migrations directory not found")
 }
 
 func newSessionID() string {
@@ -113,14 +142,28 @@ func nullIfEmpty(s string) *string {
 	return &s
 }
 
-// CreateSession создаёт новую сессию для пользователя (internal user id).
-func (st *ChatStore) CreateSession(ctx context.Context, userID int64) (string, error) {
+// CreateSession создаёт новую сессию для пользователя (internal user id) и культуры.
+func (st *ChatStore) CreateSession(ctx context.Context, userID int64, cropID string) (string, error) {
 	sid := newSessionID()
 	_, err := st.pool.Exec(ctx,
-		`INSERT INTO chat_sessions (id, user_id) VALUES ($1, $2)`,
-		sid, userID,
+		`INSERT INTO chat_sessions (id, user_id, crop_id) VALUES ($1, $2, $3)`,
+		sid, userID, cropID,
 	)
 	return sid, err
+}
+
+// SessionCropID возвращает crop_id сессии (с проверкой владельца).
+func (st *ChatStore) SessionCropID(ctx context.Context, sessionID string, telegramID int64) (string, error) {
+	var cropID string
+	err := st.pool.QueryRow(ctx, `
+		SELECT cs.crop_id FROM chat_sessions cs
+		JOIN users u ON u.id = cs.user_id
+		WHERE cs.id = $1 AND u.telegram_id = $2`, sessionID, telegramID,
+	).Scan(&cropID)
+	if err != nil {
+		return "", errSessionNotFound
+	}
+	return cropID, nil
 }
 
 // sessionOwned проверяет, что сессия принадлежит telegram-пользователю.
@@ -136,23 +179,28 @@ func (st *ChatStore) sessionOwned(ctx context.Context, sessionID string, telegra
 	return ok, err
 }
 
-// GetOrCreateSession возвращает существующую сессию пользователя или создаёт новую.
-func (st *ChatStore) GetOrCreateSession(ctx context.Context, sessionID string, u *TelegramUser) (string, error) {
+// GetOrCreateSession возвращает существующую сессию или создаёт новую с crop_id.
+func (st *ChatStore) GetOrCreateSession(ctx context.Context, sessionID string, u *TelegramUser, cropID string) (string, string, error) {
 	userID, err := st.UpsertUser(ctx, u)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	sessionID = strings.TrimSpace(sessionID)
 	if sessionID != "" {
 		owned, err := st.sessionOwned(ctx, sessionID, u.ID)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		if owned {
-			return sessionID, nil
+			crop, err := st.SessionCropID(ctx, sessionID, u.ID)
+			if err != nil {
+				return "", "", err
+			}
+			return sessionID, crop, nil
 		}
 	}
-	return st.CreateSession(ctx, userID)
+	sid, err := st.CreateSession(ctx, userID, cropID)
+	return sid, cropID, err
 }
 
 // ListMessages возвращает историю сессии для UI.

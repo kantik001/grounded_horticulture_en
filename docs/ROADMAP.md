@@ -28,10 +28,10 @@
 - [x] Не логировать тело LLM
 
 ## Фаза 2 — Мультикультура
-- [ ] `crop_id` в API и UI
-- [ ] `data/{crop}/`, RAG metadata
-- [ ] Модели CV по культуре
-- [ ] Промпты/few-shot по культуре
+- [x] `crop_id` в API и UI
+- [x] `data/{crop}/`, RAG metadata
+- [x] Модели CV по культуре (registry, apple)
+- [x] Промпты/few-shot по культуре (config/)
 
 ## Фаза 3 — Качество RAG
 - [ ] 15–25 статей на яблоню
