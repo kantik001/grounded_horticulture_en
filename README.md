@@ -1,24 +1,27 @@
-# 🍏 union_ai_apple_project — объединённый помощник садовода
+# 🍏 doctor_gardens_ai — помощник садовода
 
-Сборка на базе **ai_apple_support** с добавлением **текстового RAG** из **project_apple_bot**: фото → классификация + советы через Go и LLM; текст → поиск по статьям и ответ в Python (OpenRouter), шлюз запросов — **Go**.
+Telegram Web App + AI: **фото** → классификация болезней; **текст** → ответы по статьям (RAG). Оркестрация и LLM — **Go**, CV и векторный поиск — **Python**.
+
+Полный план развития: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Описание
 
-- Распознавание яблока/листа (**MobileNetV2** в Python) и рекомендации по фото (**Go** вызывает LLM или шаблоны).
-- Текстовые вопросы по статьям из **`data/`** (**Chroma + LangChain + верификация** в Python), вызов с Web App через **`POST /api/chat`**.
+- Распознавание яблока/листа (**MobileNetV2** в Python) и рекомендации по фото (**Go** → LLM или шаблоны).
+- Текстовые вопросы по статьям из **`data/`**: Python **только retrieval** (`/rag/context`), ответ собирает **Go** + LLM + верификация.
+- **Telegram auth**: Web App передаёт `initData`, Go проверяет подпись бота (см. `server/auth_telegram.go`).
 
 ## Архитектура
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────────────────┐
 │  Telegram Web   │────▶│   Go Server      │────▶│ Python (Flask)              │
-│     App         │◀────│   /classify      │     │  /classify — CV             │
-└─────────────────┘     │   /chat        │────▶│  /chat — RAG + OpenRouter   │
+│  App + initData │◀────│  auth, rate limit│     │  /classify — CV             │
+└─────────────────┘     │  /message, /chat │────▶│  /rag/context — Chroma      │
                           └────────┬────────┘     └─────────────────────────────┘
                                    │
-                                   ▼ (только рекомендации по фото)
+                                   ▼  LLM (OpenRouter / OpenAI-compatible)
                             ┌──────────────┐
-                            │ LLM API      │
+                            │  LLM API     │
                             └──────────────┘
 ```
 
@@ -38,8 +41,8 @@ union_ai_apple_project/
 
 ### Python-сервис
 - **MobileNetV2** + **PyTorch** — классификация изображений
-- **Flask** — HTTP API (`/classify`, `/chat`)
-- **LangChain + Chroma + HuggingFace embeddings** — RAG по текстам из `data/`
+- **Flask** — HTTP API (`/classify`, `/rag/context`, `/health`)
+- **LangChain + Chroma + HuggingFace embeddings** — поиск фрагментов статей из `data/`
 
 ### Серверная часть (Go)
 - **Gin** - веб-фреймворк
@@ -67,7 +70,9 @@ union_ai_apple_project/
 
 **Фото:** пользователь в Web App делает снимок → `POST /classify` (Go → Python CV) → Go дополняет ответом LLM или шаблоном.
 
-**Текст:** пользователь вводит вопрос и нажимает «Спросить агронома» → `POST /chat` (Go → Python RAG + OpenRouter) → отображается ответ по статьям.
+**Текст:** вопрос в чате → `POST /api/message` или `/api/chat` → Go → Python `/rag/context` → Go + LLM → ответ со ссылкой на источник.
+
+**Безопасность:** все API, кроме `GET /health`, требуют заголовок `X-Telegram-Init-Data` (кроме режима `TELEGRAM_AUTH_DISABLED=true` для локальной разработки).
 
 ## Установка и запуск
 
@@ -91,7 +96,11 @@ cp .env.example .env
 
 Отредактируйте `.env` при необходимости:
 
-См. актуальный перечень в **`.env.example`** (в т.ч. `CLASSIFIER_URL`, `CLASSIFIER_CHAT_URL`, `OPENROUTER_API_KEY` для RAG).
+См. **`.env.example`**: `TELEGRAM_BOT_TOKEN`, `LLM_API_KEY`, `CLASSIFIER_URL`, `CLASSIFIER_RAG_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_REQUESTS_PER_MINUTE`.
+
+**Локальная разработка без Telegram:** в `.env` задайте `TELEGRAM_AUTH_DISABLED=true` (только dev, не для продакшена).
+
+**Продакшен:** укажите `TELEGRAM_BOT_TOKEN` от @BotFather; в `CORS_ALLOWED_ORIGINS` добавьте URL вашего Web App (например `https://your-domain.com`).
 
 #### 3. Запуск Python сервиса классификации
 
@@ -220,12 +229,15 @@ python train_classifier.py
 Проверка работоспособности сервера
 
 #### POST /chat
-Текстовый вопрос (RAG по статьям в `data/`).
+Текстовый вопрос (RAG по статьям в `data/`). Требует `X-Telegram-Init-Data`.
 
 **Request:** `Content-Type: application/json`  
 **Body:** `{"question": "текст вопроса"}`
 
 **Response:** `{"success": true, "answer": "..."}` — при ошибке `success: false`, поле `error`.
+
+#### POST /session, GET /history, POST /message
+Чат с историей (основной UI). Требуют `X-Telegram-Init-Data`.
 
 ### Python Classifier Service
 
@@ -246,8 +258,11 @@ python train_classifier.py
 }
 ```
 
-#### POST /chat
-То же тело и формат ответа, что у Go; выполняется поиск по Chroma и генерация ответа (нужен **`OPENROUTER_API_KEY`** в окружении).
+#### POST /rag/context
+Поиск по Chroma; возвращает `context`, `fragments`, `few_shot` для сборки ответа в Go.
+
+**Request:** `{"question": "текст"}`  
+**Response:** `{"success": true, "context": "...", "fragments": [...], ...}`
 
 ## Требования к изображениям
 
@@ -257,8 +272,7 @@ python train_classifier.py
 
 ## Конфигурация LLM
 
-- **Рекомендации по фото:** переменные `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` (по умолчанию OpenRouter). Без ключа — шаблонные тексты в Go.
-- **Текстовый RAG:** в Python используется **`OPENROUTER_API_KEY`** (см. `.env.example`). Без него ответы по статьям работать не будут.
+- **И текст RAG, и советы по фото:** `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` в Go (см. `.env.example`). Без ключа по фото — шаблоны; текстовый чат вернёт ошибку о необходимости ключа.
 
 ## Лицензия
 

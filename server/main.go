@@ -9,6 +9,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +25,12 @@ type Config struct {
 	LLMModel         string
 	LLMBaseURL       string
 	ServerPort       string
+
+	TelegramBotToken       string
+	TelegramAuthDisabled   bool
+	TelegramInitDataMaxAge time.Duration
+	CORSAllowedOrigins     []string
+	RateLimitPerMinute     int
 }
 
 // ClassificationResult represents the result from Python classifier
@@ -73,8 +81,18 @@ type RecommendationResponse struct {
 var config *Config
 
 func loadConfig() *Config {
-	// Try to load .env file
+	// Try to load .env file from cwd and parent (docker / local server/)
 	godotenv.Load()
+	godotenv.Load("../.env")
+
+	maxAgeSec, _ := strconv.Atoi(getEnv("TELEGRAM_INIT_DATA_MAX_AGE_SEC", "86400"))
+	if maxAgeSec < 0 {
+		maxAgeSec = 86400
+	}
+	rateLimit, _ := strconv.Atoi(getEnv("RATE_LIMIT_REQUESTS_PER_MINUTE", "30"))
+	if rateLimit < 0 {
+		rateLimit = 0
+	}
 
 	return &Config{
 		PythonServiceURL: getEnv("CLASSIFIER_URL", "http://classifier:5000/classify"),
@@ -83,6 +101,12 @@ func loadConfig() *Config {
 		LLMBaseURL:       getEnv("LLM_BASE_URL", "https://openrouter.ai/api"),
 		LLMModel:         getEnv("LLM_MODEL", "openrouter/free"),
 		ServerPort:       getEnv("SERVER_PORT", "8080"),
+
+		TelegramBotToken:       getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramAuthDisabled:   strings.EqualFold(getEnv("TELEGRAM_AUTH_DISABLED", "false"), "true"),
+		TelegramInitDataMaxAge: time.Duration(maxAgeSec) * time.Second,
+		CORSAllowedOrigins:     parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost,http://127.0.0.1")),
+		RateLimitPerMinute:     rateLimit,
 	}
 }
 
@@ -179,7 +203,6 @@ func callLLMCompletion(messages []Message) (string, error) {
 	if err := json.Unmarshal(responseBody, &llmResp); err != nil {
 		return "", fmt.Errorf("failed to parse LLM response: %v", err)
 	}
-	log.Printf("LLM responseBody: %s", string(responseBody))
 	if len(llmResp.Choices) == 0 {
 		return "", fmt.Errorf("no choices in LLM response")
 	}
@@ -501,44 +524,35 @@ func main() {
 	} else {
 		log.Printf("LLM API Key: not configured (using template responses)")
 	}
+	if config.TelegramAuthDisabled {
+		log.Printf("Telegram auth: DISABLED (dev mode only)")
+	} else if config.TelegramBotToken != "" {
+		log.Printf("Telegram auth: enabled")
+	} else {
+		log.Printf("Telegram auth: WARNING — TELEGRAM_BOT_TOKEN not set, protected routes will reject clients")
+	}
+	log.Printf("CORS origins: %v", config.CORSAllowedOrigins)
+	log.Printf("Rate limit: %d req/min per user", config.RateLimitPerMinute)
 
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 
 	// Create router
 	router := gin.Default()
-
-	// Enable CORS for Telegram Web App
+	router.Use(corsMiddleware(config.CORSAllowedOrigins))
 	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With")
 		c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
 		c.Next()
 	})
 
-	// Маршруты без префикса (nginx проксирует /api → backend с rewrite на /…)
-	router.GET("/health", handleHealthCheck)
-	router.POST("/classify", handleClassification)
-	router.POST("/chat", handleChat)
-	router.POST("/session", handleNewSession)
-	router.GET("/history", handleHistory)
-	router.POST("/message", handleMessage)
+	rl := newRateLimiter(config.RateLimitPerMinute, time.Minute)
 
-	// Те же маршруты с /api — если открывают Go напрямую (localhost:8080), без nginx
-	api := router.Group("/api")
-	{
-		api.GET("/health", handleHealthCheck)
-		api.POST("/classify", handleClassification)
-		api.POST("/chat", handleChat)
-		api.POST("/session", handleNewSession)
-		api.GET("/history", handleHistory)
-		api.POST("/message", handleMessage)
-	}
+	// Публичные маршруты (без Telegram auth)
+	router.GET("/health", handleHealthCheck)
+	router.GET("/api/health", handleHealthCheck)
+
+	// Защищённые маршруты (Telegram initData + rate limit)
+	registerProtectedRoutes(router, config, rl)
 
 	// Start server
 	serverAddr := fmt.Sprintf(":%s", config.ServerPort)

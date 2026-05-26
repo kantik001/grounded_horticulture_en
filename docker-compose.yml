@@ -37,6 +37,11 @@ services:
       - LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api}
       - LLM_MODEL=${LLM_MODEL:-openrouter/free}
       - SERVER_PORT=8080
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_AUTH_DISABLED=${TELEGRAM_AUTH_DISABLED:-false}
+      - TELEGRAM_INIT_DATA_MAX_AGE_SEC=${TELEGRAM_INIT_DATA_MAX_AGE_SEC:-86400}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1}
+      - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE:-30}
     depends_on:
       classifier:
         condition: service_healthy
