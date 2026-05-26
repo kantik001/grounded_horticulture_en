@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: union_ai_apple_postgres
+    environment:
+      POSTGRES_USER: gardener
+      POSTGRES_PASSWORD: gardener
+      POSTGRES_DB: gardener
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gardener -d gardener"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   classifier:
     build:
       context: .
@@ -42,7 +58,14 @@ services:
       - TELEGRAM_INIT_DATA_MAX_AGE_SEC=${TELEGRAM_INIT_DATA_MAX_AGE_SEC:-86400}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1}
       - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE:-30}
+      - DATABASE_URL=postgres://gardener:gardener@postgres:5432/gardener?sslmode=disable
+      - UPLOAD_DIR=/data/uploads
+      - MIGRATIONS_DIR=/migrations
+    volumes:
+      - uploads_data:/data/uploads
     depends_on:
+      postgres:
+        condition: service_healthy
       classifier:
         condition: service_healthy
     restart: unless-stopped
@@ -70,3 +93,5 @@ services:
 volumes:
   models:
   chroma_data:
+  postgres_data:
+  uploads_data:

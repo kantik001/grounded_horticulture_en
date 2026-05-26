@@ -116,6 +116,7 @@ func registerProtectedRoutes(router *gin.Engine, cfg *Config, rl *rateLimiter) {
 		r.POST("/session", auth, lim, handleNewSession)
 		r.GET("/history", auth, lim, handleHistory)
 		r.POST("/message", auth, lim, handleMessage)
+		r.GET("/media/:token", auth, lim, handleMedia)
 	}
 
 	mount(router.Group(""))

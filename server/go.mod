@@ -3,8 +3,9 @@ module apple_gardener_server
 go 1.19
 
 require (
-        github.com/gin-gonic/gin v1.9.1
-        github.com/joho/godotenv v1.5.1
+	github.com/gin-gonic/gin v1.9.1
+	github.com/jackc/pgx/v5 v5.7.2
+	github.com/joho/godotenv v1.5.1
 )
 
 require (

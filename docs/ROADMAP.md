@@ -18,10 +18,10 @@
 - [ ] Структурированные логи
 
 ### 1B Персистентность
-- [ ] PostgreSQL в docker-compose
-- [ ] Миграции `users`, `sessions`, `messages`
-- [ ] Store в Go, убрать in-memory сессии
-- [ ] Фото в object storage, не base64 в БД
+- [x] PostgreSQL в docker-compose
+- [x] Миграции `users`, `sessions`, `messages`
+- [x] Store в Go, убрать in-memory сессии
+- [x] Фото на volume, token в БД (не base64)
 
 ### 1C Прочее
 - [x] Дисклеймер в UI

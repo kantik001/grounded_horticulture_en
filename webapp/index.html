@@ -534,6 +534,20 @@
             });
         }
 
+        /** Фото с сервера: fetch с initData → blob URL (тег img не шлёт auth сам). */
+        async function loadAuthedImage(imgEl, imagePath) {
+            try {
+                var path = String(imagePath || '').replace(/^\/api\//, '');
+                if (path.charAt(0) === '/') path = path.slice(1);
+                var res = await apiFetch(path, { method: 'GET' });
+                if (!res.ok) return;
+                var blob = await res.blob();
+                imgEl.src = URL.createObjectURL(blob);
+            } catch (e) {
+                console.error('loadAuthedImage', e);
+            }
+        }
+
         function renderMessages(messages) {
             el.messagesRoot.innerHTML = '';
             if (!messages || !messages.length) {
@@ -549,11 +563,16 @@
                 var bubble = document.createElement('div');
                 bubble.className = 'bubble';
 
-                if (m.image_data_url) {
+                if (m.image_data_url || m.image_url) {
                     var img = document.createElement('img');
                     img.className = 'attach-preview';
-                    img.src = m.image_data_url;
                     img.alt = 'Фото пользователя';
+                    if (m.image_data_url) {
+                        img.src = m.image_data_url;
+                    } else {
+                        img.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect fill="#ddd" width="100%" height="100%"/></svg>');
+                        loadAuthedImage(img, m.image_url);
+                    }
                     bubble.appendChild(img);
                 }
                 if (m.content && String(m.content).trim()) {

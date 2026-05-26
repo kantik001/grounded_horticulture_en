@@ -13,6 +13,8 @@
 # RAG / логи
 chroma_db/
 logs.json
+uploads/
+data/uploads/
 
 # Editors
 .vscode/
