@@ -12,11 +12,14 @@ func cropsConfigForTest(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, rel := range []string{
-		filepath.Join("config", "crops.json"),
-		filepath.Join("..", "config", "crops.json"),
-	} {
-		p := filepath.Join(wd, rel)
+	candidates := []string{
+		filepath.Join(wd, "..", "config", "crops.json"),
+		filepath.Join(wd, "config", "crops.json"),
+	}
+	if env := os.Getenv("CROPS_CONFIG_PATH"); env != "" {
+		candidates = append([]string{env}, candidates...)
+	}
+	for _, p := range candidates {
 		if _, err := os.Stat(p); err == nil {
 			return p
 		}
