@@ -26,6 +26,8 @@ services:
     environment:
       - MODEL_PATH=../models/apple_classifier.pth
       - CLASSIFIER_PORT=5000
+      - CROPS_CONFIG_PATH=/app/config/crops.json
+      - FORCE_RAG_REINDEX=${FORCE_RAG_REINDEX:-false}
     volumes:
       - models:/app/models
       - chroma_data:/app/chroma_db
@@ -61,6 +63,8 @@ services:
       - DATABASE_URL=postgres://gardener:gardener@postgres:5432/gardener?sslmode=disable
       - UPLOAD_DIR=/data/uploads
       - MIGRATIONS_DIR=/migrations
+      - CROPS_CONFIG_PATH=/config/crops.json
+      - PROMPTS_CONFIG_PATH=/config/prompts.json
     volumes:
       - uploads_data:/data/uploads
     depends_on:

@@ -1,79 +1,124 @@
 # ----------------------------------------------------------------------
-# Импорты
+# Векторное хранилище Chroma: статьи по культурам data/{crop_id}/*.txt
 # ----------------------------------------------------------------------
-import os
 import glob
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
+import json
+import os
 
-# ----------------------------------------------------------------------
-# Конфигурация (пути относительно корня репозитория, независимо от cwd)
-# ----------------------------------------------------------------------
+from langchain_chroma import Chroma
+from langchain_community.document_loaders import TextLoader
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from rag.crops_config import list_crops, normalize_crop_id
+
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(_PROJECT_ROOT, "data")
 PERSIST_DIR = os.path.join(_PROJECT_ROOT, "chroma_db")
 
-# Красивые названия статей (отображаются в источнике)
-TITLES = {
-    "article1.txt": "Эффективность выращивания яблони на террасированных склонах предгорной зоны КБР",
-    "article2.txt": "ВЛИЯНИЕ БИО-ОРГАНО-МИНЕРАЛЬНОГО КОМПЛЕКСА АКМ НА БИОЛОГИЧЕСКУЮ АКТИВНОСТЬ ПОЧВЫ, ПРОДУКТИВНОСТЬ ЯБЛОНИ И КАЧЕСТВО ПЛОДОВ",
-    "article3.txt": "ВЛИЯНИЕ УДОБРЕНИЯ НА МИНЕРАЛЬНОЕ ПИТАНИЕ, РОСТ, РАЗВИТИЕ И ПЛОДОНОШЕНИЕ ЯБЛОНИ КОЛОННОВИДНОЙ",
-    # Добавьте другие файлы по аналогии
-}
+_vector_store = None
+_titles_cache = None
 
-# ----------------------------------------------------------------------
-# Вспомогательные функции
-# ----------------------------------------------------------------------
-def get_pretty_title(filename: str) -> str:
-    """Возвращает красивое название статьи или имя файла, если нет в словаре."""
-    return TITLES.get(filename, filename)
+
+def _titles_map() -> dict:
+    global _titles_cache
+    if _titles_cache is not None:
+        return _titles_cache
+    path = os.path.join(_PROJECT_ROOT, "config", "article_titles.json")
+    if not os.path.isfile(path):
+        _titles_cache = {}
+        return _titles_cache
+    with open(path, encoding="utf-8") as f:
+        _titles_cache = json.load(f)
+    return _titles_cache
+
+
+def get_pretty_title(crop_id: str, filename: str) -> str:
+    return _titles_map().get(crop_id, {}).get(filename, filename)
+
 
 def load_all_documents():
-    """Загружает все .txt файлы из DATA_DIR и добавляет в метаданные название статьи."""
+    """Загружает .txt из data/{crop_id}/ и legacy data/*.txt (как apple)."""
     all_docs = []
-    txt_files = glob.glob(os.path.join(DATA_DIR, "*.txt"))
-    for file_path in txt_files:
-        filename = os.path.basename(file_path)
-        pretty_title = get_pretty_title(filename)
-        print(f"Загружаю {filename} -> {pretty_title}")
-        loader = TextLoader(file_path, encoding="utf-8")
-        docs = loader.load()
-        for doc in docs:
-            if doc.metadata is None:
-                doc.metadata = {}
-            doc.metadata["filename"] = pretty_title
-        all_docs.extend(docs)
+    crops = list_crops().get("crops", {}).keys()
+
+    for crop_id in crops:
+        crop_dir = os.path.join(DATA_DIR, crop_id)
+        if not os.path.isdir(crop_dir):
+            continue
+        for file_path in glob.glob(os.path.join(crop_dir, "*.txt")):
+            all_docs.extend(_load_file(crop_id, file_path))
+
+    # legacy: файлы прямо в data/
+    for file_path in glob.glob(os.path.join(DATA_DIR, "*.txt")):
+        all_docs.extend(_load_file("apple", file_path))
+
     return all_docs
 
+
+def _load_file(crop_id: str, file_path: str):
+    filename = os.path.basename(file_path)
+    pretty_title = get_pretty_title(crop_id, filename)
+    print(f"Загружаю [{crop_id}] {filename} -> {pretty_title}")
+    loader = TextLoader(file_path, encoding="utf-8")
+    docs = loader.load()
+    for doc in docs:
+        if doc.metadata is None:
+            doc.metadata = {}
+        doc.metadata["filename"] = pretty_title
+        doc.metadata["crop_id"] = crop_id
+        doc.metadata["source_file"] = filename
+    return docs
+
+
 def create_vector_store():
-    """Создаёт векторную базу из всех статей (разбивка на чанки, эмбеддинги)."""
-    print("Создаю новую векторную базу...")
+    print("Создаю новую векторную базу (мультикультура)...")
     documents = load_all_documents()
+    if not documents:
+        print("Нет статей для индексации.")
+        return None
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     docs = text_splitter.split_documents(documents)
     print(f"Фрагментов: {len(docs)}")
     embeddings = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-small")
-    vector_store = Chroma.from_documents(docs, embeddings, persist_directory=PERSIST_DIR)
+    store = Chroma.from_documents(docs, embeddings, persist_directory=PERSIST_DIR)
     print(f"База сохранена в {PERSIST_DIR}")
-    return vector_store
+    return store
 
-def load_vector_store():
-    """Загружает существующую векторную базу или создаёт новую, если её нет."""
+
+def load_vector_store(force_reindex: bool = False):
+    global _vector_store
+    if _vector_store is not None and not force_reindex:
+        return _vector_store
+
+    force = force_reindex or os.environ.get("FORCE_RAG_REINDEX", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
     embeddings = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-small")
-    if os.path.exists(PERSIST_DIR) and os.listdir(PERSIST_DIR):
-        return Chroma(persist_directory=PERSIST_DIR, embedding_function=embeddings)
-    else:
-        return create_vector_store()
 
-# ----------------------------------------------------------------------
-# Основная функция поиска (без реранкинга, только косинусное сходство)
-# ----------------------------------------------------------------------
-def search(query: str, k: int = 8):
-    """
-    Ищет k наиболее релевантных фрагментов по смыслу.
-    k = 8 даёт достаточно контекста для полного ответа.
-    """
-    vector_store = load_vector_store()
-    return vector_store.similarity_search(query, k=k)
+    if force and os.path.isdir(PERSIST_DIR):
+        import shutil
+
+        print("FORCE_RAG_REINDEX: удаляю старую chroma_db")
+        shutil.rmtree(PERSIST_DIR, ignore_errors=True)
+
+    if os.path.exists(PERSIST_DIR) and os.listdir(PERSIST_DIR):
+        _vector_store = Chroma(persist_directory=PERSIST_DIR, embedding_function=embeddings)
+    else:
+        _vector_store = create_vector_store()
+    return _vector_store
+
+
+def search(query: str, crop_id: str, k: int = 8):
+    """Поиск только по статьям выбранной культуры."""
+    crop_id = normalize_crop_id(crop_id)
+    store = load_vector_store()
+    if store is None:
+        return []
+    return store.similarity_search(
+        query,
+        k=k,
+        filter={"crop_id": crop_id},
+    )

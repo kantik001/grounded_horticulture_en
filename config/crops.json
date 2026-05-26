@@ -1,0 +1,23 @@
+{
+  "default_crop": "apple",
+  "crops": {
+    "apple": {
+      "name_ru": "Яблоня",
+      "emoji": "🍎",
+      "cv_enabled": true,
+      "rag_enabled": true
+    },
+    "pear": {
+      "name_ru": "Груша",
+      "emoji": "🍐",
+      "cv_enabled": false,
+      "rag_enabled": false
+    },
+    "plum": {
+      "name_ru": "Слива",
+      "emoji": "🍑",
+      "cv_enabled": false,
+      "rag_enabled": false
+    }
+  }
+}

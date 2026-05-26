@@ -64,6 +64,25 @@
             margin-top: 6px;
         }
 
+        .crop-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .crop-row select {
+            flex: 1;
+            max-width: 220px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,.95);
+            color: #111;
+            font-size: 13px;
+        }
+
         .chat-scroll {
             flex: 1;
             min-height: 0;
@@ -260,6 +279,10 @@
     <header class="chat-header">
         <h1>🍏 Помощник Садовода</h1>
         <p>Текст — ответ по статьям (RAG). Фото — классификация и советы.</p>
+        <label class="crop-row">
+            <span>Культура</span>
+            <select id="cropSelect" aria-label="Выбор культуры"></select>
+        </label>
         <p class="disclaimer">Справочная информация. Не заменяет очный осмотр агронома. Решения по препаратам — с учётом инструкций и законодательства.</p>
     </header>
 
@@ -307,6 +330,7 @@
         }
 
         const STORAGE_KEY = 'apple_gardener_session_id';
+        const CROP_STORAGE_KEY = 'apple_gardener_crop_id';
         const API_BASE_STORAGE_KEY = 'apple_gardener_api_base';
         const API_BASE_SCHEMA_VERSION = '2';
 
@@ -318,6 +342,7 @@
         let apiBaseUrl = sessionStorage.getItem(API_BASE_STORAGE_KEY) || '/api/';
 
         let sessionId = null;
+        let cropId = sessionStorage.getItem(CROP_STORAGE_KEY) || 'apple';
         let pendingFile = null;
         let pendingObjectUrl = null;
         let sending = false;
@@ -334,6 +359,7 @@
             clearAttachment: document.getElementById('clearAttachment'),
             typingLine: document.getElementById('typingLine'),
             toast: document.getElementById('toast'),
+            cropSelect: document.getElementById('cropSelect'),
         };
 
         function showToast(msg) {
@@ -528,6 +554,56 @@
             return names[prediction] || (prediction || '').replace(/_/g, ' ');
         }
 
+        async function loadCropsCatalog() {
+            try {
+                var res = await apiFetch('/crops', { method: 'GET' });
+                var data = parseApiResponseJson(await res.text());
+                if (!data.success || !data.crops) return;
+                el.cropSelect.innerHTML = '';
+                data.crops.forEach(function(c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.id;
+                    var label = (c.emoji ? c.emoji + ' ' : '') + c.name_ru;
+                    if (!c.rag_enabled && !c.cv_enabled) label += ' (скоро)';
+                    opt.textContent = label;
+                    el.cropSelect.appendChild(opt);
+                });
+                cropId = sessionStorage.getItem(CROP_STORAGE_KEY) || data.default_crop || 'apple';
+                el.cropSelect.value = cropId;
+            } catch (e) {
+                console.error('loadCropsCatalog', e);
+            }
+        }
+
+        async function createSessionWithCrop(selectedCrop) {
+            cropId = selectedCrop;
+            sessionStorage.setItem(CROP_STORAGE_KEY, cropId);
+            sessionStorage.removeItem(STORAGE_KEY);
+            sessionId = null;
+            var res = await apiFetch('/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({ crop_id: cropId })
+            });
+            var data = parseApiResponseJson(await res.text());
+            if (!res.ok || !data.session_id) {
+                throw new Error(data.error || 'Не удалось создать сессию');
+            }
+            sessionId = data.session_id;
+            if (data.crop_id) cropId = data.crop_id;
+            sessionStorage.setItem(STORAGE_KEY, sessionId);
+            renderMessages([]);
+        }
+
+        el.cropSelect.addEventListener('change', function() {
+            var next = el.cropSelect.value;
+            if (next === cropId && sessionId) return;
+            createSessionWithCrop(next).catch(function(e) {
+                showToast(e.message || 'Ошибка смены культуры');
+                el.cropSelect.value = cropId;
+            });
+        });
+
         function scrollToBottom() {
             requestAnimationFrame(function() {
                 el.chatScroll.scrollTop = el.chatScroll.scrollHeight;
@@ -605,6 +681,11 @@
                 } else if (hr.ok) {
                     var hd = parseApiResponseJson(await hr.text());
                     sessionId = hd.session_id || sid;
+                    if (hd.crop_id) {
+                        cropId = hd.crop_id;
+                        sessionStorage.setItem(CROP_STORAGE_KEY, cropId);
+                        el.cropSelect.value = cropId;
+                    }
                     renderMessages(hd.messages || []);
                     return;
                 } else {
@@ -614,14 +695,19 @@
             }
             var res = await apiFetch('/session', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: '{}'
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({ crop_id: cropId })
             });
             var data = parseApiResponseJson(await res.text());
             if (!res.ok || !data.session_id) {
                 throw new Error(data.error || 'Не удалось создать сессию');
             }
             sessionId = data.session_id;
+            if (data.crop_id) {
+                cropId = data.crop_id;
+                sessionStorage.setItem(CROP_STORAGE_KEY, cropId);
+                el.cropSelect.value = cropId;
+            }
             sessionStorage.setItem(STORAGE_KEY, sessionId);
             renderMessages([]);
         }
@@ -670,6 +756,7 @@
                 if (pendingFile) {
                     var fd = new FormData();
                     fd.append('session_id', sessionId);
+                    fd.append('crop_id', cropId);
                     fd.append('text', text);
                     fd.append('image', pendingFile, pendingFile.name || 'photo.jpg');
                     res = await apiFetch('/message', { method: 'POST', body: fd });
@@ -677,13 +764,18 @@
                     res = await apiFetch('/message', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                        body: JSON.stringify({ session_id: sessionId, text: text })
+                        body: JSON.stringify({ session_id: sessionId, crop_id: cropId, text: text })
                     });
                 }
                 var data = parseApiResponseJson(await res.text());
                 if (data.session_id) {
                     sessionId = data.session_id;
                     sessionStorage.setItem(STORAGE_KEY, sessionId);
+                }
+                if (data.crop_id) {
+                    cropId = data.crop_id;
+                    sessionStorage.setItem(CROP_STORAGE_KEY, cropId);
+                    el.cropSelect.value = cropId;
                 }
                 if (data.messages) {
                     renderMessages(data.messages);
@@ -725,7 +817,9 @@
         });
         el.inputText.addEventListener('input', autoResize);
 
-        ensureSession().catch(function(e) {
+        loadCropsCatalog().then(function() {
+            return ensureSession();
+        }).catch(function(e) {
             console.error(e);
             showToast(e.message || 'Не удалось подключиться');
         });

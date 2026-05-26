@@ -1,11 +1,26 @@
 """
-Поиск по статьям (RAG retrieval): только векторный поиск и сборка контекста.
-Вызов LLM выполняется в Go.
+Поиск по статьям (RAG retrieval): контекст для Go с учётом crop_id.
 """
 
+import json
+import os
 from typing import Any, Dict, List
 
+from rag.crops_config import get_crop, normalize_crop_id
 from rag.vector_store import search
+
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_few_shot_cache = None
+
+
+def _load_few_shot() -> dict:
+    global _few_shot_cache
+    if _few_shot_cache is not None:
+        return _few_shot_cache
+    path = os.path.join(_PROJECT_ROOT, "config", "few_shot.json")
+    with open(path, encoding="utf-8") as f:
+        _few_shot_cache = json.load(f)
+    return _few_shot_cache
 
 
 def classify_question(question: str) -> str:
@@ -53,61 +68,49 @@ def classify_question(question: str) -> str:
     return "general"
 
 
-FEW_SHOT_EXAMPLES = {
-    "fertilizer": """
-Пример вопроса: "Как удобрения влияют на рост сорта Триумф?"
-Пример ответа: Удобрения значительно влияют на вегетативный рост сорта Триумф. При варианте 1 (норма) прирост побегов составил 748,5 см, при варианте 2 (удвоение) – 660,5 см, при варианте 3 (половинная доза) – 560,6 см. Удвоение дозы также вызвало подмерзание верхушек побегов и позднее осыпание листьев (декабрь-январь).
-Источник: "Влияние удобрений на минеральное питание, рост, развитие и плодоношение яблони колонновидной".
-""",
-    "disease": """
-Пример вопроса: "Какие признаки парши на листьях яблони?"
-Пример ответа: Парша яблони проявляется в виде округлых бархатистых пятен оливково-зелёного цвета, которые позже становятся коричнево-чёрными. Пятна могут сливаться, листья деформируются и преждевременно опадают. Для лечения используют фунгициды (Хорус, Скор) весной и осенью.
-Источник: "Болезни и вредители яблони".
-""",
-    "variety": """
-Пример вопроса: "Какой сорт показал максимальную рентабельность на северном склоне?"
-Пример ответа: На северном склоне максимальную рентабельность (496,0%) показал летний сорт «Ред Фри». Сорт «Мелба» на том же склоне достиг рентабельности 304,7%. Позднезимние сорта «Айдаред» и «Голден Делишес» продемонстрировали 361,0% и 376,5% соответственно.
-Источник: "Эффективность выращивания яблони на террасированных склонах предгорной зоны КБР".
-""",
-    "general": """
-Пример вопроса: "Что делать при появлении пятен на листьях?"
-Пример ответа: При появлении пятен на листьях яблони необходимо определить причину (грибковое заболевание, вредитель или дефицит питания). Рекомендуется обратиться к агроному или отправить фото в наш бот для диагностики. Для профилактики проводите санитарную обрезку и обработку медьсодержащими препаратами.
-Источник: "Общие рекомендации по уходу за яблоней".
-""",
-}
+def few_shot_for(crop_id: str, category: str) -> str:
+    crop_shots = _load_few_shot().get(crop_id, {})
+    return crop_shots.get(category) or crop_shots.get("general", "")
 
 
-def retrieve_rag_context(user_question: str) -> Dict[str, Any]:
-    """
-    Выполняет поиск по статьям и возвращает данные для промпта в Go.
-
-    Returns:
-        success, error?, context, few_shot, category, fragments[{filename, content}]
-    """
+def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str, Any]:
     q = (user_question or "").strip()
+    empty = {
+        "success": False,
+        "error": "",
+        "context": "",
+        "few_shot": "",
+        "category": "general",
+        "fragments": [],
+        "crop_id": crop_id,
+    }
     if not q:
-        return {
-            "success": False,
-            "error": "Пустой вопрос",
-            "context": "",
-            "few_shot": "",
-            "category": "general",
-            "fragments": [],
-        }
+        empty["error"] = "Пустой вопрос"
+        return empty
 
-    fragments = search(q, k=8)
+    try:
+        crop_id = normalize_crop_id(crop_id)
+    except ValueError as e:
+        empty["error"] = str(e)
+        return empty
+
+    crop = get_crop(crop_id)
+    if not crop.get("rag_enabled", True):
+        empty["error"] = (
+            f"База статей для «{crop.get('name_ru', crop_id)}» пока не подключена. "
+            "Выберите другую культуру или вернитесь позже."
+        )
+        return empty
+
+    fragments = search(q, crop_id=crop_id, k=8)
     if not fragments:
-        return {
-            "success": False,
-            "error": "Не нашёл информации в загруженных статьях.",
-            "context": "",
-            "few_shot": "",
-            "category": "general",
-            "fragments": [],
-        }
+        empty["error"] = (
+            f"Не нашёл информации в статьях по культуре «{crop.get('name_ru', crop_id)}»."
+        )
+        return empty
 
     for f in fragments:
-        print(f"[RAG] источник: {f.metadata.get('filename')}")
+        print(f"[RAG:{crop_id}] источник: {f.metadata.get('filename')}")
 
     context_parts: List[str] = []
     fr_json: List[Dict[str, str]] = []
@@ -118,7 +121,7 @@ def retrieve_rag_context(user_question: str) -> Dict[str, Any]:
 
     context = "\n\n---\n\n".join(context_parts)
     category = classify_question(q)
-    few_shot = FEW_SHOT_EXAMPLES.get(category, FEW_SHOT_EXAMPLES["general"])
+    few_shot = few_shot_for(crop_id, category)
 
     return {
         "success": True,
@@ -127,4 +130,5 @@ def retrieve_rag_context(user_question: str) -> Dict[str, Any]:
         "few_shot": few_shot,
         "category": category,
         "fragments": fr_json,
+        "crop_id": crop_id,
     }
