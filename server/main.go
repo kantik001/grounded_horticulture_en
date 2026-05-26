@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,6 +32,8 @@ type Config struct {
 	TelegramInitDataMaxAge time.Duration
 	CORSAllowedOrigins     []string
 	RateLimitPerMinute     int
+	DatabaseURL            string
+	UploadDir              string
 }
 
 // ClassificationResult represents the result from Python classifier
@@ -107,6 +110,8 @@ func loadConfig() *Config {
 		TelegramInitDataMaxAge: time.Duration(maxAgeSec) * time.Second,
 		CORSAllowedOrigins:     parseAllowedOrigins(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost,http://127.0.0.1")),
 		RateLimitPerMinute:     rateLimit,
+		DatabaseURL:            getEnv("DATABASE_URL", "postgres://gardener:gardener@postgres:5432/gardener?sslmode=disable"),
+		UploadDir:              getEnv("UPLOAD_DIR", "/data/uploads"),
 	}
 }
 
@@ -505,10 +510,19 @@ func handleClassification(c *gin.Context) {
 
 // handleHealthCheck handles health check endpoint
 func handleHealthCheck(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
+	payload := gin.H{
 		"status":    "healthy",
 		"timestamp": time.Now().Unix(),
-	})
+	}
+	if chatStore != nil && chatStore.pool != nil {
+		if err := chatStore.pool.Ping(c.Request.Context()); err != nil {
+			payload["status"] = "degraded"
+			payload["database"] = "unreachable"
+		} else {
+			payload["database"] = "ok"
+		}
+	}
+	c.JSON(http.StatusOK, payload)
 }
 
 func main() {
@@ -533,6 +547,30 @@ func main() {
 	}
 	log.Printf("CORS origins: %v", config.CORSAllowedOrigins)
 	log.Printf("Rate limit: %d req/min per user", config.RateLimitPerMinute)
+	log.Printf("Database URL: configured")
+	log.Printf("Upload dir: %s", config.UploadDir)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	pool, err := waitForPostgres(ctx, config.DatabaseURL, 30)
+	if err != nil {
+		log.Fatalf("PostgreSQL: %v", err)
+	}
+	migPath, err := findMigrationsSQL()
+	if err != nil {
+		log.Fatalf("Migrations: %v", err)
+	}
+	if err := runMigrations(ctx, pool, migPath); err != nil {
+		log.Fatalf("Apply migrations: %v", err)
+	}
+	pool.Close()
+
+	chatStore, err = newChatStore(context.Background(), config.DatabaseURL, config.UploadDir)
+	if err != nil {
+		log.Fatalf("ChatStore: %v", err)
+	}
+	defer chatStore.Close()
+	log.Printf("PostgreSQL: connected, migrations applied from %s", migPath)
 
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
@@ -541,7 +579,9 @@ func main() {
 	router := gin.Default()
 	router.Use(corsMiddleware(config.CORSAllowedOrigins))
 	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		if !strings.Contains(c.Request.URL.Path, "/media/") {
+			c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		}
 		c.Next()
 	})
 

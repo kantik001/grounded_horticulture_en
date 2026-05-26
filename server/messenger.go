@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"io"
 	"log"
 	"net/http"
@@ -12,13 +11,32 @@ import (
 
 const maxMessengerImageBytes = 10 * 1024 * 1024
 
-// handleNewSession создаёт новую сессию переписки.
+var chatStore *ChatStore
+
+// handleNewSession создаёт новую сессию переписки для текущего Telegram-пользователя.
 func handleNewSession(c *gin.Context) {
-	id, s := createSession()
-	_ = s
+	tgUser, err := ctxTelegramUser(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	ctx := c.Request.Context()
+	userID, err := chatStore.UpsertUser(ctx, tgUser)
+	if err != nil {
+		log.Printf("UpsertUser: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка базы данных"})
+		return
+	}
+	_ = userID
+	sid, err := chatStore.CreateSession(ctx, userID)
+	if err != nil {
+		log.Printf("CreateSession: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Не удалось создать сессию"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
-		"session_id": id,
+		"session_id": sid,
 		"messages":   []ChatMessage{},
 	})
 }
@@ -30,16 +48,47 @@ func handleHistory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Нужен параметр session_id"})
 		return
 	}
-	s := getSession(id)
-	if s == nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Сессия не найдена"})
+	tgUser, err := ctxTelegramUser(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	msgs, err := chatStore.ListMessages(c.Request.Context(), id, tgUser.ID)
+	if err != nil {
+		if err == errSessionNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Сессия не найдена"})
+			return
+		}
+		log.Printf("ListMessages: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка базы данных"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"session_id": id,
-		"messages":   s.snapshot(),
+		"messages":   msgs,
 	})
+}
+
+// handleMedia отдаёт фото по token (только владельцу сессии).
+func handleMedia(c *gin.Context) {
+	token := strings.TrimSpace(c.Param("token"))
+	tgUser, err := ctxTelegramUser(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	ok, err := chatStore.UserCanAccessImage(c.Request.Context(), token, tgUser.ID)
+	if err != nil || !ok {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Файл не найден"})
+		return
+	}
+	data, err := chatStore.ReadImage(token)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Файл не найден"})
+		return
+	}
+	c.Data(http.StatusOK, "application/octet-stream", data)
 }
 
 type jsonMessageRequest struct {
@@ -98,107 +147,127 @@ func handleMessage(c *gin.Context) {
 		return
 	}
 
-	sid, sess, _ := getOrCreateSession(sessionID)
-
-	if len(imageData) > 0 {
-		handleImageMessage(c, sid, sess, text, imageData)
+	tgUser, err := ctxTelegramUser(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	handleTextMessage(c, sid, sess, text)
+	ctx := c.Request.Context()
+	sid, err := chatStore.GetOrCreateSession(ctx, sessionID, tgUser)
+	if err != nil {
+		log.Printf("GetOrCreateSession: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сессии"})
+		return
+	}
+
+	if len(imageData) > 0 {
+		handleImageMessage(c, sid, tgUser.ID, text, imageData)
+		return
+	}
+	handleTextMessage(c, sid, tgUser.ID, text)
 }
 
-func handleTextMessage(c *gin.Context, sid string, sess *sessionData, text string) {
-	prior := sess.historyForLLM(0)
+func respondWithMessages(c *gin.Context, sid string, telegramID int64, extra gin.H, status int) {
+	msgs, err := chatStore.ListMessages(c.Request.Context(), sid, telegramID)
+	if err != nil {
+		log.Printf("ListMessages after reply: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка базы данных"})
+		return
+	}
+	body := gin.H{"success": true, "session_id": sid, "messages": msgs}
+	for k, v := range extra {
+		body[k] = v
+	}
+	c.JSON(status, body)
+}
+
+func handleTextMessage(c *gin.Context, sid string, telegramID int64, text string) {
+	ctx := c.Request.Context()
+	prior, err := chatStore.HistoryForLLM(ctx, sid, telegramID, 0)
+	if err != nil {
+		log.Printf("HistoryForLLM: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка истории"})
+		return
+	}
 	answer, ok, errMsg, ragSoft := answerWithRAG(text, prior)
 
-	userMsg := ChatMessage{Role: "user", Content: text, Kind: "text"}
-	sess.appendMessage(userMsg)
+	if err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "user", Content: text, Kind: "text"}); err != nil {
+		log.Printf("AppendMessage user: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сохранения"})
+		return
+	}
 
 	if ragSoft {
-		sess.appendMessage(ChatMessage{Role: "assistant", Content: errMsg, Kind: "assistant"})
-		c.JSON(http.StatusOK, gin.H{
-			"success":    true,
-			"session_id": sid,
-			"messages":   sess.snapshot(),
-			"error":      errMsg,
-		})
+		_ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errMsg, Kind: "assistant"})
+		respondWithMessages(c, sid, telegramID, gin.H{"error": errMsg}, http.StatusOK)
 		return
 	}
 	if !ok {
+		_ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: "Ошибка: " + errMsg, Kind: "assistant"})
+		status := http.StatusInternalServerError
 		if strings.Contains(errMsg, "LLM_API_KEY") {
-			sess.appendMessage(ChatMessage{Role: "assistant", Content: errMsg, Kind: "assistant"})
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"success":    false,
-				"session_id": sid,
-				"messages":   sess.snapshot(),
-				"error":      errMsg,
-			})
-			return
+			status = http.StatusServiceUnavailable
 		}
-		sess.appendMessage(ChatMessage{Role: "assistant", Content: "Ошибка: " + errMsg, Kind: "assistant"})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success":    false,
-			"session_id": sid,
-			"messages":   sess.snapshot(),
-			"error":      errMsg,
-		})
+		respondWithMessages(c, sid, telegramID, gin.H{"success": false, "error": errMsg}, status)
 		return
 	}
 
-	sess.appendMessage(ChatMessage{Role: "assistant", Content: answer, Kind: "assistant"})
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"session_id": sid,
-		"messages":   sess.snapshot(),
-	})
+	if err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: answer, Kind: "assistant"}); err != nil {
+		log.Printf("AppendMessage assistant: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сохранения"})
+		return
+	}
+	respondWithMessages(c, sid, telegramID, nil, http.StatusOK)
 }
 
-func handleImageMessage(c *gin.Context, sid string, sess *sessionData, caption string, imageData []byte) {
-	prior := sess.historyForLLM(0)
-	dataURL := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(imageData)
+func handleImageMessage(c *gin.Context, sid string, telegramID int64, caption string, imageData []byte) {
+	ctx := c.Request.Context()
+	prior, err := chatStore.HistoryForLLM(ctx, sid, telegramID, 0)
+	if err != nil {
+		log.Printf("HistoryForLLM: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка истории"})
+		return
+	}
 
-	classification, err := sendToClassifier(imageData)
-	if err != nil || classification == nil || !classification.Success {
+	token, err := chatStore.SaveImage(imageData)
+	if err != nil {
+		log.Printf("SaveImage: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Не удалось сохранить фото"})
+		return
+	}
+
+	classification, clsErr := sendToClassifier(imageData)
+	if clsErr != nil || classification == nil || !classification.Success {
 		errText := "Не удалось классифицировать изображение"
-		if err != nil {
-			errText = err.Error()
+		if clsErr != nil {
+			errText = clsErr.Error()
 		} else if classification != nil && classification.Error != "" {
 			errText = classification.Error
 		}
-		log.Printf("Messenger classify error: %v", err)
-		sess.appendMessage(ChatMessage{
-			Role: "user", Content: caption, ImageDataURL: dataURL, Kind: "image",
+		log.Printf("Messenger classify error: %v", clsErr)
+		_ = chatStore.AppendMessage(ctx, sid, ChatMessage{
+			Role: "user", Content: caption, Kind: "image", ImageToken: token,
 		})
-		sess.appendMessage(ChatMessage{Role: "assistant", Content: errText, Kind: "assistant"})
-		c.JSON(http.StatusOK, gin.H{
-			"success":    true,
-			"session_id": sid,
-			"messages":   sess.snapshot(),
-			"error":      errText,
-		})
+		_ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errText, Kind: "assistant"})
+		respondWithMessages(c, sid, telegramID, gin.H{"error": errText}, http.StatusOK)
 		return
 	}
 
-	userMsg := ChatMessage{
+	_ = chatStore.AppendMessage(ctx, sid, ChatMessage{
 		Role:            "user",
 		Content:         caption,
-		ImageDataURL:    dataURL,
+		Kind:            "image",
+		ImageToken:      token,
 		ClassPrediction: classification.Prediction,
 		ClassConfidence: classification.Confidence,
-		Kind:            "image",
-	}
-	sess.appendMessage(userMsg)
+	})
 
-	recommendation, err := generateRecommendationWithHistory(classification, caption, prior)
-	if err != nil {
-		log.Printf("Messenger LLM image error: %v", err)
+	recommendation, recErr := generateRecommendationWithHistory(classification, caption, prior)
+	if recErr != nil {
+		log.Printf("Messenger LLM image error: %v", recErr)
 		recommendation = generateTemplateRecommendation(classification)
 	}
 
-	sess.appendMessage(ChatMessage{Role: "assistant", Content: recommendation, Kind: "assistant"})
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"session_id": sid,
-		"messages":   sess.snapshot(),
-	})
+	_ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: recommendation, Kind: "assistant"})
+	respondWithMessages(c, sid, telegramID, nil, http.StatusOK)
 }

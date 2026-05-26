@@ -96,7 +96,7 @@ cp .env.example .env
 
 Отредактируйте `.env` при необходимости:
 
-См. **`.env.example`**: `TELEGRAM_BOT_TOKEN`, `LLM_API_KEY`, `CLASSIFIER_URL`, `CLASSIFIER_RAG_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_REQUESTS_PER_MINUTE`.
+См. **`.env.example`**: `TELEGRAM_BOT_TOKEN`, `LLM_API_KEY`, `DATABASE_URL`, `UPLOAD_DIR`, `CLASSIFIER_URL`, `CLASSIFIER_RAG_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_REQUESTS_PER_MINUTE`.
 
 **Локальная разработка без Telegram:** в `.env` задайте `TELEGRAM_AUTH_DISABLED=true` (только dev, не для продакшена).
 
@@ -157,7 +157,8 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-Команды поднимут три контейнера:
+Команды поднимут четыре контейнера:
+- `union_ai_apple_postgres` (PostgreSQL)
 - `ai_apple_classifier` (Python, порт 5000)
 - `ai_apple_server` (Go, порт 8080)
 - `ai_apple_webapp` (Nginx, порт 80)
