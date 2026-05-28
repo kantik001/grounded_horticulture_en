@@ -2,7 +2,8 @@
 
 Telegram Web App + AI: **фото** → классификация болезней; **текст** → ответы по статьям (RAG). Оркестрация и LLM — **Go**, CV и векторный поиск — **Python**.
 
-Полный план развития: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Полный план развития: [`docs/ROADMAP.md`](docs/ROADMAP.md).  
+База знаний по коду (для команды): [`docs/knowledge-base/README.md`](docs/knowledge-base/README.md).
 
 ## Описание
 

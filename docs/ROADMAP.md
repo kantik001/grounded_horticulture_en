@@ -39,6 +39,19 @@
 - [x] Feedback 👍/👎
 - [ ] Qdrant (при росте объёма)
 
+### 3B — Eval (план)
+- [ ] Набор **30–50 вопросов** с эталонами / критериями по яблоне
+- [ ] Прогон eval после **reindex** и при смене модели/промпта
+- [ ] Метрики: verify pass rate, «нет в материалах», выборочный manual score
+- [ ] (Опционально) скрипт `scripts/run_rag_eval.py` + `eval/results/`
+- Документация: [`docs/knowledge-base/quality-eval-and-rag-logs.md`](knowledge-base/quality-eval-and-rag-logs.md)
+
+### 3C — Логи RAG (план)
+- [ ] Логировать: вопрос → `crop_id` → top-k фрагменты → verify pass/fail → `message_id`
+- [ ] Связка с **feedback** 👍/👎 для разбора плохих ответов
+- [ ] Без полного тела LLM в логах (политика 1C)
+- Документация: [`docs/knowledge-base/quality-eval-and-rag-logs.md`](knowledge-base/quality-eval-and-rag-logs.md)
+
 ## Фаза 4 — Vision
 - [ ] Датасет и обучение `apple_classifier.pth`
 - [ ] Метрики, порог confidence
