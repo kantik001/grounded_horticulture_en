@@ -15,6 +15,7 @@ RAG_ANSWER_DISCLAIMER = (
 _SOURCE_LINE_RE = re.compile(r"(?im)^\s*Источник:.*\n?")
 
 
+# Извлекает все числа из текста (для сравнения ответа с контекстом).
 def extract_numbers(text: str) -> List[float]:
     if not text:
         return []
@@ -23,16 +24,15 @@ def extract_numbers(text: str) -> List[float]:
     return [float(n) for n in numbers]
 
 
+# Убирает строки «Источник:» и дисклеймер перед проверкой чисел.
 def strip_source_attribution(answer: str) -> str:
     s = _SOURCE_LINE_RE.sub("", answer or "")
     s = s.replace(RAG_ANSWER_DISCLAIMER, "")
     return " ".join(s.split())
 
 
+# Проверяет, что каждое число в ответе встречается во фрагментах статей (эталон для pytest).
 def verify_answer(question: str, answer: str, fragments: List[Document]) -> Tuple[bool, str]:
-    """
-    Проверяет, что числа в ответе есть в контексте фрагментов.
-    """
     if answer is None:
         return False, "Ответ отсутствует (None)"
     if not isinstance(answer, str):

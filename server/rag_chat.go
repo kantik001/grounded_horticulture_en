@@ -32,6 +32,7 @@ type pythonRAGContextResponse struct {
 	Fragments []RAGFragment `json:"fragments,omitempty"`
 }
 
+// POST в Python /rag/context: фрагменты статей и few-shot для промпта.
 func fetchRAGContext(question, cropID string) (*pythonRAGContextResponse, error) {
 	body := map[string]string{"question": question, "crop_id": cropID}
 	jsonBody, err := json.Marshal(body)
@@ -86,6 +87,7 @@ const ragUserPromptTpl = `<system>%s</system>
 Вопрос: %s
 `
 
+// Собирает user-промпт для LLM из контекста RAG и few-shot примеров.
 func buildRAGUserPrompt(question, context, fewShot, taskIntro string) string {
 	return fmt.Sprintf(ragUserPromptTpl, taskIntro, context, fewShot, question)
 }
@@ -104,6 +106,7 @@ var (
 	reSourceLine = regexp.MustCompile(`(?im)^\s*Источник:.*\n?`)
 )
 
+// Извлекает числа из текста для верификации ответа RAG.
 func extractNumbersFromText(s string) []float64 {
 	s = strings.ReplaceAll(s, ",", ".")
 	var out []float64
@@ -116,6 +119,7 @@ func extractNumbersFromText(s string) []float64 {
 	return out
 }
 
+// Убирает служебные теги и вводные фразы из ответа LLM.
 func cleanRAGAnswer(text string) string {
 	if text == "" {
 		return "Ответ не сформирован корректно."
@@ -132,11 +136,13 @@ func cleanRAGAnswer(text string) string {
 	return text
 }
 
+// Удаляет строки «Источник:» из ответа перед показом пользователю.
 func stripSourceAttribution(answer string) string {
 	s := reSourceLine.ReplaceAllString(answer, "")
 	return strings.TrimSpace(reMultiSpace.ReplaceAllString(s, " "))
 }
 
+// Добавляет дисклеймер в конец ответа RAG.
 func appendRAGDisclaimer(answer string) string {
 	body := stripSourceAttribution(answer)
 	if body == "" {
@@ -148,12 +154,14 @@ func appendRAGDisclaimer(answer string) string {
 	return body + "\n\n" + ragAnswerDisclaimer
 }
 
+// Текст ответа без дисклеймера и источников — для проверки чисел.
 func answerBodyForVerification(answer string) string {
 	s := stripSourceAttribution(answer)
 	s = strings.ReplaceAll(s, ragAnswerDisclaimer, "")
 	return strings.TrimSpace(s)
 }
 
+// Проверяет, что все числа в ответе есть во фрагментах статей.
 func verifyRAGAnswer(answer string, fragments []RAGFragment) (bool, string) {
 	if answer == "" {
 		return false, "Ответ отсутствует"
@@ -245,7 +253,7 @@ func answerWithRAG(q, cropID string, history []Message) (answer string, success 
 	return answer, true, "", false
 }
 
-// handleChat: Python отдаёт контекст RAG, Go собирает промпт и вызывает LLM (без истории).
+// POST /chat: RAG + LLM без сессии (одиночный вопрос из Web App).
 func handleChat(c *gin.Context) {
 	var req ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

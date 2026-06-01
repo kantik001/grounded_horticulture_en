@@ -23,6 +23,7 @@ type ChatStore struct {
 	uploadDir string
 }
 
+// Подключается к Postgres и создаёт ChatStore с каталогом загрузок.
 func newChatStore(ctx context.Context, databaseURL, uploadDir string) (*ChatStore, error) {
 	if strings.TrimSpace(databaseURL) == "" {
 		return nil, fmt.Errorf("DATABASE_URL не задан")
@@ -41,12 +42,14 @@ func newChatStore(ctx context.Context, databaseURL, uploadDir string) (*ChatStor
 	return &ChatStore{pool: pool, uploadDir: uploadDir}, nil
 }
 
+// Закрывает пул соединений PostgreSQL.
 func (st *ChatStore) Close() {
 	if st != nil && st.pool != nil {
 		st.pool.Close()
 	}
 }
 
+// Применяет один SQL-файл миграции к базе.
 func runMigrations(ctx context.Context, pool *pgxpool.Pool, sqlPath string) error {
 	body, err := os.ReadFile(sqlPath)
 	if err != nil {
@@ -59,6 +62,7 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool, sqlPath string) erro
 	return nil
 }
 
+// Применяет все .sql из каталога миграций по порядку имени.
 func runAllMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -87,6 +91,7 @@ func runAllMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error
 	return nil
 }
 
+// Ищет каталог migrations (env MIGRATIONS_DIR или типовые пути).
 func findMigrationsDir() (string, error) {
 	if p := os.Getenv("MIGRATIONS_DIR"); p != "" {
 		if st, err := os.Stat(p); err == nil && st.IsDir() {
@@ -105,12 +110,14 @@ func findMigrationsDir() (string, error) {
 	return "", fmt.Errorf("migrations directory not found")
 }
 
+// Генерирует случайный id сессии чата (hex).
 func newSessionID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
+// Генерирует token для URL загруженного изображения.
 func newImageToken() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
@@ -134,6 +141,7 @@ func (st *ChatStore) UpsertUser(ctx context.Context, u *TelegramUser) (int64, er
 	return id, err
 }
 
+// NULL в SQL для пустой строки, иначе указатель на значение.
 func nullIfEmpty(s string) *string {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -254,6 +262,7 @@ func (st *ChatStore) ListMessages(ctx context.Context, sessionID string, telegra
 	return out, rows.Err()
 }
 
+// Публичный URL медиафайла по token.
 func mediaURL(token string) string {
 	return "/api/media/" + token
 }
@@ -286,6 +295,7 @@ func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m Chat
 	return id, err
 }
 
+// NULL для пустого image_token при INSERT.
 func nullToken(s string) *string {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -294,6 +304,7 @@ func nullToken(s string) *string {
 	return &s
 }
 
+// NULL для нулевой уверенности классификации.
 func nullConfidence(v float64) *float64 {
 	if v <= 0 {
 		return nil
@@ -353,7 +364,7 @@ func (st *ChatStore) ReadImage(token string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(st.uploadDir, token+".bin"))
 }
 
-// WaitForPostgres retries ping (docker compose startup).
+// Ждёт готовности Postgres при старте (docker compose).
 func waitForPostgres(ctx context.Context, databaseURL string, attempts int) (*pgxpool.Pool, error) {
 	var lastErr error
 	for i := 0; i < attempts; i++ {

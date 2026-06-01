@@ -21,6 +21,7 @@ type ChatMessage struct {
 	FeedbackRating  *int    `json:"feedback_rating,omitempty"` // 1 или -1, если пользователь оценил
 }
 
+// Оставляет последние max сообщений для контекста LLM.
 func trimHistoryMessages(msgs []Message, max int) []Message {
 	if len(msgs) <= max {
 		return msgs
@@ -28,6 +29,7 @@ func trimHistoryMessages(msgs []Message, max int) []Message {
 	return msgs[len(msgs)-max:]
 }
 
+// Преобразует ChatMessage в формат сообщения для LLM API.
 func (m ChatMessage) toLLMMessage() (Message, bool) {
 	switch m.Role {
 	case "assistant":
@@ -58,10 +60,12 @@ func (m ChatMessage) toLLMMessage() (Message, bool) {
 	}
 }
 
+// Нормализует подпись пользователя (пробелы, переносы).
 func trimUserCaption(s string) string {
 	return strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(s, "\r", " "), "\n", " "))
 }
 
+// Достаёт TelegramUser из контекста Gin после middleware авторизации.
 func ctxTelegramUser(c *gin.Context) (*TelegramUser, error) {
 	if raw, ok := c.Get(ctxKeyTelegramUser); ok {
 		if u, ok := raw.(*TelegramUser); ok && u != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// handleClassification handles the image classification endpoint.
+// POST /classify: фото → Python CV → рекомендация LLM или шаблон.
 func handleClassification(c *gin.Context) {
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {

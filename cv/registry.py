@@ -9,6 +9,7 @@ from rag.crops_config import get_crop, normalize_crop_id
 _classifiers: Dict[str, object] = {}
 
 
+# Возвращает путь к .pth из MODEL_PATH или MODEL_PATH_{CROP} для культуры.
 def _model_path_for_crop(crop_id: str) -> Optional[str]:
     env_key = f"MODEL_PATH_{crop_id.upper()}"
     path = os.environ.get(env_key)
@@ -19,6 +20,7 @@ def _model_path_for_crop(crop_id: str) -> Optional[str]:
     return None
 
 
+# Возвращает (создаёт и кэширует) классификатор для crop_id, если cv_enabled в crops.json.
 def get_classifier_for_crop(crop_id: str):
     crop_id = normalize_crop_id(crop_id)
     crop = get_crop(crop_id)

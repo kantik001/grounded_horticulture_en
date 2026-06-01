@@ -14,6 +14,7 @@ const (
 	headerTelegramInit   = "X-Telegram-Init-Data"
 )
 
+// Разбирает CORS_ALLOWED_ORIGINS в список origin (через запятую).
 func parseAllowedOrigins(raw string) []string {
 	var out []string
 	for _, part := range strings.Split(raw, ",") {
@@ -104,7 +105,7 @@ func telegramAuthMiddleware(cfg *Config) gin.HandlerFunc {
 	}
 }
 
-// protected группа маршрутов: CORS уже применён глобально, здесь auth + rate limit.
+// Регистрирует защищённые маршруты: Telegram auth и rate limit.
 func registerProtectedRoutes(router *gin.Engine, cfg *Config, rl *rateLimiter) {
 	auth := telegramAuthMiddleware(cfg)
 	lim := rateLimitMiddleware(rl)

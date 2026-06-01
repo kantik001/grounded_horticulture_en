@@ -20,12 +20,13 @@ _vector_store = None
 _titles_cache = None
 
 
+# Сбрасывает in-memory кэш Chroma перед принудительной переиндексацией.
 def reset_vector_store():
-    """Сброс кэша in-memory перед принудительной переиндексацией."""
     global _vector_store
     _vector_store = None
 
 
+# Загружает config/article_titles.json для красивых имён статей.
 def _titles_map() -> dict:
     global _titles_cache
     if _titles_cache is not None:
@@ -39,12 +40,13 @@ def _titles_map() -> dict:
     return _titles_cache
 
 
+# Человекочитаемое название статьи по crop_id и имени файла.
 def get_pretty_title(crop_id: str, filename: str) -> str:
     return _titles_map().get(crop_id, {}).get(filename, filename)
 
 
+# Собирает все .txt из data/{crop}/ и legacy data/*.txt (как apple).
 def load_all_documents():
-    """Загружает .txt из data/{crop_id}/ и legacy data/*.txt (как apple)."""
     all_docs = []
     crops = list_crops().get("crops", {}).keys()
 
@@ -55,13 +57,13 @@ def load_all_documents():
         for file_path in glob.glob(os.path.join(crop_dir, "*.txt")):
             all_docs.extend(_load_file(crop_id, file_path))
 
-    # legacy: файлы прямо в data/
     for file_path in glob.glob(os.path.join(DATA_DIR, "*.txt")):
         all_docs.extend(_load_file("apple", file_path))
 
     return all_docs
 
 
+# Читает один .txt и проставляет metadata: filename, crop_id, source_file.
 def _load_file(crop_id: str, file_path: str):
     filename = os.path.basename(file_path)
     pretty_title = get_pretty_title(crop_id, filename)
@@ -77,6 +79,7 @@ def _load_file(crop_id: str, file_path: str):
     return docs
 
 
+# Полная переиндексация: split → embeddings → сохранение в chroma_db/.
 def create_vector_store():
     print("Создаю новую векторную базу (мультикультура)...")
     documents = load_all_documents()
@@ -92,6 +95,7 @@ def create_vector_store():
     return store
 
 
+# Открывает существующую Chroma или создаёт новую (с учётом FORCE_RAG_REINDEX).
 def load_vector_store(force_reindex: bool = False):
     global _vector_store
     if _vector_store is not None and not force_reindex:
@@ -117,8 +121,8 @@ def load_vector_store(force_reindex: bool = False):
     return _vector_store
 
 
+# Семантический поиск top-k фрагментов только по выбранной культуре.
 def search(query: str, crop_id: str, k: int = 8):
-    """Поиск только по статьям выбранной культуры."""
     crop_id = normalize_crop_id(crop_id)
     store = load_vector_store()
     if store is None:

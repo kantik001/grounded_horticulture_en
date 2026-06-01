@@ -12,7 +12,7 @@ type RecommendationResponse struct {
 	Error          string `json:"error,omitempty"`
 }
 
-// generateRecommendation generates care recommendations using LLM.
+// Формирует текстовую рекомендацию по результату CV через LLM (или шаблон).
 func generateRecommendation(classification *ClassificationResult, cropID string) (string, error) {
 	prompts := promptsForCrop(cropID)
 	prompt := fmt.Sprintf(`%s
@@ -83,7 +83,7 @@ Respond in Russian language as the target audience is Russian-speaking gardeners
 	return callLLMCompletion(msgs)
 }
 
-// generateTemplateRecommendation generates a template recommendation when LLM is not available.
+// Статичные рекомендации по метке класса, если LLM недоступен.
 func generateTemplateRecommendation(classification *ClassificationResult) string {
 	recommendations := map[string]string{
 		"healthy_apple": `🍎 Здоровое яблоко обнаружено!
@@ -218,6 +218,7 @@ func generateTemplateRecommendation(classification *ClassificationResult) string
 	return rec
 }
 
+// Подставляет value вместо placeholder в шаблоне рекомендации.
 func replacePlaceholder(str, placeholder, value string) string {
 	result := ""
 	for i := 0; i < len(str); i++ {

@@ -200,6 +200,7 @@ func handleMessage(c *gin.Context) {
 	handleTextMessage(c, sid, sessionCrop, tgUser.ID, text)
 }
 
+// Отвечает JSON с полной историей сообщений сессии после обработки.
 func respondWithMessages(c *gin.Context, sid, cropID string, telegramID int64, extra gin.H, status int) {
 	msgs, err := chatStore.ListMessages(c.Request.Context(), sid, telegramID)
 	if err != nil {
@@ -214,6 +215,7 @@ func respondWithMessages(c *gin.Context, sid, cropID string, telegramID int64, e
 	c.JSON(status, body)
 }
 
+// Текстовое сообщение: RAG+LLM, сохранение в БД, ответ с историей.
 func handleTextMessage(c *gin.Context, sid, cropID string, telegramID int64, text string) {
 	ctx := c.Request.Context()
 	prior, err := chatStore.HistoryForLLM(ctx, sid, telegramID, 0)
@@ -255,6 +257,7 @@ func handleTextMessage(c *gin.Context, sid, cropID string, telegramID int64, tex
 	respondWithMessages(c, sid, cropID, telegramID, nil, http.StatusOK)
 }
 
+// Фото в чате: CV, рекомендация LLM, сохранение token и истории.
 func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, caption string, imageData []byte) {
 	ctx := c.Request.Context()
 	prior, err := chatStore.HistoryForLLM(ctx, sid, telegramID, 0)

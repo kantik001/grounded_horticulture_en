@@ -22,8 +22,7 @@ type TelegramUser struct {
 	LanguageCode string `json:"language_code,omitempty"`
 }
 
-// validateTelegramInitData проверяет подпись Web App initData по документации Telegram:
-// https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+// Проверяет HMAC-подпись и срок действия Telegram Web App initData.
 func validateTelegramInitData(initData, botToken string, maxAge time.Duration) (*TelegramUser, error) {
 	initData = strings.TrimSpace(initData)
 	if initData == "" {

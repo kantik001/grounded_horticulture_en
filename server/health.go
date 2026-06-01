@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// handleHealthCheck handles health check endpoint.
+// GET /health: статус сервиса и доступность PostgreSQL.
 func handleHealthCheck(c *gin.Context) {
 	payload := gin.H{
 		"status":    "healthy",
