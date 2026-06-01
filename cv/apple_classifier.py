@@ -14,6 +14,9 @@ DEFAULT_CLASS_LABELS = default_class_labels_for_crop("apple")
 
 
 class AppleClassifier:
+    """Классификатор болезней яблони на MobileNetV2 (inference по файлу или байтам)."""
+
+    # Инициализирует устройство, метки классов, загружает веса и задаёт преобразования для 224×224.
     def __init__(
         self,
         model_path: str = "../models/mobilenet_v2-b0353104.pth",
@@ -42,6 +45,7 @@ class AppleClassifier:
             ]
         )
 
+    # Читает checkpoint .pth с диска; при ошибке или отсутствии пути возвращает None.
     def _read_checkpoint(self, model_path: Optional[str]) -> Optional[dict]:
         if not model_path:
             return None
@@ -50,6 +54,7 @@ class AppleClassifier:
         except Exception:
             return None
 
+    # Собирает MobileNetV2 с головой на num_classes и подставляет state_dict из checkpoint, если есть.
     def _build_model(self, checkpoint: Optional[dict]) -> nn.Module:
         model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
         last_channel = model.classifier[1].in_features
@@ -61,6 +66,7 @@ class AppleClassifier:
             model.load_state_dict(checkpoint["state_dict"])
         return model
 
+    # Классифицирует изображение по пути к файлу; возвращает словарь success/prediction/confidence.
     def predict(self, image_path: str) -> Dict[str, Any]:
         try:
             image = Image.open(image_path).convert("RGB")
@@ -73,6 +79,7 @@ class AppleClassifier:
                 "image_processed": False,
             }
 
+    # Классифицирует изображение из байтов (HTTP multipart); формат ответа как у predict.
     def predict_from_bytes(self, image_bytes: bytes) -> Dict[str, Any]:
         try:
             image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -85,6 +92,7 @@ class AppleClassifier:
                 "image_processed": False,
             }
 
+    # Прогон тензора через модель: softmax, лучший класс и top-3 с уверенностями.
     def _run_inference(self, image_tensor: torch.Tensor) -> Dict[str, Any]:
         with torch.no_grad():
             outputs = self.model(image_tensor)
@@ -119,6 +127,7 @@ class AppleClassifier:
         }
 
 
+# Фабрика: создаёт AppleClassifier с опциональным путём к обученным весам .pth.
 def create_classifier(model_path: str = None) -> AppleClassifier:
     return AppleClassifier(model_path=model_path)
 
