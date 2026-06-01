@@ -55,7 +55,7 @@ flowchart TD
 2. **`SaveImage`** — файл в `UPLOAD_DIR`, в БД только **token** (не base64).
 3. **`sendToClassifier`** → Python — prediction + confidence.
 4. Сообщение user: caption, `kind=image`, token, class_prediction, class_confidence.
-5. **`generateRecommendationWithHistory`** — LLM или шаблон из `main.go`.
+5. **`generateRecommendationWithHistory`** — LLM или шаблон (`server/photo_recommendations.go`, вызов `llm.go`).
 6. Сообщение assistant с рекомендацией.
 7. Analytics `photo_classified` с prediction/confidence.
 

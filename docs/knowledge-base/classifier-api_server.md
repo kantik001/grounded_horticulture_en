@@ -3,7 +3,7 @@
 **Исходный файл:** `classifier/api_server.py`  
 **Язык:** Python (Flask), **не Go**  
 **Связанные модули:** `classifier/registry.py`, `classifier/apple_classifier.py`, `rag/retrieval.py`, `rag/vector_store.py`, `rag/crops_config.py`  
-**Кто вызывает:** Go-сервер (`server/main.go`) по HTTP
+**Кто вызывает:** Go-сервер (`server/classifier_client.go`, `server/classify_handler.go`) по HTTP
 
 ---
 
@@ -103,7 +103,7 @@ CORS(app)
 
 ### Как Go отправляет запрос (справка)
 
-В `server/main.go`, функция `sendToClassifier`:
+В `server/classifier_client.go`, функция `sendToClassifier`:
 
 - multipart с полем **`image`** (байты JPEG) и **`crop_id`**;
 - POST на `CLASSIFIER_URL` (обычно `http://classifier:5000/classify`).
@@ -217,7 +217,7 @@ sequenceDiagram
 | Выбор и кэш модели | [classifier-registry.md](./classifier-registry.md) |
 | PyTorch inference | `classifier/apple_classifier.py` |
 | RAG-поиск | `rag/retrieval.py`, `rag/vector_store.py` |
-| Кто зовёт Python | `server/main.go` (`sendToClassifier`, `handleClassification`) |
+| Кто зовёт Python | `server/classifier_client.go` (`sendToClassifier`), `server/classify_handler.go` (`handleClassification`) |
 
 ---
 

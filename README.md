@@ -129,7 +129,7 @@ go mod download
 
 ```bash
 cd server
-go run main.go
+go run .
 ```
 
 Сервер запустится на порту 8080 и автоматически загрузит `.env` файл из директории `server/`.

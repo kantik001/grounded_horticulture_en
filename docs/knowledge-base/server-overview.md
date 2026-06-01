@@ -1,4 +1,4 @@
-# Разбор: Go-сервер — обзор (`server/main.go` и старт)
+# Разбор: Go-сервер — обзор (`server/`)
 
 **Папка:** `server/`  
 **Роль:** оркестратор — Telegram auth, API, PostgreSQL, вызовы Python (CV + RAG) и LLM (OpenRouter)  
@@ -13,6 +13,29 @@
 | [server-chat-and-db.md](./server-chat-and-db.md) | Чат, БД, фото |
 | [server-rag_chat.md](./server-rag_chat.md) | RAG + LLM + verify |
 | [server-admin-and-ux-api.md](./server-admin-and-ux-api.md) | Админка, crops, onboarding, feedback |
+
+---
+
+## Файлы `server/` (разбиение пакета)
+
+| Файл | Назначение |
+|------|------------|
+| `main.go` | Точка входа: router, миграции при старте, регистрация маршрутов |
+| `config.go` | `Config`, `loadConfig`, `getEnv`, `logStartup` |
+| `llm.go` | `Message`, `callLLMCompletion` (OpenAI-compatible API) |
+| `classifier_client.go` | `sendToClassifier`, типы `ClassificationResult` |
+| `photo_recommendations.go` | `generateRecommendation*`, шаблоны по классу болезни |
+| `classify_handler.go` | `handleClassification` — `POST /classify` |
+| `health.go` | `handleHealthCheck` |
+| `messenger.go` | `/message`, `/session`, `/history`, `/media` |
+| `chat_session.go` | типы сообщений, маппинг в LLM |
+| `rag_chat.go` | RAG + `POST /chat` |
+| `postgres_store.go` | SQL, миграции, фото на диске |
+| `analytics_store.go` | feedback, события |
+| `auth_telegram.go`, `middleware.go`, `ratelimit.go` | auth и лимиты |
+| `crops.go`, `onboarding.go`, `admin.go`, `feedback.go` | конфиги и UX API |
+
+Все файлы — **`package main`**, один бинарник. Подпапок `internal/` пока нет.
 
 ---
 
@@ -51,22 +74,23 @@ flowchart TB
 
 ## Старт `main()` — порядок инициализации
 
-1. **`loadConfig()`** — `.env`, переменные (см. таблицу ниже).
-2. **Ожидание Postgres** (`waitForPostgres`, до ~30 попыток).
-3. **`runAllMigrations`** — SQL из `migrations/` → [migrations-overview.md](./migrations-overview.md).
-4. Загрузка конфигов:
-   - `loadCropCatalog()` — `config/crops.json`
-   - `loadPromptCatalog()` — `config/prompts.json`
-   - `loadOnboardingConfig()` — `config/onboarding.json`
-5. **`newChatStore`** — пул pgx + папка `UPLOAD_DIR` для фото.
-6. **Gin router** — CORS, JSON charset, маршруты.
-7. **`router.Run(:8080)`**.
+1. **`loadConfig()`** (`config.go`) — `.env`, переменные (см. таблицу ниже).
+2. **`logStartup(config)`** — сводка в лог.
+3. **Ожидание Postgres** (`waitForPostgres` в `postgres_store.go`, до ~30 попыток).
+4. **`runAllMigrations`** — SQL из `migrations/` → [migrations-overview.md](./migrations-overview.md).
+5. Загрузка конфигов:
+   - `loadCropCatalog()` — `config/crops.json` (`crops.go`)
+   - `loadPromptCatalog()` — `config/prompts.json` (`crops.go`)
+   - `loadOnboardingConfig()` — `config/onboarding.json` (`onboarding.go`)
+6. **`newChatStore`** — пул pgx + папка `UPLOAD_DIR` для фото.
+7. **Gin router** — CORS, JSON charset, маршруты (`middleware.go`, `main.go`).
+8. **`router.Run(:8080)`**.
 
 Глобальные переменные: `config`, `chatStore`, каталоги культур/промптов.
 
 ---
 
-## Конфиг `Config` (из `.env`)
+## Конфиг `Config` (`config.go`, из `.env`)
 
 | Поле | Env | Назначение |
 |------|-----|------------|
@@ -91,11 +115,11 @@ flowchart TB
 
 ### Публичные (без Telegram auth)
 
-| Метод | Путь | Handler | Назначение |
-|-------|------|---------|------------|
-| GET | `/health`, `/api/health` | `handleHealthCheck` | жив ли сервер + ping БД |
-| GET | `/crops`, `/api/crops` | `handleListCrops` | список культур |
-| GET | `/onboarding`, `/api/onboarding` | `handleOnboarding` | примеры вопросов |
+| Метод | Путь | Handler | Файл |
+|-------|------|---------|------|
+| GET | `/health`, `/api/health` | `handleHealthCheck` | `health.go` |
+| GET | `/crops`, `/api/crops` | `handleListCrops` | `crops.go` |
+| GET | `/onboarding`, `/api/onboarding` | `handleOnboarding` | `onboarding.go` |
 
 ### Админка (HTTP Basic, не Telegram)
 
@@ -106,19 +130,19 @@ flowchart TB
 | POST | `/admin/upload` | загрузка статьи |
 | POST | `/admin/reindex` | reindex Chroma |
 
-→ [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)
+→ [server-admin-and-ux-api.md](./server-admin-and-ux-api.md) (`admin.go`)
 
 ### Защищённые (Telegram + rate limit)
 
-| Метод | Путь | Назначение |
-|-------|------|------------|
-| POST | `/classify` | только CV + LLM совет (без сессии чата) |
-| POST | `/chat` | один RAG-вопрос без истории БД |
-| POST | `/session` | новая чат-сессия |
-| GET | `/history` | история сообщений |
-| POST | `/message` | **главный** чат: текст или фото |
-| POST | `/feedback` | 👍/👎 |
-| GET | `/media/:token` | отдача фото по token |
+| Метод | Путь | Handler | Файл |
+|-------|------|---------|------|
+| POST | `/classify` | `handleClassification` | `classify_handler.go` |
+| POST | `/chat` | `handleChat` | `rag_chat.go` |
+| POST | `/session` | `handleNewSession` | `messenger.go` |
+| GET | `/history` | `handleHistory` | `messenger.go` |
+| POST | `/message` | `handleMessage` | `messenger.go` |
+| POST | `/feedback` | `handleFeedback` | `feedback.go` |
+| GET | `/media/:token` | `handleMedia` | `messenger.go` |
 
 → auth: [server-auth-and-limits.md](./server-auth-and-limits.md)  
 → чат: [server-chat-and-db.md](./server-chat-and-db.md)  
@@ -126,67 +150,52 @@ flowchart TB
 
 ---
 
-## Фото: `main.go` (не в отдельном файле)
+## Фото: CV и рекомендации (не в `main.go`)
 
-### `sendToClassifier`
+### `classifier_client.go` — `sendToClassifier`
 
-Multipart `image` + `crop_id` → `CLASSIFIER_URL` (Python).
+Multipart `image` + `crop_id` → `CLASSIFIER_URL` (Python). Парсит JSON в `ClassificationResult`.
 
-### `generateRecommendation` / `generateRecommendationWithHistory`
+### `photo_recommendations.go` — советы
 
-- С промптом из `config/prompts.json` (`promptsForCrop`).
-- Если **`LLM_API_KEY` пуст** → `generateTemplateRecommendation` (готовые тексты по классу болезни на русском).
-- Иначе → `callLLMCompletion` (OpenAI-compatible API).
+- **`generateRecommendation`** — для `POST /classify` без истории чата.
+- **`generateRecommendationWithHistory`** — для фото в `messenger.go` (с контекстом диалога).
+- Промпты из `config/prompts.json` через `promptsForCrop` (`crops.go`).
+- Если **`LLM_API_KEY` пуст** → `generateTemplateRecommendation` (готовые тексты на русском).
+- Иначе → `callLLMCompletion` (`llm.go`).
 
-### `handleClassification`
+### `classify_handler.go` — `handleClassification`
 
-Прямой `POST /classify` для тестов/API без messenger — лимит 10 МБ, возвращает classification + recommendation.
+Прямой `POST /classify`: лимит 10 МБ, classification + recommendation (без сессии чата).
 
 ---
 
-## `callLLMCompletion`
+## `llm.go` — `callLLMCompletion`
 
 ```http
 POST {LLM_BASE_URL}/v1/chat/completions
 Authorization: Bearer {LLM_API_KEY}
 ```
 
-Таймаут 120s. Используется и для RAG, и для фото.
+Таймаут 120s. Используется в `photo_recommendations.go` и `rag_chat.go`.
 
 ---
 
-## Health
+## `health.go` — проверка живости
 
-`handleHealthCheck`: `status: ok` или `degraded`, если Postgres ping не прошёл.
-
----
-
-## Разбиение `server/` (после рефакторинга)
-
-| Файл | Назначение |
-|------|------------|
-| `main.go` | Точка входа, router, миграции при старте |
-| `config.go` | `Config`, `loadConfig`, логи старта |
-| `llm.go` | `Message`, `callLLMCompletion` |
-| `classifier_client.go` | `sendToClassifier`, типы CV |
-| `photo_recommendations.go` | Шаблоны и LLM-советы по фото |
-| `classify_handler.go` | `POST /classify` |
-| `health.go` | `GET /health` |
-| `messenger.go` | `/message`, сессии |
-| `rag_chat.go` | RAG + текстовый чат |
-| `postgres_store.go` | SQL, миграции |
+`handleHealthCheck`: `status: healthy` или `degraded`, если Postgres ping не прошёл.
 
 ---
 
 ## Локальный запуск
 
 - Docker: `docker compose up server` (ждёт postgres + classifier).
-- Прямой Go: из `server/`, нужны env и Postgres.
+- Прямой Go: из `server/`, `go run .` или `go build .` — нужны env и Postgres.
 
-Логи при старте печатают URL Python, модель LLM, режим Telegram auth, CORS, rate limit.
+Логи при старте (`logStartup` в `config.go`): URL Python, модель LLM, Telegram auth, CORS, rate limit.
 
 ---
 
 ## Краткий итог
 
-`main.go` — **старт и маршрутизация**; конфиг, LLM и CV вынесены в соседние файлы (см. таблицу выше). Детали чата и RAG — в соседних статьях базы знаний.
+`server/` — один Go-сервис, разбитый по файлам по зонам ответственности. **`main.go`** только стартует и вешает маршруты; конфиг, LLM, CV-клиент и советы по фото — в соседних `.go`. Детали чата, RAG и админки — в связанных статьях базы знаний.

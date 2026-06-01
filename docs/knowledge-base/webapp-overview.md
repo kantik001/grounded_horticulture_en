@@ -205,7 +205,7 @@ loadCropsCatalog → ensureSession → loadOnboarding
 
 | Тема | Файл |
 |------|------|
-| Маршруты Go | `server/messenger.go`, `server/main.go` (статья позже) |
+| Маршруты Go | [server-overview.md](./server-overview.md), `server/messenger.go` |
 | Онбординг JSON | `config/onboarding.json` |
 | Admin backend | `server/admin.go` |
 | RAG после reindex | [rag-vector_store.md](./rag-vector_store.md) |

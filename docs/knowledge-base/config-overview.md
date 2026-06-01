@@ -53,7 +53,7 @@ Env: `CROPS_CONFIG_PATH` (в Docker: `/config/crops.json` на server, `/app/con
 | `photo_system` | system для совета по фото |
 | `photo_user_intro` | вступление в user-промпт по фото |
 
-Загрузка: `loadPromptCatalog()` при старте Go, `promptsForCrop(cropID)` в `rag_chat.go` и `main.go`.
+Загрузка: `loadPromptCatalog()` при старте Go (`crops.go`), `promptsForCrop(cropID)` в `rag_chat.go` и `photo_recommendations.go`.
 
 Env: `PROMPTS_CONFIG_PATH` (server: `/config/prompts.json`).
 
