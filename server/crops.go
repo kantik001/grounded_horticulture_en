@@ -95,6 +95,7 @@ type cropPrompts struct {
 	RAGTaskIntro   string `json:"rag_task_intro"`
 	PhotoSystem    string `json:"photo_system"`
 	PhotoUserIntro string `json:"photo_user_intro"`
+	PhotoUserBody  string `json:"photo_user_body"`
 }
 
 var promptCatalog map[string]cropPrompts
@@ -140,8 +141,9 @@ func promptsForCrop(cropID string) cropPrompts {
 	return cropPrompts{
 		RAGSystem:      "Ты — грамотный агроном. Отвечай на русском.",
 		RAGTaskIntro:   "Ты — грамотный агроном. Отвечай строго на основе контекста.",
-		PhotoSystem:    "You are an expert horticulturist. Provide practical advice in Russian.",
-		PhotoUserIntro: "You are an expert horticulturist.",
+		PhotoSystem:    "Ты — опытный садовод. Дай практичные советы на русском.",
+		PhotoUserIntro: "Ты — опытный садовод.",
+		PhotoUserBody:  "Результат анализа фото:\n- Класс: %s\n- Уверенность: %.2f%%\n- Топ-3: %v\n\nДай рекомендации по уходу на русском.",
 	}
 }
 

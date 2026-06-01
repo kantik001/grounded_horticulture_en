@@ -9,8 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const maxMessengerImageBytes = 10 * 1024 * 1024
-
 var chatStore *ChatStore
 
 type newSessionRequest struct {
@@ -126,7 +124,7 @@ func handleMessage(c *gin.Context) {
 	var imageData []byte
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
-		if err := c.Request.ParseMultipartForm(int64(maxMessengerImageBytes + 512*1024)); err != nil {
+		if err := c.Request.ParseMultipartForm(int64(maxUploadImageBytes + 512*1024)); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Некорректный multipart"})
 			return
 		}
@@ -135,7 +133,7 @@ func handleMessage(c *gin.Context) {
 		cropIDRaw = strings.TrimSpace(c.PostForm("crop_id"))
 		fh, err := c.FormFile("image")
 		if err == nil && fh != nil {
-			if fh.Size > maxMessengerImageBytes {
+			if fh.Size > maxUploadImageBytes {
 				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Изображение слишком большое (макс. 10 МБ)"})
 				return
 			}
@@ -144,13 +142,13 @@ func handleMessage(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Не удалось прочитать файл"})
 				return
 			}
-			imageData, err = io.ReadAll(io.LimitReader(f, maxMessengerImageBytes+1))
+			imageData, err = io.ReadAll(io.LimitReader(f, maxUploadImageBytes+1))
 			_ = f.Close()
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Ошибка чтения изображения"})
 				return
 			}
-			if len(imageData) > maxMessengerImageBytes {
+			if len(imageData) > maxUploadImageBytes {
 				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Изображение слишком большое"})
 				return
 			}
@@ -274,14 +272,9 @@ func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, ca
 		return
 	}
 
-	classification, clsErr := sendToClassifier(imageData, cropID)
-	if clsErr != nil || classification == nil || !classification.Success {
-		errText := "Не удалось классифицировать изображение"
-		if clsErr != nil {
-			errText = clsErr.Error()
-		} else if classification != nil && classification.Error != "" {
-			errText = classification.Error
-		}
+	result, clsErr := classifyAndRecommend(imageData, cropID, caption, prior)
+	if clsErr != nil {
+		errText := clsErr.Error()
 		log.Printf("Messenger classify error: %v", clsErr)
 		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{
 			Role: "user", Content: caption, Kind: "image", ImageToken: token,
@@ -291,6 +284,7 @@ func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, ca
 		respondWithMessages(c, sid, cropID, telegramID, gin.H{"error": errText}, http.StatusOK)
 		return
 	}
+	classification := result.Classification
 
 	_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{
 		Role:            "user",
@@ -301,13 +295,7 @@ func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, ca
 		ClassConfidence: classification.Confidence,
 	})
 
-	recommendation, recErr := generateRecommendationWithHistory(classification, caption, prior, cropID)
-	if recErr != nil {
-		log.Printf("Messenger LLM image error: %v", recErr)
-		recommendation = generateTemplateRecommendation(classification)
-	}
-
-	_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: recommendation, Kind: "assistant"})
+	_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: result.Recommendation, Kind: "assistant"})
 	logAnalytics(c, "photo_classified", map[string]any{
 		"crop_id":    cropID,
 		"success":    true,

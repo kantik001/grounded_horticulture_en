@@ -39,6 +39,9 @@ func main() {
 	if err := loadOnboardingConfig(); err != nil {
 		log.Fatalf("Onboarding config: %v", err)
 	}
+	if err := loadPhotoTemplates(); err != nil {
+		log.Fatalf("Photo templates: %v", err)
+	}
 
 	chatStore, err = newChatStore(context.Background(), config.DatabaseURL, config.UploadDir)
 	if err != nil {
