@@ -161,13 +161,20 @@ Authorization: Bearer {LLM_API_KEY}
 
 ---
 
-## Файлы `main.go` vs остальные
+## Разбиение `server/` (после рефакторинга)
 
-| В `main.go` | В других `.go` |
-|-------------|----------------|
-| Config, LLM, classify HTTP | `messenger.go` — `/message` |
-| `handleClassification`, health | `rag_chat.go` — RAG |
-| `main()`, router register | `postgres_store.go` — SQL |
+| Файл | Назначение |
+|------|------------|
+| `main.go` | Точка входа, router, миграции при старте |
+| `config.go` | `Config`, `loadConfig`, логи старта |
+| `llm.go` | `Message`, `callLLMCompletion` |
+| `classifier_client.go` | `sendToClassifier`, типы CV |
+| `photo_recommendations.go` | Шаблоны и LLM-советы по фото |
+| `classify_handler.go` | `POST /classify` |
+| `health.go` | `GET /health` |
+| `messenger.go` | `/message`, сессии |
+| `rag_chat.go` | RAG + текстовый чат |
+| `postgres_store.go` | SQL, миграции |
 
 ---
 
@@ -182,4 +189,4 @@ Authorization: Bearer {LLM_API_KEY}
 
 ## Краткий итог
 
-`main.go` — **конфиг, старт, маршрутизация, LLM и CV-вызовы**. Точка входа для карты API. Детали чата и RAG — в соседних статьях базы знаний.
+`main.go` — **старт и маршрутизация**; конфиг, LLM и CV вынесены в соседние файлы (см. таблицу выше). Детали чата и RAG — в соседних статьях базы знаний.
