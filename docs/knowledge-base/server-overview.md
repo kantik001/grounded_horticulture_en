@@ -24,7 +24,9 @@
 | `config.go` | `Config`, `loadConfig`, `getEnv`, `logStartup` |
 | `llm.go` | `Message`, `callLLMCompletion` (OpenAI-compatible API) |
 | `classifier_client.go` | `sendToClassifier`, типы `ClassificationResult` |
-| `photo_recommendations.go` | `generateRecommendation*`, шаблоны по классу болезни |
+| `classify_flow.go` | `classifyAndRecommend`, лимит 10 МБ, общий поток CV+рекомендация |
+| `photo_recommendations.go` | `generatePhotoRecommendation`, шаблоны из JSON |
+| `photo_templates.go` | загрузка `config/photo_templates.json` |
 | `classify_handler.go` | `handleClassification` — `POST /classify` |
 | `health.go` | `handleHealthCheck` |
 | `messenger.go` | `/message`, `/session`, `/history`, `/media` |
@@ -82,6 +84,7 @@ flowchart TB
    - `loadCropCatalog()` — `config/crops.json` (`crops.go`)
    - `loadPromptCatalog()` — `config/prompts.json` (`crops.go`)
    - `loadOnboardingConfig()` — `config/onboarding.json` (`onboarding.go`)
+   - `loadPhotoTemplates()` — `config/photo_templates.json` (`photo_templates.go`)
 6. **`newChatStore`** — пул pgx + папка `UPLOAD_DIR` для фото.
 7. **Gin router** — CORS, JSON charset, маршруты (`middleware.go`, `main.go`).
 8. **`router.Run(:8080)`**.
@@ -156,17 +159,24 @@ flowchart TB
 
 Multipart `image` + `crop_id` → `CLASSIFIER_URL` (Python). Парсит JSON в `ClassificationResult`.
 
-### `photo_recommendations.go` — советы
+### `classify_flow.go` — общий поток
 
-- **`generateRecommendation`** — для `POST /classify` без истории чата.
-- **`generateRecommendationWithHistory`** — для фото в `messenger.go` (с контекстом диалога).
-- Промпты из `config/prompts.json` через `promptsForCrop` (`crops.go`).
-- Если **`LLM_API_KEY` пуст** → `generateTemplateRecommendation` (готовые тексты на русском).
+- **`maxUploadImageBytes`** (10 МБ) — для `/classify` и `/message`.
+- **`classifyAndRecommend(image, cropID, caption, history)`** — CV → рекомендация.
+- **`parseClassifyForm`** — разбор multipart для `POST /classify`.
+
+Используется в `classify_handler.go` (без истории) и `handleImageMessage` в `messenger.go` (с историей LLM).
+
+### `photo_recommendations.go` + `photo_templates.go`
+
+- **`generatePhotoRecommendation`** — единая функция: LLM с опциональной историей диалога.
+- **`buildPhotoUserPrompt`** — user-промпт из `photo_user_intro` + `photo_user_body` (`prompts.json`).
+- Если **`LLM_API_KEY` пуст** или ошибка LLM → **`generateTemplateRecommendation`** (тексты из `photo_templates.json`).
 - Иначе → `callLLMCompletion` (`llm.go`).
 
 ### `classify_handler.go` — `handleClassification`
 
-Прямой `POST /classify`: лимит 10 МБ, classification + recommendation (без сессии чата).
+`POST /classify` без сессии: `parseClassifyForm` → `classifyAndRecommend` → JSON с classification + recommendation.
 
 ---
 

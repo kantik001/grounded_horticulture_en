@@ -39,26 +39,22 @@ data/val/
 ### Как строится индекс классов
 
 ```python
-for idx, class_name in enumerate(sorted(os.listdir(root_dir))):
+from cv.apple_classifier import DEFAULT_CLASS_LABELS
+
+for idx, class_name in enumerate(self.class_labels):  # фиксированный порядок
+    class_dir = os.path.join(root_dir, class_name)
 ```
 
-- Имена папок = **метки классов** (`apple_scab`, `healthy_leaf`, …).
-- **`sorted(...)`** — порядок классов **алфавитный по имени папки**.
-- Индекс `idx` (0, 1, 2, …) присваивается в этом порядке.
+- Имена **подпапок** должны совпадать с метками из **`DEFAULT_CLASS_LABELS`** в `apple_classifier.py`.
+- Индекс `idx` (0, 1, 2, …) — **тот же порядок**, что при инференсе (не `sorted()` по имени папки).
+- Если папки класса нет в `train_dir` — класс пропускается (0 фото), но индекс в списке сохраняется.
 
-### Критически важно
-
-При инференсе `apple_classifier.py` использует **фиксированный** список `CLASS_LABELS` (не алфавитный порядок папок на диске).
-
-| Порядок в `CLASS_LABELS` | Индекс |
-|--------------------------|--------|
-| healthy_apple | 0 |
-| apple_scab | 1 |
+| Индекс | Метка (`DEFAULT_CLASS_LABELS`) |
+|--------|--------------------------------|
+| 0 | `healthy_apple` |
+| 1 | `apple_scab` |
+| 2 | `black_rot` |
 | … | … |
-
-Если папки на диске при `sorted()` дают **другой** порядок, модель будет обучена с перепутанными метками.
-
-**Рекомендация:** назовите папки так, чтобы `sorted()` совпал с `CLASS_LABELS`, или переименуйте папки с префиксами `00_healthy_apple`, `01_apple_scab`, … либо доработайте скрипт под явный mapping (пока в коде этого нет).
 
 Поддерживаемые расширения: `.png`, `.jpg`, `.jpeg`.
 
@@ -130,8 +126,8 @@ torch.save({
 }, save_path)
 ```
 
-`apple_classifier._load_model` читает только **`state_dict`**.  
-Поля `class_labels` и `val_acc` полезны вам для отладки; inference их не использует.
+При инференсе `AppleClassifier` читает **`state_dict`** и, если есть, **`class_labels`** из checkpoint — список меток подменяет `DEFAULT_CLASS_LABELS`.  
+Поле `val_acc` — только для отладки.
 
 ---
 
@@ -178,7 +174,7 @@ MODEL_PATH=models/apple_classifier.pth
 docker compose up -d --build classifier
 ```
 
-Проверьте лог: `[CV:apple] Loading model from ...`
+Проверьте лог: `[CV:apple] Загрузка весов: ...`
 
 ---
 
@@ -229,7 +225,7 @@ flowchart LR
 
 ### Модель в API «не та болезнь»
 
-Несовпадение порядка классов train vs `CLASS_LABELS` — см. раздел про `sorted()`.
+Проверьте: имена папок = `DEFAULT_CLASS_LABELS`, в checkpoint есть `class_labels`, лог registry — «Загрузка весов», а не «только backbone ImageNet».
 
 ### Файл не подхватывается
 

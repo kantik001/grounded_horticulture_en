@@ -94,8 +94,8 @@ if crop_id in _classifiers:
 
 | Условие | Действие |
 |---------|----------|
-| `model_path` существует | `create_classifier(model_path=...)` + лог `Loading model from ...` |
-| файла нет | `create_classifier()` без весов + лог `No weights — ImageNet backbone only` |
+| `model_path` существует | `create_classifier(model_path=...)` + лог `Загрузка весов: ...` |
+| файла нет | `create_classifier()` без весов + лог `Весов нет — только backbone ImageNet` |
 
 ### Шаг 4 — сохранение в кэш
 
@@ -164,9 +164,9 @@ MODEL_PATH_APPLE=models/apple_classifier.pth
 
 ### Модель «всегда ошибается» после обучения
 
-1. Проверить лог: `Loading model from` vs `No weights`.
+1. Проверить лог: `Загрузка весов` vs `Весов нет — только backbone ImageNet`.
 2. Перезапустить контейнер после замены `.pth`.
-3. Убедиться, что порядок классов в датасете совпадает с `CLASS_LABELS` в `apple_classifier.py` (см. [cv-train_classifier.md](./cv-train_classifier.md)).
+3. Убедиться, что папки датасета и `DEFAULT_CLASS_LABELS` / `class_labels` в checkpoint совпадают (см. [cv-train_classifier.md](./cv-train_classifier.md)).
 
 ### Память растёт
 

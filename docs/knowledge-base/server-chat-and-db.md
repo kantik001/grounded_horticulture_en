@@ -1,6 +1,6 @@
 ﻿# Разбор: чат и база данных (`server/`)
 
-**Файлы:** `messenger.go`, `chat_session.go`, `postgres_store.go`  
+**Файлы:** `messenger.go`, `chat_session.go`, `postgres_store.go`, `classify_flow.go` (фото)  
 **БД:** схема в [migrations-overview.md](./migrations-overview.md)  
 **Клиент:** [webapp-overview.md](./webapp-overview.md) → `POST /message`
 
@@ -17,7 +17,7 @@
 | `application/json` | `session_id`, `crop_id`, `text` | текст → RAG |
 | `multipart/form-data` | `session_id`, `crop_id`, `text`, `image` | фото → CV + LLM |
 
-Лимит фото: **10 МБ**.
+Лимит фото: **10 МБ** (`maxUploadImageBytes` в `classify_flow.go`).
 
 ---
 
@@ -30,8 +30,9 @@ flowchart TD
     P -->|нет| T[handleTextMessage]
     T --> RAG[answerWithRAG + history]
     I --> SAVE[SaveImage token]
-    I --> CV[sendToClassifier]
-    I --> LLM[generateRecommendationWithHistory]
+    I --> CAR[classifyAndRecommend]
+    CAR --> CV[sendToClassifier]
+    CAR --> LLM[generatePhotoRecommendation]
 ```
 
 Ответ всегда: JSON `{ success, session_id, crop_id, messages: [...] }` — полная история для UI.
@@ -53,13 +54,16 @@ flowchart TD
 
 1. История для LLM (как у текста).
 2. **`SaveImage`** — файл в `UPLOAD_DIR`, в БД только **token** (не base64).
-3. **`sendToClassifier`** → Python — prediction + confidence.
+3. **`classifyAndRecommend(image, cropID, caption, prior)`** (`classify_flow.go`):
+   - Python CV → prediction + confidence;
+   - **`generatePhotoRecommendation`** — LLM с историей или шаблон из `photo_templates.json`.
 4. Сообщение user: caption, `kind=image`, token, class_prediction, class_confidence.
-5. **`generateRecommendationWithHistory`** — LLM или шаблон (`server/photo_recommendations.go`, вызов `llm.go`).
-6. Сообщение assistant с рекомендацией.
-7. Analytics `photo_classified` с prediction/confidence.
+5. Сообщение assistant с рекомендацией.
+6. Analytics `photo_classified` с prediction/confidence.
 
 При сбое CV — assistant с ошибкой, без LLM.
+
+Отдельный **`POST /classify`** (без сессии) использует тот же `classifyAndRecommend`, но без сохранения в БД — см. [server-overview.md](./server-overview.md).
 
 ---
 

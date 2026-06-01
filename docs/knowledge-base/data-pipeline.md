@@ -99,7 +99,7 @@ dataset/val/
   ...
 ```
 
-Порядок папок и `CLASS_LABELS` в [cv-train_classifier.md](./cv-train_classifier.md) должны совпадать.
+Папки датасета должны называться как метки в **`DEFAULT_CLASS_LABELS`** — см. [cv-train_classifier.md](./cv-train_classifier.md).
 
 ### Шаг 2 — обучение
 
@@ -120,7 +120,7 @@ python train_classifier.py
 
 3. `docker compose up -d --force-recreate classifier`
 
-4. Лог: `[CV:apple] Loading model from ...`
+4. Лог: `[CV:apple] Загрузка весов: ...`
 
 ### Шаг 4 — проверка
 
