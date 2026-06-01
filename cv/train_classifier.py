@@ -10,26 +10,27 @@ import os
 from typing import Tuple, List
 import json
 
+from cv.apple_classifier import DEFAULT_CLASS_LABELS
+
 
 class AppleDataset(Dataset):
-    """Датасет: data/{класс}/*.jpg; порядок sorted() задаёт индексы меток."""
+    """Датасет: подпапки = классы; индексы совпадают с DEFAULT_CLASS_LABELS."""
 
-    # Сканирует подпапки root_dir (классы) и собирает пути к изображениям.
     def __init__(self, root_dir: str, transform=None):
         self.root_dir = root_dir
         self.transform = transform
-        self.class_labels = []
+        self.class_labels = list(DEFAULT_CLASS_LABELS)
         self.image_paths = []
         self.labels = []
 
-        for idx, class_name in enumerate(sorted(os.listdir(root_dir))):
+        for idx, class_name in enumerate(self.class_labels):
             class_dir = os.path.join(root_dir, class_name)
-            if os.path.isdir(class_dir):
-                self.class_labels.append(class_name)
-                for img_name in os.listdir(class_dir):
-                    if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        self.image_paths.append(os.path.join(class_dir, img_name))
-                        self.labels.append(idx)
+            if not os.path.isdir(class_dir):
+                continue
+            for img_name in os.listdir(class_dir):
+                if img_name.lower().endswith((".png", ".jpg", ".jpeg")):
+                    self.image_paths.append(os.path.join(class_dir, img_name))
+                    self.labels.append(idx)
 
         print(f"Загружено {len(self.image_paths)} изображений, классов: {len(self.class_labels)}")
         print(f"Классы: {self.class_labels}")

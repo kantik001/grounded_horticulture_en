@@ -11,6 +11,7 @@
 |------|---------------|------------|
 | `crops.json` | Go + Python | Культуры, `cv_enabled`, `rag_enabled` |
 | `prompts.json` | Go | System-промпты для RAG и фото по `crop_id` |
+| `photo_templates.json` | Go | Статичные рекомендации по фото, если LLM недоступен |
 | `few_shot.json` | Python `retrieval.py` | Примеры вопрос-ответ для промпта LLM |
 | `onboarding.json` | Go | Чипы «примеров вопросов» в Web App |
 | `article_titles.json` | Python `vector_store.py` | Красивые названия статей в metadata (опционально) |
@@ -50,12 +51,25 @@ Env: `CROPS_CONFIG_PATH` (в Docker: `/config/crops.json` на server, `/app/con
 |------|------------------|
 | `rag_system` | system-сообщение LLM для текстового RAG |
 | `rag_task_intro` | блок `<system>` в user-промпте RAG |
-| `photo_system` | system для совета по фото |
+| `photo_system` | system для совета по фото (на русском) |
 | `photo_user_intro` | вступление в user-промпт по фото |
+| `photo_user_body` | тело промпта: класс, уверенность, top-3 (`fmt.Sprintf` с `%s`, `%.2f%%`, `%v`) |
 
 Загрузка: `loadPromptCatalog()` при старте Go (`crops.go`), `promptsForCrop(cropID)` в `rag_chat.go` и `photo_recommendations.go`.
 
 Env: `PROMPTS_CONFIG_PATH` (server: `/config/prompts.json`).
+
+---
+
+## `photo_templates.json`
+
+Ключ — метка класса CV (`healthy_apple`, `apple_scab`, …) или **`default`** (с плейсхолдерами `{{PREDICTION}}`, `{{CONFIDENCE}}`).
+
+Загрузка: `loadPhotoTemplates()` в `main.go` (`photo_templates.go`).
+
+Env: `PHOTO_TEMPLATES_PATH` (по умолчанию `config/photo_templates.json`, в Docker: `/config/photo_templates.json`).
+
+Редактирование текстов **без пересборки Go** — достаточно `docker compose restart server` (config копируется в образ при build; для hot-reload можно смонтировать volume).
 
 Жёсткие правила RAG (без выдумывания, без названий статей) — в коде `rag_chat.go`, не в этом JSON.
 
@@ -95,7 +109,7 @@ Env: `PROMPTS_CONFIG_PATH` (server: `/config/prompts.json`).
 
 | Сервис | Действие после правки JSON |
 |--------|----------------------------|
-| **crops / prompts / onboarding** | `docker compose restart server` (каталог `/config` в образе; для hot-reload без rebuild нужен volume — сейчас config в образе) |
+| **crops / prompts / onboarding / photo_templates** | `docker compose restart server` (каталог `/config` в образе; для hot-reload без rebuild нужен volume — сейчас config в образе) |
 | **few_shot / article_titles** | `restart classifier` или reindex не нужен для few_shot; для titles — **reindex** если меняли только titles |
 | **Новые статьи в data/** | reindex — [data-pipeline.md](./data-pipeline.md) |
 
@@ -107,7 +121,7 @@ Env: `PROMPTS_CONFIG_PATH` (server: `/config/prompts.json`).
 
 Конфиги не дублируют секреты. В `.env` только пути при необходимости:
 
-- `CROPS_CONFIG_PATH`, `PROMPTS_CONFIG_PATH`, `ONBOARDING_CONFIG_PATH`
+- `CROPS_CONFIG_PATH`, `PROMPTS_CONFIG_PATH`, `ONBOARDING_CONFIG_PATH`, `PHOTO_TEMPLATES_PATH`
 
 ---
 

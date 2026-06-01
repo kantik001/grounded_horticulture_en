@@ -49,7 +49,7 @@
 
 → [config-overview.md](./config-overview.md)
 
-- `crops.json`, `prompts.json`, `few_shot.json`, `onboarding.json`, `article_titles.json`
+- `crops.json`, `prompts.json`, `photo_templates.json`, `few_shot.json`, `onboarding.json`, `article_titles.json`
 
 ## `data/` (база знаний для RAG)
 
@@ -109,7 +109,7 @@
 | Файл | Статья |
 |------|--------|
 | `main.go`, `config.go`, `health.go` | [server-overview.md](./server-overview.md) — старт, конфиг, health |
-| `llm.go`, `classifier_client.go`, `photo_recommendations.go`, `classify_handler.go` | [server-overview.md](./server-overview.md) — LLM и CV по фото |
+| `llm.go`, `classifier_client.go`, `classify_flow.go`, `photo_recommendations.go`, `photo_templates.go`, `classify_handler.go` | [server-overview.md](./server-overview.md) — LLM и CV по фото |
 | `auth_telegram.go`, `middleware.go`, `ratelimit.go` | [server-auth-and-limits.md](./server-auth-and-limits.md) |
 | `messenger.go`, `chat_session.go`, `postgres_store.go` | [server-chat-and-db.md](./server-chat-and-db.md) |
 | `rag_chat.go` | [server-rag_chat.md](./server-rag_chat.md) |

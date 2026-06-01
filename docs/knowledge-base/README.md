@@ -59,7 +59,7 @@
 
 | Документ | Описание |
 |----------|----------|
-| [config-overview.md](./config-overview.md) | `config/*.json`: crops, prompts, few-shot, onboarding, titles |
+| [config-overview.md](./config-overview.md) | `config/*.json`: crops, prompts, `photo_templates`, few-shot, onboarding, titles |
 | [docker-overview.md](./docker-overview.md) | docker-compose, 4 сервиса, volumes, порты, `.env` |
 | [data-pipeline.md](./data-pipeline.md) | Загрузка статей `.txt`, reindex, обучение `.pth` |
 | [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md) | План eval 3B и логов RAG 3C (ещё не в коде) |
