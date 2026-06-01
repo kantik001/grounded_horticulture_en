@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// ClassificationResult represents the result from Python classifier.
+// ClassificationResult — ответ Python /classify.
 type ClassificationResult struct {
 	Success        bool                  `json:"success"`
 	Prediction     string                `json:"prediction"`
@@ -19,7 +19,7 @@ type ClassificationResult struct {
 	Error          string                `json:"error,omitempty"`
 }
 
-// PredictionCandidate represents a single prediction candidate.
+// PredictionCandidate — один вариант из top-k классификации.
 type PredictionCandidate struct {
 	Label      string  `json:"label"`
 	Confidence float64 `json:"confidence"`

@@ -9,24 +9,24 @@ import (
 	"time"
 )
 
-// LLMRequest represents the request to LLM API.
+// LLMRequest — тело запроса к OpenAI-совместимому chat/completions.
 type LLMRequest struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
 }
 
-// Message represents a chat message for LLM.
+// Message — одно сообщение в диалоге для LLM.
 type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-// LLMResponse represents the response from LLM API.
+// LLMResponse — ответ chat/completions.
 type LLMResponse struct {
 	Choices []Choice `json:"choices"`
 }
 
-// Choice represents a choice in LLM response.
+// Choice — один вариант ответа модели.
 type Choice struct {
 	Message Message `json:"message"`
 }

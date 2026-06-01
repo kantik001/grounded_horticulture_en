@@ -10,7 +10,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds application configuration.
+// Config — настройки приложения из переменных окружения.
 type Config struct {
 	PythonServiceURL string // POST multipart → классификация изображения
 	PythonRAGURL     string // POST JSON {"question"} → только retrieval (контекст) в Python

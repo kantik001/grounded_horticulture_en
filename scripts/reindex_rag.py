@@ -13,4 +13,4 @@ from rag.vector_store import create_vector_store  # noqa: E402
 
 if __name__ == "__main__":
     create_vector_store()
-    print("RAG reindex complete.")
+    print("Переиндексация RAG завершена.")

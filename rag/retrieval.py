@@ -24,7 +24,7 @@ def _load_few_shot() -> dict:
     return _few_shot_cache
 
 
-# Определяет тему вопроса по ключевым словам: fertilizer, disease, variety, general.
+# Категория вопроса по ключевым словам: удобрения, болезни, сорта, общее.
 def classify_question(question: str) -> str:
     q_lower = question.lower()
     if any(

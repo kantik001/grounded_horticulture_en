@@ -1,7 +1,4 @@
-"""
-Training script for MobileNetV2 Apple Classifier
-This script trains the classifier on apple disease dataset.
-"""
+"""Обучение MobileNetV2 на датасете болезней яблони (подпапки = классы)."""
 
 import torch
 import torch.nn as nn
@@ -15,17 +12,7 @@ import json
 
 
 class AppleDataset(Dataset):
-    """
-    Custom dataset for apple disease images.
-    Expected directory structure:
-    data/
-        healthy_apple/
-            img1.jpg
-            img2.jpg
-        apple_scab/
-            img1.jpg
-            ...
-    """
+    """Датасет: data/{класс}/*.jpg; порядок sorted() задаёт индексы меток."""
 
     # Сканирует подпапки root_dir (классы) и собирает пути к изображениям.
     def __init__(self, root_dir: str, transform=None):
@@ -35,7 +22,6 @@ class AppleDataset(Dataset):
         self.image_paths = []
         self.labels = []
 
-        # Load class labels from directories
         for idx, class_name in enumerate(sorted(os.listdir(root_dir))):
             class_dir = os.path.join(root_dir, class_name)
             if os.path.isdir(class_dir):
@@ -45,8 +31,8 @@ class AppleDataset(Dataset):
                         self.image_paths.append(os.path.join(class_dir, img_name))
                         self.labels.append(idx)
 
-        print(f"Loaded {len(self.image_paths)} images from {len(self.class_labels)} classes")
-        print(f"Classes: {self.class_labels}")
+        print(f"Загружено {len(self.image_paths)} изображений, классов: {len(self.class_labels)}")
+        print(f"Классы: {self.class_labels}")
 
     # Возвращает число образцов в датасете.
     def __len__(self):
@@ -78,7 +64,6 @@ def train_model(
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
 
-    # Data transforms
     train_transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.RandomHorizontalFlip(),
@@ -94,17 +79,13 @@ def train_model(
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    # Create datasets and dataloaders
     train_dataset = AppleDataset(train_dir, transform=train_transform)
     val_dataset = AppleDataset(val_dir, transform=val_transform)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-    # Load MobileNetV2 model
     model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
-
-    # Replace classifier head
     last_channel = model.classifier[1].in_features
     model.classifier = nn.Sequential(
         nn.Dropout(p=0.2),
@@ -113,19 +94,16 @@ def train_model(
 
     model = model.to(device)
 
-    # Loss function and optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
-    # Training loop
     best_val_acc = 0.0
 
     for epoch in range(epochs):
         print(f'\nEpoch {epoch+1}/{epochs}')
         print('-' * 30)
 
-        # Training phase
         model.train()
         running_loss = 0.0
         running_corrects = 0
@@ -152,7 +130,6 @@ def train_model(
 
         print(f'Train Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
-        # Validation phase
         model.eval()
         val_loss = 0.0
         val_corrects = 0
@@ -174,7 +151,6 @@ def train_model(
 
         print(f'Val Loss: {val_epoch_loss:.4f} Acc: {val_epoch_acc:.4f}')
 
-        # Save best model
         if val_epoch_acc > best_val_acc:
             best_val_acc = val_epoch_acc
             torch.save({
@@ -187,13 +163,11 @@ def train_model(
 
         scheduler.step()
 
-    print(f'\nTraining completed! Best validation accuracy: {best_val_acc:.4f}')
+    print(f"\nОбучение завершено. Лучшая точность на val: {best_val_acc:.4f}")
     return model
 
 
-if __name__ == '__main__':
-    # Example usage
-    # Uncomment and modify paths to train your model
+if __name__ == "__main__":
     """
     train_model(
         train_dir='data/train',
@@ -205,4 +179,4 @@ if __name__ == '__main__':
         save_path='apple_classifier.pth'
     )
     """
-    print("Training script ready. Configure paths and run to train the model.")
+    print("Укажите пути train/val и раскомментируйте вызов train_model().")
