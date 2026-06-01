@@ -143,7 +143,7 @@ make test-py
 | Chroma / embeddings | тяжело, медленно |
 | `vector_store.py`, `retrieval.py` end-to-end | нужен индекс и HF-модель |
 | LLM API | платно, недетерминировано |
-| Flask `api_server.py` | нет HTTP-тестов |
+| Flask `api/app.py` | нет HTTP-тестов |
 | PostgreSQL | нет testcontainers |
 
 Это нормально для текущего этапа; расширение — eval-набор (в плане).

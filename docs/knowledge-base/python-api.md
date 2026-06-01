@@ -1,8 +1,8 @@
-# Разбор: `classifier/api_server.py`
+﻿# Разбор: `api/app.py`
 
-**Исходный файл:** `classifier/api_server.py`  
+**Исходный файл:** `api/app.py`  
 **Язык:** Python (Flask), **не Go**  
-**Связанные модули:** `classifier/registry.py`, `classifier/apple_classifier.py`, `rag/retrieval.py`, `rag/vector_store.py`, `rag/crops_config.py`  
+**Связанные модули:** `cv/registry.py`, `cv/apple_classifier.py`, `rag/retrieval.py`, `rag/vector_store.py`, `rag/crops_config.py`  
 **Кто вызывает:** Go-сервер (`server/classifier_client.go`, `server/classify_handler.go`) по HTTP
 
 ---
@@ -31,13 +31,13 @@ sys.path.insert(0, _root)
 load_dotenv(os.path.join(_root, ".env"))
 ```
 
-- **`_root`** — корень проекта (папка на уровень выше `classifier/`).
-- **`sys.path.insert`** — чтобы работали импорты `from rag...`, `from classifier...`.
+- **`_root`** — корень проекта (папка на уровень выше `api/`).
+- **`sys.path.insert`** — чтобы работали импорты `from rag...`, `from cv...`.
 - **`load_dotenv`** — переменные из `.env` (порты, секреты, пути к моделям).
 
 Импорты:
 
-- `get_classifier_for_crop` — CV-модель для культуры (`registry.py`).
+- `get_classifier_for_crop` — CV-модель для культуры (`cv/registry.py`).
 - `retrieve_rag_context` — поиск по статьям (`rag/retrieval.py`).
 - `vector_store` — переиндексация Chroma.
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=False)
 ```
 
-Локально: `python api_server.py` → порт 5000. В Docker — через `Dockerfile.classifier`.
+Локально: `python app.py` → порт 5000. В Docker — через `Dockerfile.classifier`.
 
 ---
 
@@ -196,7 +196,7 @@ if __name__ == "__main__":
 sequenceDiagram
     participant UI as Web App
     participant Go as Go server
-    participant Py as api_server.py
+    participant Py as app.py
     participant CV as AppleClassifier
 
     UI->>Go: POST /classify + image + crop_id
@@ -214,8 +214,8 @@ sequenceDiagram
 
 | Тема | Файл |
 |------|------|
-| Выбор и кэш модели | [classifier-registry.md](./classifier-registry.md) |
-| PyTorch inference | `classifier/apple_classifier.py` |
+| Выбор и кэш модели | [cv-registry.md](./cv-registry.md) |
+| PyTorch inference | `cv/apple_classifier.py` |
 | RAG-поиск | `rag/retrieval.py`, `rag/vector_store.py` |
 | Кто зовёт Python | `server/classifier_client.go` (`sendToClassifier`), `server/classify_handler.go` (`handleClassification`) |
 
@@ -223,4 +223,4 @@ sequenceDiagram
 
 ## Краткий итог
 
-`api_server.py` — **тонкий HTTP-слой**: валидация входа, делегирование в `classifier/*` и `rag/*`, JSON на выходе. CV — PyTorch; RAG-поиск — Chroma/LangChain; LLM в этом файле **не участвует**.
+`app.py` — **тонкий HTTP-слой**: валидация входа, делегирование в `cv/*` и `rag/*`, JSON на выходе. CV — PyTorch; RAG-поиск — Chroma/LangChain; LLM в этом файле **не участвует**.

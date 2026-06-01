@@ -1,4 +1,4 @@
-# Разбор: админка и UX API (`server/`)
+﻿# Разбор: админка и UX API (`server/`)
 
 **Файлы:** `admin.go`, `onboarding.go`, `feedback.go`, `analytics_store.go`, `crops.go`  
 **Клиент:** [webapp-overview.md](./webapp-overview.md) (`admin.html`, `index.html`)

@@ -1,4 +1,4 @@
-# Разбор: `.github/workflows/ci.yml`
+﻿# Разбор: `.github/workflows/ci.yml`
 
 **Исходный файл:** `.github/workflows/ci.yml`  
 **Платформа:** [GitHub Actions](https://docs.github.com/en/actions)  

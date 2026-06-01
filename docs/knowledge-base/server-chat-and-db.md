@@ -1,4 +1,4 @@
-# Разбор: чат и база данных (`server/`)
+﻿# Разбор: чат и база данных (`server/`)
 
 **Файлы:** `messenger.go`, `chat_session.go`, `postgres_store.go`  
 **БД:** схема в [migrations-overview.md](./migrations-overview.md)  

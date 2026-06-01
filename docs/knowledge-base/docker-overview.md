@@ -1,4 +1,4 @@
-# Разбор: Docker и локальный запуск
+﻿# Разбор: Docker и локальный запуск
 
 **Файлы:** `docker-compose.yml`, `Dockerfile.server`, `Dockerfile.classifier`, `Dockerfile.webapp`, `.env`  
 **Связь:** [server-overview.md](./server-overview.md), [webapp-overview.md](./webapp-overview.md)
@@ -31,7 +31,7 @@ flowchart LR
 | Сервис | Образ | Роль |
 |--------|-------|------|
 | **postgres** | `postgres:16-alpine` | чат, users, feedback, analytics |
-| **classifier** | `Dockerfile.classifier` | CV + Chroma RAG |
+| **classifier** | `Dockerfile.classifier` | Flask `api/` + CV `cv/` + RAG `rag/` |
 | **server** | `Dockerfile.server` | API, LLM, оркестрация |
 | **webapp** | `Dockerfile.webapp` | HTML + nginx → server |
 
@@ -75,9 +75,9 @@ Makefile: `make up`, `make logs`, `make smoke` — см. `Makefile`.
 |------------|-----------|------------|
 | `./data` | classifier `:ro`, server `/app/data` | статьи `.txt` |
 | `./webapp/*.html`, `nginx.conf` | webapp | UI без rebuild |
-| `./classifier`, `./rag` | classifier `:ro` | dev (код) |
+| `./api`, `./cv`, `./rag` | classifier `:ro` | dev (код Python) |
 
-Важно: `MODEL_PATH=../models/apple_classifier.pth` смотрит в **volume `models`**, не в `doctor_gardens_ai/models/` на диске. Чтобы использовать локальную папку — сменить compose на `./models:/app/models`.
+Важно: `MODEL_PATH=models/apple_classifier.pth` (от `/app` в контейнере) смотрит в **volume `models`**, не в `doctor_gardens_ai/models/` на диске. Чтобы использовать локальную папку — сменить compose на `./models:/app/models`.
 
 ---
 
@@ -89,9 +89,9 @@ Makefile: `make up`, `make logs`, `make smoke` — см. `Makefile`.
 
 ---
 
-## Сервис `classifier`
+## Сервис `classifier` (Python: `api/` + `cv/` + `rag/`)
 
-- Порт **5000**
+- Порт **5000**, entrypoint: `python api/app.py`
 - Env: `MODEL_PATH`, `ADMIN_SECRET`, `FORCE_RAG_REINDEX`, `CROPS_CONFIG_PATH`
 - Healthcheck: долгий `start_period: 120s` (embeddings при первом RAG)
 - Endpoints: `/health`, `/classify`, `/rag/context`, `/admin/reindex`, `/crops`

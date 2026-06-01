@@ -3,7 +3,7 @@
 import os
 from typing import Dict, Optional
 
-from classifier.apple_classifier import create_classifier
+from cv.apple_classifier import create_classifier
 from rag.crops_config import get_crop, normalize_crop_id
 
 _classifiers: Dict[str, object] = {}
