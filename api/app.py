@@ -102,5 +102,5 @@ def admin_reindex():
 
 if __name__ == "__main__":
     port = int(os.environ.get("CLASSIFIER_PORT", 5000))
-    print(f"Starting Garden Python API on port {port}")
+    print(f"Запуск Python API на порту {port}")
     app.run(host="0.0.0.0", port=port, debug=False)

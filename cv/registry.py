@@ -37,10 +37,10 @@ def get_classifier_for_crop(crop_id: str):
         model_path = os.path.normpath(os.path.join(os.path.dirname(__file__), model_path))
 
     if model_path and os.path.exists(model_path):
-        print(f"[CV:{crop_id}] Loading model from {model_path}")
+        print(f"[CV:{crop_id}] Загрузка весов: {model_path}")
         clf = create_classifier(model_path=model_path)
     else:
-        print(f"[CV:{crop_id}] No weights — ImageNet backbone only.")
+        print(f"[CV:{crop_id}] Весов нет — только backbone ImageNet.")
         clf = create_classifier()
 
     _classifiers[crop_id] = clf

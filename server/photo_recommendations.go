@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-// RecommendationResponse represents the final response to client for photo classify API.
+// RecommendationResponse — ответ POST /classify (CV + текст рекомендации).
 type RecommendationResponse struct {
 	Success bool `json:"success"`
 	ClassificationResult

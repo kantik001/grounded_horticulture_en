@@ -12,7 +12,7 @@ type ChatMessage struct {
 	ID              int64   `json:"id,omitempty"`
 	Role            string  `json:"role"`
 	Content         string  `json:"content"`
-	ImageDataURL    string  `json:"image_data_url,omitempty"` // legacy
+	ImageDataURL    string  `json:"image_data_url,omitempty"` // устаревшее поле, см. image_url
 	ImageURL        string  `json:"image_url,omitempty"`
 	ImageToken      string  `json:"-"`
 	ClassPrediction string  `json:"class_prediction,omitempty"`

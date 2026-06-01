@@ -76,7 +76,7 @@ func telegramAuthMiddleware(cfg *Config) gin.HandlerFunc {
 
 		initData := strings.TrimSpace(c.GetHeader(headerTelegramInit))
 		if initData == "" {
-			// Authorization: tma <initData>
+			// Заголовок Authorization: tma <initData>
 			auth := strings.TrimSpace(c.GetHeader("Authorization"))
 			if strings.HasPrefix(strings.ToLower(auth), "tma ") {
 				initData = strings.TrimSpace(auth[4:])

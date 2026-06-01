@@ -45,7 +45,7 @@ def get_pretty_title(crop_id: str, filename: str) -> str:
     return _titles_map().get(crop_id, {}).get(filename, filename)
 
 
-# Собирает все .txt из data/{crop}/ и legacy data/*.txt (как apple).
+# Собирает .txt из data/{crop}/ и устаревшие data/*.txt в корне (как apple).
 def load_all_documents():
     all_docs = []
     crops = list_crops().get("crops", {}).keys()

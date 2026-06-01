@@ -129,7 +129,7 @@ func promptsConfigPath() string {
 	return filepath.Join("config", "prompts.json")
 }
 
-// Промпты для культуры с fallback на default_crop.
+// Промпты для культуры; при отсутствии — из default_crop или встроенные строки.
 func promptsForCrop(cropID string) cropPrompts {
 	if p, ok := promptCatalog[cropID]; ok {
 		return p

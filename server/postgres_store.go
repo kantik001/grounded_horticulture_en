@@ -150,7 +150,7 @@ func nullIfEmpty(s string) *string {
 	return &s
 }
 
-// CreateSession создаёт новую сессию для пользователя (internal user id) и культуры.
+// CreateSession создаёт новую сессию для пользователя (id в таблице users) и культуры.
 func (st *ChatStore) CreateSession(ctx context.Context, userID int64, cropID string) (string, error) {
 	sid := newSessionID()
 	_, err := st.pool.Exec(ctx,
