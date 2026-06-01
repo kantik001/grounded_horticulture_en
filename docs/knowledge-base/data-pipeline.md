@@ -68,6 +68,13 @@ data/apple/my_article.txt
 
 Ожидайте **минуты** при первом запуске (embeddings `multilingual-e5-small`).
 
+**Docker:** после `reindex_rag.py` или admin reindex перезапустите classifier, иначе в памяти останется старый кэш Chroma и поиск даст `Error finding id`:
+
+```bash
+docker compose exec classifier python scripts/reindex_rag.py
+docker compose restart classifier
+```
+
 ### Шаг 4 — проверка
 
 1. Логи classifier: `Фрагментов: N`, без «Нет статей».
@@ -133,7 +140,7 @@ python train_classifier.py
 
 ## Чеклист сессии 4 (контент)
 
-- [x] 15 `.txt` в `data/apple/` (базовый набор; цель пилота — 25+)
+- [x] 16 `.txt` в `data/apple/` (включая `article16_planting_pit.txt`; цель пилота — 25+)
 - [x] `run_rag_eval.py` + `eval/rag_apple_baseline.jsonl`
 - [ ] reindex после пачки
 - [ ] 5–10 тестовых вопросов вручную
@@ -152,6 +159,7 @@ python train_classifier.py
 | Upload OK, RAG пустой | reindex не нажали |
 | CV всегда «случайный» класс | нет `.pth` в volume models |
 | reindex на хосте, Docker пустой | chroma на хосте ≠ volume `chroma_data` |
+| `Error finding id` после reindex | не перезапущен classifier — `docker compose restart classifier` |
 
 ---
 
