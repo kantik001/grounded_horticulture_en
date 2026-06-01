@@ -15,3 +15,7 @@ env
 Thumbs.db
 server/main
 *.exe
+chroma_db
+eval/results
+*.jsonl
+models/*.pth

@@ -57,3 +57,6 @@ jobs:
 
       - name: Build webapp image
         run: docker build -f Dockerfile.webapp -t doctor-gardens-webapp:ci .
+
+      - name: Build classifier image
+        run: docker build -f Dockerfile.classifier -t doctor-gardens-classifier:ci .

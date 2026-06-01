@@ -1,7 +1,7 @@
 .PHONY: build up down restart logs clean ps help test test-go test-py smoke eval-retrieval reindex
 
 # Имя проекта Docker Compose
-PROJECT_NAME := union_ai_apple_app
+PROJECT_NAME := union_ai_apple
 
 # Основные команды
 
