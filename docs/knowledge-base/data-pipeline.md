@@ -1,4 +1,4 @@
-# Пайплайн данных: статьи RAG и модель CV
+﻿# Пайплайн данных: статьи RAG и модель CV
 
 **Цель:** как пополнять знания для чата и (отдельно) обучать распознавание фото.  
 **Связь с roadmap:** фаза 3 (статьи), фаза 4 (CV) — [../ROADMAP.md](../ROADMAP.md)
@@ -99,12 +99,12 @@ dataset/val/
   ...
 ```
 
-Порядок папок и `CLASS_LABELS` в [classifier-train_classifier.md](./classifier-train_classifier.md) должны совпадать.
+Порядок папок и `CLASS_LABELS` в [cv-train_classifier.md](./cv-train_classifier.md) должны совпадать.
 
 ### Шаг 2 — обучение
 
 ```bash
-cd classifier
+cd cv
 pip install -r requirements.txt
 # раскомментировать train_model(...) в train_classifier.py
 python train_classifier.py

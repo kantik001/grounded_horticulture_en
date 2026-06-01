@@ -1,4 +1,4 @@
-# Разбор: Go-сервер — обзор (`server/`)
+﻿# Разбор: Go-сервер — обзор (`server/`)
 
 **Папка:** `server/`  
 **Роль:** оркестратор — Telegram auth, API, PostgreSQL, вызовы Python (CV + RAG) и LLM (OpenRouter)  
@@ -41,7 +41,7 @@
 
 ## Зачем Go в проекте
 
-Python (`classifier`) — **тяжёлый ML** (PyTorch, Chroma).  
+Python-сервис (`api/` + `cv/` + `rag/`, контейнер compose: `classifier`) — **ML** (PyTorch, Chroma).  
 Go — **лёгкий backend**:
 
 - проверка Telegram `initData`;

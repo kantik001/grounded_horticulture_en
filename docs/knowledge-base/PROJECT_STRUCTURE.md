@@ -1,4 +1,4 @@
-# Структура проекта `doctor_gardens_ai`
+﻿# Структура проекта `doctor_gardens_ai`
 
 Ниже — карта проекта по текущему состоянию репозитория: где какой файл и за что отвечает.
 
@@ -17,10 +17,10 @@
 
 - `README.md` — оглавление базы знаний.
 - `PROJECT_STRUCTURE.md` — этот файл (карта проекта).
-- `classifier-api_server.md` — разбор Python-сервиса `classifier/api_server.py`.
-- `classifier-apple_classifier.md` — разбор CV-модели `classifier/apple_classifier.py`.
-- `classifier-registry.md` — фабрика моделей `classifier/registry.py`.
-- `classifier-train_classifier.md` — обучение `classifier/train_classifier.py`.
+- `python-api.md` — разбор Python-сервиса `api/app.py`.
+- `cv-apple_classifier.md` — разбор CV-модели `cv/apple_classifier.py`.
+- `cv-registry.md` — фабрика моделей `cv/registry.py`.
+- `cv-train_classifier.md` — обучение `cv/train_classifier.py`.
 - `github-ci.yml.md` — разбор `.github/workflows/ci.yml`.
 - `migrations-overview.md` — все SQL-миграции `migrations/*.sql`.
 - `rag-crops_config.md`, `rag-vector_store.md`, `rag-retrieval.md`, `rag-verifier.md` — модули `rag/`.
@@ -34,13 +34,16 @@
 
 - `ci.yml` — GitHub Actions CI: тесты и проверка сборки. → [github-ci.yml.md](./github-ci.yml.md)
 
-## `classifier/` (Python: CV-классификация)
+## `api/` (Python: HTTP для Go)
 
-- `api_server.py` — HTTP API классификатора (эндпоинты для фото/health). → [classifier-api_server.md](./classifier-api_server.md)
-- `apple_classifier.py` — модель и логика инференса. → [classifier-apple_classifier.md](./classifier-apple_classifier.md)
-- `registry.py` — реестр моделей по `crop_id`. → [classifier-registry.md](./classifier-registry.md)
-- `train_classifier.py` — обучение на датасете. → [classifier-train_classifier.md](./classifier-train_classifier.md)
-- `requirements.txt` — Python-зависимости сервиса классификации.
+- `app.py` — Flask: `/classify`, `/rag/context`, `/health`, `/admin/reindex`. → [python-api.md](./python-api.md)
+
+## `cv/` (Python: Computer Vision)
+
+- `apple_classifier.py` — MobileNetV2, inference. → [cv-apple_classifier.md](./cv-apple_classifier.md)
+- `registry.py` — фабрика и кэш моделей по `crop_id`. → [cv-registry.md](./cv-registry.md)
+- `train_classifier.py` — offline-обучение `.pth`. → [cv-train_classifier.md](./cv-train_classifier.md)
+- `requirements.txt` — зависимости Python-сервиса (CV + RAG + Flask).
 
 ## `config/` (доменные и prompt-конфиги)
 
@@ -139,6 +142,6 @@
 2. `docker-compose.yml` → как связаны сервисы.
 3. [server-overview.md](./server-overview.md) → маршруты и старт.
 4. [rag-vector_store.md](./rag-vector_store.md) → [rag-retrieval.md](./rag-retrieval.md) → `server/rag_chat.go` → ядро RAG.
-5. [classifier-api_server.md](./classifier-api_server.md) + [classifier-apple_classifier.md](./classifier-apple_classifier.md) → CV-ветка.
+5. [python-api.md](./python-api.md) + [cv-apple_classifier.md](./cv-apple_classifier.md) → CV-ветка.
 6. `migrations/*.sql` + `server/postgres_store.go` → БД и персистентность.
 7. `tests/` и `server/*_test.go` → что считается корректным поведением.

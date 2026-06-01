@@ -1,9 +1,9 @@
-# Разбор: `classifier/registry.py`
+﻿# Разбор: `cv/registry.py`
 
-**Исходный файл:** `classifier/registry.py`  
+**Исходный файл:** `cv/registry.py`  
 **Язык:** Python  
-**Связанные модули:** `classifier/apple_classifier.py`, `rag/crops_config.py`, `config/crops.json`, `classifier/api_server.py`  
-**Кто вызывает:** `api_server.classify_image()` → `get_classifier_for_crop(crop_id)`
+**Связанные модули:** `cv/apple_classifier.py`, `rag/crops_config.py`, `config/crops.json`, `api/app.py`  
+**Кто вызывает:** `api/app.py` (`classify_image`) → `get_classifier_for_crop(crop_id)`
 
 ---
 
@@ -17,7 +17,7 @@
 2. Найти путь к весам `.pth` в переменных окружения.
 3. Создать `AppleClassifier` **один раз на культуру** и переиспользовать (не грузить PyTorch при каждом запросе).
 
-Без `registry.py` пришлось бы дублировать эту логику в `api_server.py`.
+Без `registry.py` пришлось бы дублировать эту логику в `app.py`.
 
 ---
 
@@ -64,7 +64,7 @@ if model_path and not os.path.isabs(model_path):
     model_path = os.path.normpath(os.path.join(os.path.dirname(__file__), model_path))
 ```
 
-Путь считается **от папки `classifier/`**, не от корня проекта.  
+Путь считается **от папки `cv/`**, не от корня проекта.  
 Пример: `MODEL_PATH=../models/apple_classifier.pth`.
 
 ---
@@ -81,7 +81,7 @@ if not crop.get("cv_enabled", False):
 ```
 
 Сейчас в `config/crops.json` только **apple** имеет `"cv_enabled": true`.  
-Для груши/сливы пользователь получит понятную ошибку на русском (HTTP 400 из `api_server`).
+Для груши/сливы пользователь получит понятную ошибку на русском (HTTP 400 из `api/app.py`).
 
 ### Шаг 2 — кэш
 
@@ -166,7 +166,7 @@ MODEL_PATH_APPLE=models/apple_classifier.pth
 
 1. Проверить лог: `Loading model from` vs `No weights`.
 2. Перезапустить контейнер после замены `.pth`.
-3. Убедиться, что порядок классов в датасете совпадает с `CLASS_LABELS` в `apple_classifier.py` (см. [classifier-train_classifier.md](./classifier-train_classifier.md)).
+3. Убедиться, что порядок классов в датасете совпадает с `CLASS_LABELS` в `apple_classifier.py` (см. [cv-train_classifier.md](./cv-train_classifier.md)).
 
 ### Память растёт
 
@@ -178,9 +178,9 @@ MODEL_PATH_APPLE=models/apple_classifier.pth
 
 | Тема | Файл |
 |------|------|
-| Inference и классы | [classifier-apple_classifier.md](./classifier-apple_classifier.md) |
-| HTTP `/classify` | [classifier-api_server.md](./classifier-api_server.md) |
-| Обучение `.pth` | [classifier-train_classifier.md](./classifier-train_classifier.md) |
+| Inference и классы | [cv-apple_classifier.md](./cv-apple_classifier.md) |
+| HTTP `/classify` | [python-api.md](./python-api.md) |
+| Обучение `.pth` | [cv-train_classifier.md](./cv-train_classifier.md) |
 | Флаги культур | `config/crops.json`, `rag/crops_config.py` |
 
 ---

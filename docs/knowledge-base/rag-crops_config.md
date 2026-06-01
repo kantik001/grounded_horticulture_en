@@ -2,7 +2,7 @@
 
 **Исходный файл:** `rag/crops_config.py`  
 **Конфиг:** `config/crops.json`  
-**Кто использует:** `rag/vector_store.py`, `rag/retrieval.py`, `classifier/registry.py`, Go (`server/crops.go`), тесты
+**Кто использует:** `rag/vector_store.py`, `rag/retrieval.py`, `cv/registry.py`, Go (`server/crops.go`), тесты
 
 ---
 
@@ -69,7 +69,7 @@ _CONFIG: Optional[Dict[str, Any]] = None
 
 ### `list_crops()`
 
-Упрощённый ответ для API `GET /crops` в `api_server.py`.
+Упрощённый ответ для API `GET /crops` в `api/app.py`.
 
 ---
 

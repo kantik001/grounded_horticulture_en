@@ -1,7 +1,7 @@
-# Разбор: папка `config/`
+﻿# Разбор: папка `config/`
 
 **Папка:** `config/` — JSON-конфиги без пересборки кода (частично монтируются в Docker).  
-**Кто читает:** Go (`server/`), Python (`rag/`, `classifier/`)
+**Кто читает:** Go (`server/`), Python (`rag/`, `cv/`)
 
 ---
 
@@ -38,7 +38,7 @@
 
 Добавление новой культуры: запись в JSON + папка `data/{crop_id}/` + при необходимости блоки в `prompts.json`, `few_shot.json`, `onboarding.json`.
 
-Env: `CROPS_CONFIG_PATH` (в Docker: `/config/crops.json` на server, `/app/config/crops.json` на classifier).
+Env: `CROPS_CONFIG_PATH` (в Docker: `/config/crops.json` на server, `/app/config/crops.json` на Python-сервис (compose: classifier)).
 
 ---
 
@@ -99,7 +99,7 @@ Env: `PROMPTS_CONFIG_PATH` (server: `/config/prompts.json`).
 | **few_shot / article_titles** | `restart classifier` или reindex не нужен для few_shot; для titles — **reindex** если меняли только titles |
 | **Новые статьи в data/** | reindex — [data-pipeline.md](./data-pipeline.md) |
 
-После изменения `crops.json` в dev также сбросьте кэш Python: перезапуск classifier.
+После изменения `crops.json` в dev также сбросьте кэш Python: перезапуск сервиса classifier (Python).
 
 ---
 

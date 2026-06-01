@@ -6,7 +6,7 @@
 2. **`config/prompts.json`**, **`config/few_shot.json`**, **`config/article_titles.json`** — конфиг вместо хардкода.
 3. **`data/apple/`** — статьи перенесены из `data/*.txt`.
 4. **RAG** — поиск с фильтром `crop_id` в Chroma (`rag/vector_store.py`).
-5. **CV** — `classifier/registry.py`, поле `crop_id` в `/classify`.
+5. **CV** — `cv/registry.py`, поле `crop_id` в `/classify`.
 6. **Go** — `server/crops.go`, `crop_id` в сессии (миграция `002_crop_id.sql`), RAG и classify.
 7. **UI** — выпадающий список культуры, новая сессия при смене.
 

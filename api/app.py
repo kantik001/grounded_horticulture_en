@@ -1,5 +1,5 @@
 """
-Python-сервис: классификация изображений (MobileNetV2) и RAG-retrieval (контекст для Go).
+Python HTTP API: CV (/classify) и RAG retrieval (/rag/context) для Go-сервера.
 """
 
 import os
@@ -14,7 +14,7 @@ from flask_cors import CORS
 
 load_dotenv(os.path.join(_root, ".env"))
 
-from classifier.registry import get_classifier_for_crop
+from cv.registry import get_classifier_for_crop
 from rag.crops_config import list_crops, normalize_crop_id
 from rag.retrieval import retrieve_rag_context
 from rag import vector_store as vs

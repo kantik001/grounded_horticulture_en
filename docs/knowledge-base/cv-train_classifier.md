@@ -1,8 +1,8 @@
-# Разбор: `classifier/train_classifier.py`
+﻿# Разбор: `cv/train_classifier.py`
 
-**Исходный файл:** `classifier/train_classifier.py`  
+**Исходный файл:** `cv/train_classifier.py`  
 **Язык:** Python (PyTorch)  
-**Связанные модули:** `classifier/apple_classifier.py`, `classifier/registry.py`  
+**Связанные модули:** `cv/apple_classifier.py`, `cv/registry.py`  
 **Когда запускать:** локально на машине с GPU/CPU, **не** в прод-контейнере при каждом запросе
 
 ---
@@ -154,7 +154,7 @@ train_model(
 Пример из корня проекта:
 
 ```bash
-cd classifier
+cd cv
 pip install -r requirements.txt
 python train_classifier.py
 ```
@@ -182,7 +182,7 @@ docker compose up -d --build classifier
 
 ---
 
-## Связь train → registry → api_server
+## Связь train → registry → api/app.py
 
 ```mermaid
 flowchart LR
@@ -190,7 +190,7 @@ flowchart LR
     B --> C[MODEL_PATH в .env]
     C --> D[registry.get_classifier_for_crop]
     D --> E[AppleClassifier.load state_dict]
-    E --> F[api_server predict_from_bytes]
+    E --> F[api/app.py predict_from_bytes]
 ```
 
 ---
@@ -217,7 +217,7 @@ flowchart LR
 | Режим | обучение, градиенты | только inference, `eval()` |
 | Аугментации | да (train) | нет |
 | Сохранение весов | да | загрузка весов |
-| HTTP | нет | через registry/api_server |
+| HTTP | нет | через registry + api/app.py |
 
 ---
 
@@ -233,7 +233,7 @@ flowchart LR
 
 ### Файл не подхватывается
 
-Неверный путь, относительный путь не от `classifier/`, не перезапущен контейнер, кэш `_classifiers`.
+Неверный путь, относительный путь не от `cv/`, не перезапущен контейнер, кэш `_classifiers`.
 
 ---
 
@@ -241,9 +241,9 @@ flowchart LR
 
 | Тема | Файл |
 |------|------|
-| Загрузка весов в runtime | [classifier-registry.md](./classifier-registry.md) |
-| Inference | [classifier-apple_classifier.md](./classifier-apple_classifier.md) |
-| Проверка в чате | [classifier-api_server.md](./classifier-api_server.md) |
+| Загрузка весов в runtime | [cv-registry.md](./cv-registry.md) |
+| Inference | [cv-apple_classifier.md](./cv-apple_classifier.md) |
+| Проверка в чате | [python-api.md](./python-api.md) |
 
 ---
 

@@ -1,7 +1,7 @@
 # Разбор: `rag/retrieval.py`
 
 **Исходный файл:** `rag/retrieval.py`  
-**Эндпоинт:** `POST /rag/context` в `classifier/api_server.py`  
+**Эндпоинт:** `POST /rag/context` в `api/app.py`  
 **Дальше:** Go `server/rag_chat.go` собирает промпт и зовёт LLM
 
 ---
@@ -141,7 +141,7 @@ Go **не** ходит в Chroma напрямую — только через Py
 |------|------|
 | Chroma, chunking | [rag-vector_store.md](./rag-vector_store.md) |
 | Верификация чисел | [rag-verifier.md](./rag-verifier.md), `server/rag_chat.go` |
-| HTTP | [classifier-api_server.md](./classifier-api_server.md) |
+| HTTP | [python-api.md](./python-api.md) |
 
 ---
 

@@ -74,7 +74,7 @@ flowchart LR
 
 `reset_vector_store()` — сброс только RAM-кэша (перед admin reindex).
 
-### Admin reindex (`api_server.py`)
+### Admin reindex (`api/app.py`)
 
 ```
 reset_vector_store() → load_vector_store(force_reindex=True)
@@ -134,7 +134,7 @@ store.similarity_search(query, k=k, filter={"crop_id": crop_id})
 |------|------|
 | Сборка контекста для Go | [rag-retrieval.md](./rag-retrieval.md) |
 | Культуры | [rag-crops_config.md](./rag-crops_config.md) |
-| HTTP reindex | [classifier-api_server.md](./classifier-api_server.md) |
+| HTTP reindex | [python-api.md](./python-api.md) |
 
 ---
 

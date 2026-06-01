@@ -1,4 +1,4 @@
-# База знаний по проекту
+﻿# База знаний по проекту
 
 Документация для самостоятельного изучения кода: вы или коллега можете открыть нужный файл и быстро понять, что делает модуль.
 
@@ -7,10 +7,10 @@
 | Документ | Описание |
 |----------|----------|
 | [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) | Карта репозитория: папки и файлы, за что отвечает каждый |
-| [classifier-api_server.md](./classifier-api_server.md) | Подробный разбор `classifier/api_server.py` (Python Flask, не Go) |
-| [classifier-apple_classifier.md](./classifier-apple_classifier.md) | PyTorch MobileNetV2: классы болезней, inference, веса `.pth` |
-| [classifier-registry.md](./classifier-registry.md) | Фабрика и кэш моделей по `crop_id`, `MODEL_PATH`, `cv_enabled` |
-| [classifier-train_classifier.md](./classifier-train_classifier.md) | Обучение модели, датасет, сохранение `apple_classifier.pth` |
+| [python-api.md](./python-api.md) | Подробный разбор `api/app.py` (Python Flask, не Go) |
+| [cv-apple_classifier.md](./cv-apple_classifier.md) | PyTorch MobileNetV2: классы болезней, inference, веса `.pth` |
+| [cv-registry.md](./cv-registry.md) | Фабрика и кэш моделей по `crop_id`, `MODEL_PATH`, `cv_enabled` |
+| [cv-train_classifier.md](./cv-train_classifier.md) | Обучение модели, датасет, сохранение `apple_classifier.pth` |
 | [github-ci.yml.md](./github-ci.yml.md) | GitHub Actions CI: зачем, три job, когда запускается (без DevOps-жаргона) |
 | [migrations-overview.md](./migrations-overview.md) | SQL-миграции 001–003: синтаксис, связи таблиц, как накатываются при старте |
 
@@ -76,6 +76,8 @@
 Именование: `{путь-к-файлу через дефис}.md`, например:
 
 - `server-rag_chat.md` → `server/rag_chat.go`
+- `python-api.md` → `api/app.py`
+- `cv-registry.md` → `cv/registry.py`
 - `rag-retrieval.md` → `rag/retrieval.py`
 
 В начале каждой статьи указывайте **исходный файл** в репозитории и **связанные модули**.

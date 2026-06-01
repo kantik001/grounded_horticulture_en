@@ -1,4 +1,4 @@
-# Разбор: папка `scripts/`
+﻿# Разбор: папка `scripts/`
 
 **Папка:** `scripts/`  
 **Назначение:** утилиты для разработки — **не** часть runtime в Docker (кроме косвенно: те же команды вы делаете руками).
@@ -35,7 +35,7 @@ flowchart TD
 
 ### Как работает (построчно)
 
-1. Добавляет корень проекта в `sys.path` (как `api_server.py`).
+1. Добавляет корень проекта в `sys.path` (как `app.py`).
 2. Ставит **`FORCE_RAG_REINDEX=true`** — тот же флаг, что понимает `rag/vector_store.py`.
 3. Вызывает **`create_vector_store()`** напрямую:
    - читает все `.txt`;
@@ -47,7 +47,7 @@ flowchart TD
 
 ### Запуск
 
-Из корня проекта (нужен Python с зависимостями classifier/rag):
+Из корня проекта (нужен Python с зависимостями `cv/requirements.txt`, пакеты `rag/`):
 
 ```bash
 python scripts/reindex_rag.py
@@ -60,7 +60,7 @@ python scripts/reindex_rag.py
 | Способ | Когда |
 |--------|--------|
 | Админка `admin.html` → Reindex | Docker, есть `ADMIN_SECRET` |
-| `POST /admin/reindex` на classifier | из Go-админки |
+| `POST /admin/reindex` на Python-сервис (compose: classifier) | из Go-админки |
 | `FORCE_RAG_REINDEX=true` при старте classifier | в `.env`, один раз при деплое |
 
 Подробнее: [rag-vector_store.md](./rag-vector_store.md).

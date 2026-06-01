@@ -1,14 +1,14 @@
-# Структура проекта
+﻿# Структура проекта
 
 Карта репозитория и разборы файлов перенесены в базу знаний:
 
 **[docs/knowledge-base/README.md](docs/knowledge-base/README.md)**
 
 - [PROJECT_STRUCTURE.md](docs/knowledge-base/PROJECT_STRUCTURE.md) — все папки и файлы
-- [classifier-api_server.md](docs/knowledge-base/classifier-api_server.md) — разбор `classifier/api_server.py`
-- [classifier-apple_classifier.md](docs/knowledge-base/classifier-apple_classifier.md) — разбор `classifier/apple_classifier.py`
-- [classifier-registry.md](docs/knowledge-base/classifier-registry.md) — разбор `classifier/registry.py`
-- [classifier-train_classifier.md](docs/knowledge-base/classifier-train_classifier.md) — разбор `classifier/train_classifier.py`
+- [python-api.md](docs/knowledge-base/python-api.md) — разбор `api/app.py`
+- [cv-apple_classifier.md](docs/knowledge-base/cv-apple_classifier.md) — разбор `cv/apple_classifier.py`
+- [cv-registry.md](docs/knowledge-base/cv-registry.md) — разбор `cv/registry.py`
+- [cv-train_classifier.md](docs/knowledge-base/cv-train_classifier.md) — разбор `cv/train_classifier.py`
 - [github-ci.yml.md](docs/knowledge-base/github-ci.yml.md) — разбор `.github/workflows/ci.yml`
 - [migrations-overview.md](docs/knowledge-base/migrations-overview.md) — SQL-миграции 001–003
 - RAG: [rag-crops_config](docs/knowledge-base/rag-crops_config.md), [rag-vector_store](docs/knowledge-base/rag-vector_store.md), [rag-retrieval](docs/knowledge-base/rag-retrieval.md), [rag-verifier](docs/knowledge-base/rag-verifier.md)

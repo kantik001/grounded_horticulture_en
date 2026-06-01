@@ -1,4 +1,4 @@
-# Разбор: RAG и LLM на Go (`server/rag_chat.go`)
+﻿# Разбор: RAG и LLM на Go (`server/rag_chat.go`)
 
 **Файл:** `server/rag_chat.go`  
 **Python:** [rag-retrieval.md](./rag-retrieval.md), [rag-verifier.md](./rag-verifier.md)  
