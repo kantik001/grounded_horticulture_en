@@ -23,6 +23,9 @@ func reloadRuntimeConfig() error {
 	if err := loadPhotoTemplates(); err != nil {
 		return err
 	}
+	if err := loadBrandingConfig(); err != nil {
+		return err
+	}
 	log.Printf("Config reloaded: crops=%d", len(cropCatalog.Crops))
 	return nil
 }

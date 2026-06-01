@@ -1,6 +1,6 @@
 # План: Eval RAG (3B) и логи RAG (3C)
 
-**Статус:** запланировано, в коде **ещё не реализовано** — дорожная карта качества после базового RAG.  
+**Статус:** частично реализовано — eval-наборы и `scripts/run_rag_eval.py`, логи `[RAG]` в Go. Связка с feedback в отчёте — в плане.  
 **Связь:** [../ROADMAP.md](../ROADMAP.md), [server-rag_chat.md](./server-rag_chat.md), [data-pipeline.md](./data-pipeline.md)
 
 ---

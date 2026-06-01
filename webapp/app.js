@@ -50,7 +50,33 @@
             cropSelect: document.getElementById('cropSelect'),
             onboardingRoot: document.getElementById('onboardingRoot'),
             onboardingChips: document.getElementById('onboardingChips'),
+            headerTitle: document.getElementById('headerTitle'),
+            headerSubtitle: document.getElementById('headerSubtitle'),
+            cropLabel: document.getElementById('cropLabel'),
+            headerDisclaimer: document.getElementById('headerDisclaimer'),
+            onboardingTitle: document.getElementById('onboardingTitle'),
+            chatDivider: document.getElementById('chatDivider'),
         };
+
+        async function loadBranding() {
+            try {
+                var res = await apiFetch('/branding', { method: 'GET' });
+                var data = parseApiResponseJson(await res.text());
+                if (!data.success || !data.branding) return;
+                var b = data.branding;
+                if (el.headerTitle && b.app_title) {
+                    el.headerTitle.textContent = (b.header_emoji ? b.header_emoji + ' ' : '') + b.app_title;
+                }
+                if (el.headerSubtitle && b.header_subtitle) el.headerSubtitle.textContent = b.header_subtitle;
+                if (el.cropLabel && b.crop_label) el.cropLabel.textContent = b.crop_label;
+                if (el.headerDisclaimer && b.disclaimer) el.headerDisclaimer.textContent = b.disclaimer;
+                if (el.onboardingTitle && b.onboarding_title) el.onboardingTitle.textContent = b.onboarding_title;
+                if (el.chatDivider && b.chat_divider) el.chatDivider.textContent = b.chat_divider;
+                if (b.app_title) document.title = b.app_title + ' — чат';
+            } catch (e) {
+                console.warn('loadBranding', e);
+            }
+        }
 
         function showToast(msg) {
             el.toast.textContent = msg;
@@ -589,7 +615,9 @@
         });
         el.inputText.addEventListener('input', autoResize);
 
-        loadCropsCatalog().then(function() {
+        loadBranding().then(function() {
+            return loadCropsCatalog();
+        }).then(function() {
             return ensureSession();
         }).then(function() {
             return loadOnboarding(cropId);

@@ -9,22 +9,22 @@
 </head>
 <body>
     <header class="chat-header">
-        <h1>🍏 Помощник Садовода</h1>
-        <p>Текст — ответ по статьям (RAG). Фото — классификация и советы.</p>
+        <h1 id="headerTitle">🍏 Помощник Садовода</h1>
+        <p id="headerSubtitle">Текст — ответ по статьям (RAG). Фото — классификация и советы.</p>
         <label class="crop-row">
-            <span>Культура</span>
+            <span id="cropLabel">Культура</span>
             <select id="cropSelect" aria-label="Выбор культуры"></select>
         </label>
-        <p class="disclaimer">Справочная информация. Не заменяет очный осмотр агронома. Решения по препаратам — с учётом инструкций и законодательства.</p>
+        <p class="disclaimer" id="headerDisclaimer">Справочная информация. Не заменяет очный осмотр агронома. Решения по препаратам — с учётом инструкций и законодательства.</p>
     </header>
 
     <div class="onboarding" id="onboardingRoot" hidden>
-        <div class="onboarding-title">Примеры вопросов</div>
+        <div class="onboarding-title" id="onboardingTitle">Примеры вопросов</div>
         <div class="onboarding-chips" id="onboardingChips"></div>
     </div>
 
     <div class="chat-scroll" id="chatScroll" aria-live="polite">
-        <div class="day-divider">Диалог с агрономом</div>
+        <div class="day-divider" id="chatDivider">Диалог с агрономом</div>
         <div id="messagesRoot"></div>
     </div>
 

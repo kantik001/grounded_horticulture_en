@@ -1,4 +1,4 @@
-.PHONY: build up down restart logs clean ps help test test-go test-py smoke
+.PHONY: build up down restart logs clean ps help test test-go test-py smoke eval-retrieval reindex
 
 # Имя проекта Docker Compose
 PROJECT_NAME := union_ai_apple_app
@@ -75,6 +75,15 @@ test: test-go test-py
 ## Smoke API (localhost:8080, TELEGRAM_AUTH_DISABLED=true)
 smoke:
 	powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
+
+## Переиндексация Chroma (нужен Python-сервис / локальное окружение)
+reindex:
+	python scripts/reindex_rag.py
+
+## RAG eval retrieval-only (CLASSIFIER_RAG_URL, classifier на :5000)
+eval-retrieval:
+	pip install requests
+	python scripts/run_rag_eval.py --suite all
 
 ## Помощь по доступным командам
 help:

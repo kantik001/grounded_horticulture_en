@@ -42,6 +42,9 @@ func main() {
 	if err := loadPhotoTemplates(); err != nil {
 		log.Fatalf("Photo templates: %v", err)
 	}
+	if err := loadBrandingConfig(); err != nil {
+		log.Fatalf("Branding config: %v", err)
+	}
 
 	chatStore, err = newChatStore(context.Background(), config.DatabaseURL, config.UploadDir)
 	if err != nil {

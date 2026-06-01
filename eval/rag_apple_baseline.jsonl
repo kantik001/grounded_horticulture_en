@@ -1,0 +1,30 @@
+{"crop_id": "apple", "question": "Какие признаки парши на листьях яблони?", "expect_contains": ["парша", "пятн"], "category": "disease"}
+{"crop_id": "apple", "question": "Чем обрабатывать паршу весной?", "expect_contains": ["фунгицид", "парша"], "category": "disease"}
+{"crop_id": "apple", "question": "Как проявляется мучнистая роса на яблоне?", "expect_contains": ["мучнист", "белый"], "category": "disease"}
+{"crop_id": "apple", "question": "Что такое бактериальный ожог яблони?", "expect_contains": ["ожог", "вилт"], "category": "disease"}
+{"crop_id": "apple", "question": "Признаки чёрной гнили плодов?", "expect_contains": ["гнил", "черн"], "category": "disease"}
+{"crop_id": "apple", "question": "Кедрово-яблоневая ржавчина — что на листьях?", "expect_contains": ["ржав", "пятн"], "category": "disease"}
+{"crop_id": "apple", "question": "Как удобрения влияют на рост колонновидной яблони?", "expect_contains": ["удобрен", "прирост"], "category": "fertilizer"}
+{"crop_id": "apple", "question": "Какая норма азота весной для молодого сада?", "expect_contains": ["азот", "весн"], "category": "fertilizer"}
+{"crop_id": "apple", "question": "Когда вносить калий для яблони?", "expect_contains": ["калий", "осен"], "category": "fertilizer"}
+{"crop_id": "apple", "question": "Какой сорт показал максимальную рентабельность на северном склоне?", "expect_contains": ["рентабельн", "склон"], "category": "variety"}
+{"crop_id": "apple", "question": "Где лучше плодоносит яблоня на склоне?", "expect_contains": ["север", "склон"], "category": "variety"}
+{"crop_id": "apple", "question": "Что такое террасирование склонов для сада?", "expect_contains": ["террас", "эроз"], "category": "variety"}
+{"crop_id": "apple", "question": "Когда проводить зимнюю обрезку яблони?", "expect_contains": ["обрезк", "зим"], "category": "care"}
+{"crop_id": "apple", "question": "Как поливать яблоню в засуху?", "expect_contains": ["полив", "влаж"], "category": "care"}
+{"crop_id": "apple", "question": "Когда собирать урожай яблок летних сортов?", "expect_contains": ["урожай", "сбор"], "category": "care"}
+{"crop_id": "apple", "question": "Как хранить яблоки в погребе?", "expect_contains": ["хранен", "температур"], "category": "care"}
+{"crop_id": "apple", "question": "Яблонная плодожорка — меры борьбы?", "expect_contains": ["плодожорк", "ловушк"], "category": "pest"}
+{"crop_id": "apple", "question": "Какая почва pH подходит яблоне?", "expect_contains": ["ph", "6"], "category": "soil"}
+{"crop_id": "apple", "question": "Органические препараты против парши?", "expect_contains": ["орган", "сера"], "category": "organic"}
+{"crop_id": "apple", "question": "Что делать при появлении пятен на листьях?", "expect_contains": ["пятн", "диагност"], "category": "general"}
+{"crop_id": "apple", "question": "Нужен ли известкование почвы под яблоню?", "expect_contains": ["извест", "почв"], "category": "soil"}
+{"crop_id": "apple", "question": "Как бороться с тлёй на яблоне?", "expect_contains": ["тл", "мыльн"], "category": "pest"}
+{"crop_id": "apple", "question": "Признаки горькой гнили при хранении?", "expect_contains": ["горьк", "гнил"], "category": "disease"}
+{"crop_id": "apple", "question": "Синь на яблоках — причины?", "expect_contains": ["синь", "кальц"], "category": "disease"}
+{"crop_id": "apple", "question": "Какие сорта яблони для северного склона упоминаются?", "expect_contains": ["сорт", "склон"], "category": "variety"}
+{"crop_id": "apple", "question": "Можно ли сажать яблоню на южном склоне без полива?", "expect_contains": ["южн", "склон"], "category": "variety"}
+{"crop_id": "apple", "question": "Как подготовить яму для посадки саженца?", "expect_contains": ["посадк", "яма"], "category": "care"}
+{"crop_id": "apple", "question": "Что такое парша — кратко?", "expect_contains": ["парша"], "category": "disease"}
+{"crop_id": "apple", "question": "Как выращивать ананас на Марсе в открытом грунте?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}
+{"crop_id": "apple", "question": "Курс доллара на завтра для садовода?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}

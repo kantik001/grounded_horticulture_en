@@ -18,6 +18,7 @@ type CropInfo struct {
 	Emoji      string `json:"emoji"`
 	CVEnabled  bool   `json:"cv_enabled"`
 	RAGEnabled bool   `json:"rag_enabled"`
+	UIHidden   bool   `json:"ui_hidden,omitempty"`
 }
 
 type cropsFile struct {
@@ -151,6 +152,9 @@ func promptsForCrop(cropID string) cropPrompts {
 func handleListCrops(c *gin.Context) {
 	list := make([]gin.H, 0, len(cropCatalog.Crops))
 	for id, cinfo := range cropCatalog.Crops {
+		if cinfo.UIHidden {
+			continue
+		}
 		list = append(list, gin.H{
 			"id":          id,
 			"name_ru":     cinfo.NameRU,

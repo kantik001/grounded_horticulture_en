@@ -14,6 +14,7 @@ def crops_config_path(monkeypatch):
     import rag.crops_config as cc
 
     cc._CONFIG = None
+    cc._CONFIG_MTIME = None
 
 
 def test_normalize_crop_id_apple():
@@ -31,3 +32,10 @@ def test_list_crops_has_apple():
     assert data["default_crop"] == "apple"
     assert "apple" in data["crops"]
     assert get_crop("apple").get("rag_enabled") is True
+
+
+def test_demo_hr_sandbox_domain():
+    """Универсальность платформы: RAG без CV."""
+    hr = get_crop("demo_hr")
+    assert hr.get("rag_enabled") is True
+    assert hr.get("cv_enabled") is False
