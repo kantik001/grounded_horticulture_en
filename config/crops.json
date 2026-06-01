@@ -1,4 +1,5 @@
 {
+  "_comment": "Единый каталог культур для Go (server) и Python (rag, api). Пути: CROPS_CONFIG_PATH.",
   "default_crop": "apple",
   "crops": {
     "apple": {

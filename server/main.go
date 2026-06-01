@@ -64,15 +64,10 @@ func main() {
 
 	rl := newRateLimiter(config.RateLimitPerMinute, time.Minute)
 
-	router.GET("/health", handleHealthCheck)
-	router.GET("/api/health", handleHealthCheck)
-	router.GET("/crops", handleListCrops)
-	router.GET("/api/crops", handleListCrops)
-	router.GET("/onboarding", handleOnboarding)
-	router.GET("/api/onboarding", handleOnboarding)
-
+	registerPublicRoutes(router)
 	registerAdminRoutes(router, config)
 	registerProtectedRoutes(router, config, rl)
+	startConfigReloadWatcher()
 
 	serverAddr := fmt.Sprintf(":%s", config.ServerPort)
 	log.Printf("Server starting on port %s", config.ServerPort)

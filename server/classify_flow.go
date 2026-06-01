@@ -32,8 +32,25 @@ func readUploadImage(file multipart.File, size int64) ([]byte, error) {
 	return data, nil
 }
 
+// readImageFromFormFile читает поле multipart image через readUploadImage.
+func readImageFromFormFile(c *gin.Context, field string) ([]byte, error) {
+	fh, err := c.FormFile(field)
+	if err != nil || fh == nil {
+		return nil, nil
+	}
+	f, err := fh.Open()
+	if err != nil {
+		return nil, fmt.Errorf("не удалось открыть файл изображения")
+	}
+	defer f.Close()
+	return readUploadImage(f, fh.Size)
+}
+
 // classifyAndRecommend: Python CV → рекомендация LLM или шаблон из config.
 func classifyAndRecommend(imageData []byte, cropID, caption string, history []Message) (*classifyAndRecommendResult, error) {
+	if err := requireCVEnabled(cropID); err != nil {
+		return nil, err
+	}
 	classification, err := sendToClassifier(imageData, cropID)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка классификации: %w", err)

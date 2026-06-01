@@ -10,7 +10,9 @@ import os
 from typing import Tuple, List
 import json
 
-from cv.apple_classifier import DEFAULT_CLASS_LABELS
+from cv.labels_config import default_class_labels_for_crop
+
+DEFAULT_CLASS_LABELS = default_class_labels_for_crop("apple")
 
 
 class AppleDataset(Dataset):

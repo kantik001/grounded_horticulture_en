@@ -105,21 +105,3 @@ func telegramAuthMiddleware(cfg *Config) gin.HandlerFunc {
 	}
 }
 
-// Регистрирует защищённые маршруты: Telegram auth и rate limit.
-func registerProtectedRoutes(router *gin.Engine, cfg *Config, rl *rateLimiter) {
-	auth := telegramAuthMiddleware(cfg)
-	lim := rateLimitMiddleware(rl)
-
-	mount := func(r gin.IRoutes) {
-		r.POST("/classify", auth, lim, handleClassification)
-		r.POST("/chat", auth, lim, handleChat)
-		r.POST("/session", auth, lim, handleNewSession)
-		r.GET("/history", auth, lim, handleHistory)
-		r.POST("/message", auth, lim, handleMessage)
-		r.POST("/feedback", auth, lim, handleFeedback)
-		r.GET("/media/:token", auth, lim, handleMedia)
-	}
-
-	mount(router.Group(""))
-	mount(router.Group("/api"))
-}

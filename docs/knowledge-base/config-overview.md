@@ -12,6 +12,7 @@
 | `crops.json` | Go + Python | Культуры, `cv_enabled`, `rag_enabled` |
 | `prompts.json` | Go | System-промпты для RAG и фото по `crop_id` |
 | `photo_templates.json` | Go | Статичные рекомендации по фото, если LLM недоступен |
+| `cv_class_labels.json` | Python CV | Метки классов по `crop_id` (порядок = индекс при обучении) |
 | `few_shot.json` | Python `retrieval.py` | Примеры вопрос-ответ для промпта LLM |
 | `onboarding.json` | Go | Чипы «примеров вопросов» в Web App |
 | `article_titles.json` | Python `vector_store.py` | Красивые названия статей в metadata (опционально) |
@@ -35,11 +36,26 @@
 
 - **UI:** `GET /api/crops` → выпадающий список в `index.html`.
 - **Python:** `normalize_crop_id`, фильтр Chroma, проверка CV.
-- **Go:** `normalizeCropID`, создание сессии с `crop_id`.
+- **Go:** `normalizeCropID`, `requireCVEnabled` / `requireRAGEnabled` перед CV и RAG.
 
 Добавление новой культуры: запись в JSON + папка `data/{crop_id}/` + при необходимости блоки в `prompts.json`, `few_shot.json`, `onboarding.json`.
 
-Env: `CROPS_CONFIG_PATH` (в Docker: `/config/crops.json` на server, `/app/config/crops.json` на Python-сервис (compose: classifier)).
+Env: `CROPS_CONFIG_PATH` (в Docker: `/config/crops.json` на server и classifier).
+
+**Перезагрузка:** Go — `SIGHUP` или `CONFIG_RELOAD_INTERVAL_SEC`; Python `rag/crops_config.py` — по mtime файла при следующем `load_crops_config()`.
+
+---
+
+## `cv_class_labels.json`
+
+```json
+{ "apple": ["healthy_apple", "apple_scab", ...] }
+```
+
+- **Python:** `cv/labels_config.py` → `default_class_labels_for_crop(crop_id)`; используется в `apple_classifier.py` и `train_classifier.py`.
+- Env: `CV_CLASS_LABELS_PATH` (Docker: `/config/cv_class_labels.json`).
+
+Для новой культуры с CV: добавьте массив меток и папки датасета с теми же именами.
 
 ---
 
@@ -69,9 +85,9 @@ Env: `PROMPTS_CONFIG_PATH` (server: `/config/prompts.json`).
 
 Env: `PHOTO_TEMPLATES_PATH` (по умолчанию `config/photo_templates.json`, в Docker: `/config/photo_templates.json`).
 
-Редактирование текстов **без пересборки Go** — достаточно `docker compose restart server` (config копируется в образ при build; для hot-reload можно смонтировать volume).
+В `docker-compose.yml` каталог `./config` смонтирован в `/config` (server и classifier). Перезагрузка Go без рестарта: `docker compose kill -s HUP server` или `CONFIG_RELOAD_INTERVAL_SEC`.
 
-Жёсткие правила RAG (без выдумывания, без названий статей) — в коде `rag_chat.go`, не в этом JSON.
+Жёсткие правила RAG (без выдумывания, без названий статей) — в `rag_verify.go` / `rag_chat.go`, не в этом JSON.
 
 ---
 

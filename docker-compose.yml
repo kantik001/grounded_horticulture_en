@@ -26,7 +26,8 @@ services:
     environment:
       - MODEL_PATH=models/apple_classifier.pth
       - CLASSIFIER_PORT=5000
-      - CROPS_CONFIG_PATH=/app/config/crops.json
+      - CROPS_CONFIG_PATH=/config/crops.json
+      - CV_CLASS_LABELS_PATH=/config/cv_class_labels.json
       - FORCE_RAG_REINDEX=${FORCE_RAG_REINDEX:-false}
       - ADMIN_SECRET=${ADMIN_SECRET:-}
     volumes:
@@ -36,6 +37,7 @@ services:
       - ./cv:/app/cv:ro
       - ./rag:/app/rag:ro
       - ./data:/app/data:ro
+      - ./config:/config:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
       interval: 15s
@@ -67,6 +69,9 @@ services:
       - MIGRATIONS_DIR=/migrations
       - CROPS_CONFIG_PATH=/config/crops.json
       - PROMPTS_CONFIG_PATH=/config/prompts.json
+      - PHOTO_TEMPLATES_PATH=/config/photo_templates.json
+      - ONBOARDING_CONFIG_PATH=/config/onboarding.json
+      - CONFIG_RELOAD_INTERVAL_SEC=${CONFIG_RELOAD_INTERVAL_SEC:-0}
       - DATA_DIR=/app/data
       - PYTHON_BASE_URL=http://classifier:5000
       - ADMIN_USER=${ADMIN_USER:-admin}
@@ -75,6 +80,7 @@ services:
     volumes:
       - uploads_data:/data/uploads
       - ./data:/app/data
+      - ./config:/config:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,6 +102,8 @@ services:
       - "80:80"
     volumes:
       - ./webapp/index.html:/usr/share/nginx/html/index.html:ro
+      - ./webapp/app.css:/usr/share/nginx/html/app.css:ro
+      - ./webapp/app.js:/usr/share/nginx/html/app.js:ro
       - ./webapp/admin.html:/usr/share/nginx/html/admin.html:ro
       - ./webapp/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

@@ -73,7 +73,7 @@
 
 ## Python vs Go
 
-| | `rag/verifier.py` | `server/rag_chat.go` |
+| | `rag/verifier.py` | `server/rag_verify.go` (+ `rag_chat.go`) |
 |--|-------------------|----------------------|
 | Где в проде | только тесты / возможное будущее | **да**, после каждого RAG-ответа |
 | Логика чисел | та же идея | `verifyRAGAnswer`, `extractNumbersFromText` |

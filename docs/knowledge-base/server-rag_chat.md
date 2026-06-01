@@ -2,7 +2,7 @@
 
 **Файл:** `server/rag_chat.go`  
 **Python:** [rag-retrieval.md](./rag-retrieval.md), [rag-verifier.md](./rag-verifier.md)  
-**Вызывается из:** `handleChat`, `handleTextMessage` (`messenger.go`)
+**Вызывается из:** `handleChat` (устарел), `handleTextMessage` (`message_handlers.go`)
 
 ---
 
@@ -108,7 +108,9 @@ POST CLASSIFIER_RAG_URL
 
 ---
 
-## `handleChat` — `POST /chat`
+## `handleChat` — `POST /chat` (устарел)
+
+Ответ содержит заголовки `Deprecation: true` и `Link: </message>; rel="successor-version"`. Для новых интеграций используйте `POST /message` с `session_id`.
 
 JSON: `{ "question", "crop_id" }`.
 

@@ -11,7 +11,7 @@ import (
 func handleClassification(c *gin.Context) {
 	imageData, cropID, filename, err := parseClassifyForm(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		jsonError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -19,7 +19,7 @@ func handleClassification(c *gin.Context) {
 
 	result, err := classifyAndRecommend(imageData, cropID, "", nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		jsonError(c, http.StatusInternalServerError, err)
 		return
 	}
 	if result.UsedLLMTemplate {

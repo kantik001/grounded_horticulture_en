@@ -7,19 +7,10 @@ import torch.nn as nn
 from PIL import Image
 from torchvision import models, transforms
 
-# Метки по умолчанию (если в checkpoint нет class_labels).
-DEFAULT_CLASS_LABELS = [
-    "healthy_apple",
-    "apple_scab",
-    "black_rot",
-    "cedar_apple_rust",
-    "healthy_leaf",
-    "powdery_mildew",
-    "fire_blight",
-    "bitter_rot",
-    "blue_mold",
-    "brown_rot",
-]
+from cv.labels_config import default_class_labels_for_crop
+
+# Метки яблони из config/cv_class_labels.json (если в checkpoint нет class_labels).
+DEFAULT_CLASS_LABELS = default_class_labels_for_crop("apple")
 
 
 class AppleClassifier:

@@ -39,7 +39,9 @@ data/val/
 ### Как строится индекс классов
 
 ```python
-from cv.apple_classifier import DEFAULT_CLASS_LABELS
+from cv.labels_config import default_class_labels_for_crop
+
+DEFAULT_CLASS_LABELS = default_class_labels_for_crop("apple")
 
 for idx, class_name in enumerate(self.class_labels):  # фиксированный порядок
     class_dir = os.path.join(root_dir, class_name)
