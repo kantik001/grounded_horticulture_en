@@ -6,7 +6,8 @@
 - [x] `.env.example`
 - [x] README (актуальный flow)
 - [x] `docs/ROADMAP.md`
-- [ ] `docs/ARCHITECTURE.md`
+- [x] `docs/ARCHITECTURE.md` — ядро платформы vs domain pack
+- [x] `docs/DEPLOY.md` — развёртывание и клонирование
 
 ## Фаза 1 — Фундамент
 ### 1A Безопасность
@@ -34,23 +35,28 @@
 - [x] Промпты/few-shot по культуре (config/)
 
 ## Фаза 3 — Качество RAG
-- [ ] 15–25 статей на яблоню
+- [x] 15 статей на яблоню (`data/apple/`, включая article4–15)
 - [x] Скрипт переиндексации (`scripts/reindex_rag.py`, admin reindex)
 - [x] Feedback 👍/👎
+- [x] Sandbox-домен `demo_hr` (RAG без CV) — проверка универсальности
 - [ ] Qdrant (при росте объёма)
 
-### 3B — Eval (план)
-- [ ] Набор **30–50 вопросов** с эталонами / критериями по яблоне
-- [ ] Прогон eval после **reindex** и при смене модели/промпта
-- [ ] Метрики: verify pass rate, «нет в материалах», выборочный manual score
-- [ ] (Опционально) скрипт `scripts/run_rag_eval.py` + `eval/results/`
-- Документация: [`docs/knowledge-base/quality-eval-and-rag-logs.md`](knowledge-base/quality-eval-and-rag-logs.md)
+### 3B — Eval
+- [x] Набор **30 вопросов** по яблоне (`eval/rag_apple_baseline.jsonl`)
+- [x] Mini-eval **demo_hr** (`eval/rag_demo_hr_baseline.jsonl`)
+- [x] `scripts/run_rag_eval.py` + `eval/results/`, `make eval-retrieval`
+- [ ] Прогон eval в CI (опционально, нужен classifier в job)
+- [ ] Manual score 1–5 выборочно после пилота
+- Документация: [`docs/knowledge-base/quality-eval-and-rag-logs.md`](knowledge-base/quality-eval-and-rag-logs.md), [`eval/README.md`](../eval/README.md)
 
-### 3C — Логи RAG (план)
-- [ ] Логировать: вопрос → `crop_id` → top-k фрагменты → verify pass/fail → `message_id`
-- [ ] Связка с **feedback** 👍/👎 для разбора плохих ответов
-- [ ] Без полного тела LLM в логах (политика 1C)
-- Документация: [`docs/knowledge-base/quality-eval-and-rag-logs.md`](knowledge-base/quality-eval-and-rag-logs.md)
+### 3C — Логи RAG
+- [x] Структурированный лог `[RAG]` в Go (`rag_log.go`): crop_id, session_id, fragments, verify
+- [ ] Связка с **feedback** 👍/👎 в админ-отчёте
+- [x] Без полного тела LLM в логах (политика 1C)
+
+### Платформа (параллельно агро)
+- [x] `config/branding.json` + `GET /branding` + загрузка в Web App
+- [x] [`docs/ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/DEPLOY.md`](DEPLOY.md)
 
 ## Фаза 4 — Vision
 - [ ] Датасет и обучение `apple_classifier.pth`

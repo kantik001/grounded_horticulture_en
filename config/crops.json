@@ -19,6 +19,13 @@
       "emoji": "🍑",
       "cv_enabled": false,
       "rag_enabled": false
+    },
+    "demo_hr": {
+      "name_ru": "HR (демо платформы)",
+      "emoji": "📋",
+      "cv_enabled": false,
+      "rag_enabled": true,
+      "ui_hidden": true
     }
   }
 }

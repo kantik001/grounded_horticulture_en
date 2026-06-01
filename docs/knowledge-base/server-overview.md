@@ -40,7 +40,8 @@
 | `postgres_store.go` | SQL, миграции, фото на диске |
 | `analytics_store.go` | feedback, события |
 | `auth_telegram.go`, `middleware.go`, `ratelimit.go` | auth и лимиты |
-| `crops.go`, `onboarding.go`, `admin.go`, `feedback.go` | конфиги и UX API |
+| `crops.go`, `onboarding.go`, `branding.go`, `admin.go`, `feedback.go` | конфиги и UX API |
+| `rag_log.go` | структурированные логи `[RAG]` (без тела LLM) |
 | `health.go` | `handleHealthCheck` |
 
 Все файлы — **`package main`**, один бинарник. Подпапок `internal/` пока нет.
@@ -129,6 +130,7 @@ flowchart TB
 | GET | `/health`, `/api/health` | `handleHealthCheck` | `health.go` |
 | GET | `/crops`, `/api/crops` | `handleListCrops` | `crops.go` |
 | GET | `/onboarding`, `/api/onboarding` | `handleOnboarding` | `onboarding.go` |
+| GET | `/branding`, `/api/branding` | `handleBranding` | `branding.go` |
 
 ### Админка (HTTP Basic, не Telegram)
 

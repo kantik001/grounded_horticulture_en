@@ -50,15 +50,19 @@
 
 → [config-overview.md](./config-overview.md)
 
-- `crops.json`, `prompts.json`, `photo_templates.json`, `cv_class_labels.json`, `few_shot.json`, `onboarding.json`, `article_titles.json`
+- `crops.json`, `prompts.json`, `photo_templates.json`, `cv_class_labels.json`, `few_shot.json`, `onboarding.json`, `article_titles.json`, `branding.json`
 
 ## `data/` (база знаний для RAG)
 
-### `data/apple/`
+### `data/apple/` (15 файлов)
 
-- `article1.txt` — статья/фрагменты знаний по яблоне.
-- `article2.txt` — статья/фрагменты знаний по яблоне.
-- `article3.txt` — статья/фрагменты знаний по яблоне.
+- `article1.txt` … `article3.txt` — исходные статьи.
+- `article4_scab.txt` … `article15_organic_calendar.txt` — болезни, уход, почва, вредители (см. [data-pipeline.md](./data-pipeline.md)).
+
+### `data/demo_hr/` (sandbox платформы)
+
+- `policy_*.txt` — демо HR-политики; домен `demo_hr` в `crops.json` (`ui_hidden`, RAG без CV).
+- Eval: [eval/rag_demo_hr_baseline.jsonl](../../eval/rag_demo_hr_baseline.jsonl).
 
 ### `data/pear/`
 
@@ -71,6 +75,8 @@
 ## `docs/` (обучающие и плановые документы)
 
 - `ROADMAP.md` — общий план развития проекта по фазам.
+- `ARCHITECTURE.md` — **ядро платформы vs domain pack**, чеклист клонирования.
+- `DEPLOY.md` — развёртывание, reindex, eval, новый заказчик.
 - `knowledge-base/` — база знаний по коду (эта папка).
 - `LEARNING_SESSION_1.md` — итоги и выводы сессии 1.
 - `LEARNING_SESSION_2.md` — итоги и выводы сессии 2.
@@ -100,8 +106,17 @@
 → [scripts-overview.md](./scripts-overview.md)
 
 - `reindex_rag.py` — принудительная переиндексация RAG-базы.
+- `run_rag_eval.py` — прогон eval-наборов (`eval/*.jsonl`) → `eval/results/`.
 - `smoke.sh` — smoke-проверки API для Linux/macOS.
 - `smoke.ps1` — smoke-проверки API для Windows PowerShell.
+
+## `eval/` (регрессии RAG)
+
+→ [eval/README.md](../../eval/README.md)
+
+- `rag_apple_baseline.jsonl` — 30 вопросов по яблоне.
+- `rag_demo_hr_baseline.jsonl` — 5 вопросов sandbox HR.
+- `results/` — отчёты прогонов.
 
 ## `server/` (backend API)
 
@@ -113,7 +128,7 @@
 | `llm.go`, `classifier_client.go`, `classify_flow.go`, `photo_recommendations.go`, `photo_templates.go`, `classify_handler.go` | [server-overview.md](./server-overview.md) — LLM и CV по фото |
 | `auth_telegram.go`, `middleware.go`, `ratelimit.go` | [server-auth-and-limits.md](./server-auth-and-limits.md) |
 | `message_handlers.go`, `session_handlers.go`, `chat_session.go`, `postgres_store.go` | [server-chat-and-db.md](./server-chat-and-db.md) |
-| `rag_verify.go`, `crop_guards.go`, `api_errors.go`, `routes.go`, `config_reload.go` | [server-overview.md](./server-overview.md) |
+| `rag_verify.go`, `rag_log.go`, `branding.go`, `crop_guards.go`, `api_errors.go`, `routes.go`, `config_reload.go` | [server-overview.md](./server-overview.md) |
 | `rag_chat.go` | [server-rag_chat.md](./server-rag_chat.md) |
 | `admin.go`, `onboarding.go`, `feedback.go`, `analytics_store.go`, `crops.go` | [server-admin-and-ux-api.md](./server-admin-and-ux-api.md) |
 | `go.mod`, `go.sum` | зависимости Go |
@@ -141,9 +156,10 @@
 ## Как лучше изучать код (рекомендуемый порядок)
 
 1. `README.md` → быстрый контекст по архитектуре.
-2. `docker-compose.yml` → как связаны сервисы.
-3. [server-overview.md](./server-overview.md) → маршруты и старт.
-4. [rag-vector_store.md](./rag-vector_store.md) → [rag-retrieval.md](./rag-retrieval.md) → `server/rag_chat.go` → ядро RAG.
-5. [python-api.md](./python-api.md) + [cv-apple_classifier.md](./cv-apple_classifier.md) → CV-ветка.
-6. `migrations/*.sql` + `server/postgres_store.go` → БД и персистентность.
-7. `tests/` и `server/*_test.go` → что считается корректным поведением.
+2. [`ARCHITECTURE.md`](../ARCHITECTURE.md) → платформа vs domain pack, клонирование.
+3. `docker-compose.yml` → как связаны сервисы.
+4. [server-overview.md](./server-overview.md) → маршруты и старт.
+5. [rag-vector_store.md](./rag-vector_store.md) → [rag-retrieval.md](./rag-retrieval.md) → `server/rag_chat.go` → ядро RAG.
+6. [python-api.md](./python-api.md) + [cv-apple_classifier.md](./cv-apple_classifier.md) → CV-ветка.
+7. `migrations/*.sql` + `server/postgres_store.go` → БД и персистентность.
+8. `tests/`, `eval/`, `server/*_test.go` → качество и регрессии.

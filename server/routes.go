@@ -12,6 +12,8 @@ func registerPublicRoutes(router *gin.Engine) {
 	router.GET("/api/crops", handleListCrops)
 	router.GET("/onboarding", handleOnboarding)
 	router.GET("/api/onboarding", handleOnboarding)
+	router.GET("/branding", handleBranding)
+	router.GET("/api/branding", handleBranding)
 }
 
 // mountProtectedAPI регистрирует защищённые маршруты на одной группе маршрутов.

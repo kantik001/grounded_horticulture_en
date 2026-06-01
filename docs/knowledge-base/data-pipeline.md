@@ -35,7 +35,7 @@ flowchart LR
 - Имя файла: **латиница**, `article_n.txt` (правила admin — [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)).
 - Опционально: красивое название в [config/article_titles.json](./config-overview.md).
 
-Целевой объём для яблони (roadmap): **15–25 статей** в `data/apple/`.
+В репозитории для яблони: **15 статей** в `data/apple/` (`article1`–`article3`, `article4_scab` … `article15_organic_calendar`). Цель пилота — расширять до 25+ по мере сбора материалов.
 
 ### Шаг 2 — положить в репозиторий или upload
 
@@ -71,8 +71,9 @@ data/apple/my_article.txt
 ### Шаг 4 — проверка
 
 1. Логи classifier: `Фрагментов: N`, без «Нет статей».
-2. Чат: вопрос по теме статьи (культура **apple**).
-3. При ошибке verify — числа в ответе должны быть в тексте статей.
+2. `python scripts/run_rag_eval.py --suite apple` (retrieval) — см. [eval/README.md](../../eval/README.md).
+3. Чат: вопрос по теме статьи (культура **apple**); в логах server — строки `[RAG]`.
+4. При ошибке verify — числа в ответе должны быть в тексте статей.
 
 ### Шаг 5 — обслуживание
 
@@ -132,7 +133,8 @@ python train_classifier.py
 
 ## Чеклист сессии 4 (контент)
 
-- [ ] 15–25 `.txt` в `data/apple/`
+- [x] 15 `.txt` в `data/apple/` (базовый набор; цель пилота — 25+)
+- [x] `run_rag_eval.py` + `eval/rag_apple_baseline.jsonl`
 - [ ] reindex после пачки
 - [ ] 5–10 тестовых вопросов вручную
 - [ ] Датасет фото собран

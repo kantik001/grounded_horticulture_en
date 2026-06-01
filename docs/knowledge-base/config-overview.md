@@ -15,6 +15,7 @@
 | `cv_class_labels.json` | Python CV | Метки классов по `crop_id` (порядок = индекс при обучении) |
 | `few_shot.json` | Python `retrieval.py` | Примеры вопрос-ответ для промпта LLM |
 | `onboarding.json` | Go | Чипы «примеров вопросов» в Web App |
+| `branding.json` | Go | Заголовок, дисклеймер, подписи UI (`GET /branding`) |
 | `article_titles.json` | Python `vector_store.py` | Красивые названия статей в metadata (опционально) |
 
 Подробнее по коду: [rag-crops_config.md](./rag-crops_config.md), [server-admin-and-ux-api.md](./server-admin-and-ux-api.md).
@@ -29,12 +30,14 @@
   "crops": {
     "apple": { "name_ru": "Яблоня", "emoji": "🍎", "cv_enabled": true, "rag_enabled": true },
     "pear": { "cv_enabled": false, "rag_enabled": false },
-    "plum": { "cv_enabled": false, "rag_enabled": false }
+    "plum": { "cv_enabled": false, "rag_enabled": false },
+    "demo_hr": { "cv_enabled": false, "rag_enabled": true, "ui_hidden": true }
   }
 }
 ```
 
-- **UI:** `GET /api/crops` → выпадающий список в `index.html`.
+- **`ui_hidden: true`** — домен есть в API/eval, но **не показывается** в `cropSelect` (sandbox платформы).
+- **UI:** `GET /api/crops` → выпадающий список в `index.html` (без скрытых доменов).
 - **Python:** `normalize_crop_id`, фильтр Chroma, проверка CV.
 - **Go:** `normalizeCropID`, `requireCVEnabled` / `requireRAGEnabled` перед CV и RAG.
 
@@ -88,6 +91,20 @@ Env: `PHOTO_TEMPLATES_PATH` (по умолчанию `config/photo_templates.jso
 В `docker-compose.yml` каталог `./config` смонтирован в `/config` (server и classifier). Перезагрузка Go без рестарта: `docker compose kill -s HUP server` или `CONFIG_RELOAD_INTERVAL_SEC`.
 
 Жёсткие правила RAG (без выдумывания, без названий статей) — в `rag_verify.go` / `rag_chat.go`, не в этом JSON.
+
+---
+
+## `branding.json`
+
+Тексты Web App (domain pack): `app_title`, `header_emoji`, `header_subtitle`, `crop_label`, `onboarding_title`, `chat_divider`, `disclaimer`.
+
+- Загрузка: `loadBrandingConfig()` в `main.go` (`branding.go`).
+- API: `GET /branding`, `GET /api/branding` (публично).
+- Web App: `loadBranding()` в `app.js` при старте.
+
+Env: `BRANDING_CONFIG_PATH` (Docker: `/config/branding.json`).
+
+При клоне платформы под другой бизнес меняют **только этот файл** (и при необходимости `webapp/`), не Go.
 
 ---
 

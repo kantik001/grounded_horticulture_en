@@ -97,7 +97,8 @@ type ChatRequest struct {
 }
 
 // answerWithRAG выполняет RAG + LLM с опциональной историей диалога (роли user/assistant).
-func answerWithRAG(q, cropID string, history []Message) (answer string, success bool, errMsg string, ragSoftFail bool) {
+// sessionID — для логов RAG (может быть пустым для POST /chat).
+func answerWithRAG(q, cropID string, history []Message, sessionID string) (answer string, success bool, errMsg string, ragSoftFail bool) {
 	q = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(q, "\r", " "), "\n", " "))
 	if q == "" {
 		return "", false, "Пустой вопрос", false
@@ -121,6 +122,7 @@ func answerWithRAG(q, cropID string, history []Message) (answer string, success 
 		return "", false, msg, false
 	}
 	if !ragOut.Success {
+		logRAGOutcome(cropID, q, len(ragOut.Fragments), false, ragOut.Error, sessionID, true)
 		return "", false, ragOut.Error, true
 	}
 	if config.LLMAPIKey == "" {
@@ -145,6 +147,7 @@ func answerWithRAG(q, cropID string, history []Message) (answer string, success 
 	answer = cleanRAGAnswer(raw)
 	answer = appendRAGDisclaimer(answer)
 	passed, reason := verifyRAGAnswer(answer, ragOut.Fragments)
+	logRAGOutcome(cropID, q, len(ragOut.Fragments), passed, reason, sessionID, !passed)
 	if !passed {
 		return fmt.Sprintf("⚠️ Система не смогла подтвердить ответ источниками. Сообщение администратору: %s\n\nРекомендуем обратиться к агроному.", reason), true, "", false
 	}
@@ -167,7 +170,7 @@ func handleChat(c *gin.Context) {
 		return
 	}
 
-	answer, ok, errMsg, ragSoft := answerWithRAG(q, req.CropID, nil)
+	answer, ok, errMsg, ragSoft := answerWithRAG(q, req.CropID, nil, "")
 	if ragSoft {
 		c.JSON(http.StatusOK, gin.H{"success": false, "error": errMsg})
 		return

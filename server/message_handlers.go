@@ -105,7 +105,7 @@ func handleTextMessage(c *gin.Context, sid, cropID string, telegramID int64, tex
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка истории"})
 		return
 	}
-	answer, ok, errMsg, ragSoft := answerWithRAG(text, cropID, prior)
+	answer, ok, errMsg, ragSoft := answerWithRAG(text, cropID, prior, sid)
 
 	if _, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "user", Content: text, Kind: "text"}); err != nil {
 		log.Printf("AppendMessage user: %v", err)

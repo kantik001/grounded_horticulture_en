@@ -1,6 +1,6 @@
 # План: Eval RAG (3B) и логи RAG (3C)
 
-**Статус:** запланировано, в коде **ещё не реализовано** — дорожная карта качества после базового RAG.  
+**Статус:** частично реализовано — eval-наборы и `scripts/run_rag_eval.py`, логи `[RAG]` в Go. Связка с feedback в отчёте — в плане.  
 **Связь:** [../ROADMAP.md](../ROADMAP.md), [server-rag_chat.md](./server-rag_chat.md), [data-pipeline.md](./data-pipeline.md)
 
 ---
@@ -22,7 +22,7 @@
 
 ### Что подготовить
 
-Файл (предложение): `eval/rag_apple_baseline.jsonl` — по одной строке JSON на вопрос:
+Файлы (реализовано): `eval/rag_apple_baseline.jsonl` (30 вопросов), `eval/rag_demo_hr_baseline.jsonl` (5). Формат строки JSON:
 
 ```json
 {
@@ -62,13 +62,14 @@
 - после смены **`LLM_MODEL`** или правки `prompts.json` / `rag_chat.go`;
 - перед **пилотом** и перед merge крупных PR.
 
-### Реализация (будущая)
+### Реализация
 
-- Скрипт `scripts/run_rag_eval.py`: вопросы → `POST /rag/context` + опционально полный путь через Go `/api/chat`;
-- сохранение в `eval/results/YYYYMMDD_HHMM.json`;
-- порог в CI (опционально): verify pass ≥ X%.
+- Скрипт **`scripts/run_rag_eval.py`**: retrieval-режим → `POST /rag/context`, проверка `expect_contains` / `expect_out_of_scope`.
+- Отчёты: `eval/results/<timestamp>_<suite>.json`.
+- Запуск: `make eval-retrieval` или `python scripts/run_rag_eval.py --suite all` (нужен classifier на `:5000`).
+- См. [eval/README.md](../../eval/README.md), [DEPLOY.md](../DEPLOY.md).
 
-Пока: **ручной чеклист** + таблица в Excel/Notion достаточно.
+**В плане:** full-режим с LLM через Go; порог pass rate в CI.
 
 ---
 
@@ -78,32 +79,35 @@
 
 Разбор плохих ответов и связка с feedback 👍/👎 без логирования тела LLM (политика 1C в ROADMAP).
 
-### Что логировать (предложение)
+### Что логируется (Go, `rag_log.go`)
 
-На каждый текстовый ответ в `handleTextMessage` / `answerWithRAG`:
+На каждый текстовый ответ в `answerWithRAG` (из `handleTextMessage` / `handleChat`):
 
 | Поле | Пример |
 |------|--------|
 | `session_id` | hex |
 | `message_id` | после INSERT assistant |
 | `crop_id` | apple |
-| `question_hash` или первые 80 символов | не полный текст при GDPR — на усмотрение |
-| `category` | disease |
-| `fragment_filenames` | top-k из RAG |
+| `question` | до 120 символов (обрезка) |
+| `crop_id` | apple / demo_hr / … |
+| `session_id` | из чата (пусто для `/chat`) |
+| `fragments` | число фрагментов из RAG |
 | `verify_pass` | true/false |
-| `verify_reason` | если fail |
-| `rag_soft_fail` | нет статей |
-| `latency_ms_rag`, `latency_ms_llm` | опционально |
+| `verify_reason` | текст при fail |
+| `soft_fail` | RAG не нашёл материалы |
 
-**Не логировать:** полный промпт, полный ответ LLM (уже решение проекта).
+Пример в логах сервера: `[RAG] crop_id=apple session_id=… fragments=4 verify_pass=true …`
 
-### Куда писать
+**Не логируется:** полный промпт и тело LLM.
+
+### Куда писать дальше (план)
 
 | Вариант | Плюсы |
 |---------|--------|
 | **Postgres** `rag_query_log` | SQL + связь с `message_id` и feedback |
-| **Файл JSONL** | быстро внедрить |
-| **analytics_events** | уже есть — расширить `event_type: rag_trace` |
+| **analytics_events** | расширить `event_type: rag_trace` |
+
+Сейчас: **stdout** Go (`docker compose logs server`).
 
 Связка с feedback:
 
@@ -127,11 +131,9 @@ WHERE mf.rating = -1;
 
 ```mermaid
 flowchart LR
-    A[15+ статей в data/apple] --> B[Черновик 15 eval-вопросов]
-    B --> C[Ручной прогон в чате]
-    C --> D[Расширить до 30–50]
-    D --> E[Скрипт eval опционально]
-    E --> F[Логи 3C в БД]
+    A[15 статей в data/apple] --> B[eval 30 вопросов + run_rag_eval]
+    B --> C[Ручной прогон в чате + feedback]
+    C --> D[Логи 3C в БД опционально]
     F --> G[Пилот пользователей]
 ```
 
@@ -144,10 +146,11 @@ flowchart LR
 
 ## Чеклист «готово к пилоту» (качество)
 
-- [ ] ≥15 статей, reindex стабилен  
-- [ ] Eval-набор ≥30 вопросов, последний прогон задокументирован  
-- [ ] Verify pass rate известен (хотя бы вручную %)  
-- [ ] Логи или analytics покрывают: fragments + verify + message_id  
+- [x] ≥15 статей в `data/apple/`, reindex после добавления  
+- [x] Eval-набор 30 вопросов (`rag_apple_baseline.jsonl`), скрипт прогона  
+- [ ] Последний прогон eval задокументирован в `eval/results/`  
+- [ ] Verify pass rate известен (retrieval + выборочно full LLM)  
+- [x] Логи `[RAG]` в Go (fragments + verify + session_id)  
 - [ ] 5+ реальных пользователей, feedback разбирается раз в неделю  
 
 ---
