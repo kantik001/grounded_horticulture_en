@@ -13,6 +13,7 @@ _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _few_shot_cache = None
 
 
+# Загружает config/few_shot.json один раз в кэш.
 def _load_few_shot() -> dict:
     global _few_shot_cache
     if _few_shot_cache is not None:
@@ -23,6 +24,7 @@ def _load_few_shot() -> dict:
     return _few_shot_cache
 
 
+# Определяет тему вопроса по ключевым словам: fertilizer, disease, variety, general.
 def classify_question(question: str) -> str:
     q_lower = question.lower()
     if any(
@@ -68,11 +70,13 @@ def classify_question(question: str) -> str:
     return "general"
 
 
+# Возвращает few-shot пример для культуры и категории вопроса.
 def few_shot_for(crop_id: str, category: str) -> str:
     crop_shots = _load_few_shot().get(crop_id, {})
     return crop_shots.get(category) or crop_shots.get("general", "")
 
 
+# Главная функция: поиск в Chroma → context, few_shot, fragments для Go.
 def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str, Any]:
     q = (user_question or "").strip()
     empty = {

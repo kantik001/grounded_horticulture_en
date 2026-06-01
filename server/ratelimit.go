@@ -17,6 +17,7 @@ type rateLimiter struct {
 	counters map[int64][]time.Time
 }
 
+// Создаёт in-memory лимитер запросов на пользователя за окно времени.
 func newRateLimiter(limit int, window time.Duration) *rateLimiter {
 	return &rateLimiter{
 		limit:    limit,
@@ -25,6 +26,7 @@ func newRateLimiter(limit int, window time.Duration) *rateLimiter {
 	}
 }
 
+// Проверяет, не превышен ли лимит для telegram user id.
 func (rl *rateLimiter) allow(userID int64) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -47,6 +49,7 @@ func (rl *rateLimiter) allow(userID int64) bool {
 	return true
 }
 
+// Gin-middleware: 429 при превышении лимита запросов в минуту.
 func rateLimitMiddleware(rl *rateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if rl == nil || rl.limit <= 0 {

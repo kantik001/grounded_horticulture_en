@@ -16,6 +16,7 @@ import (
 
 var safeFilename = regexp.MustCompile(`^[a-zA-Z0-9._-]+\.txt$`)
 
+// Basic Auth для маршрутов /admin (ADMIN_USER / ADMIN_PASSWORD).
 func adminBasicAuth(cfg *Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if cfg.AdminPassword == "" {
@@ -35,6 +36,7 @@ func adminBasicAuth(cfg *Config) gin.HandlerFunc {
 	}
 }
 
+// Регистрирует админские маршруты: статьи, upload, reindex RAG.
 func registerAdminRoutes(router *gin.Engine, cfg *Config) {
 	auth := adminBasicAuth(cfg)
 	g := router.Group("/admin")
@@ -52,6 +54,7 @@ func registerAdminRoutes(router *gin.Engine, cfg *Config) {
 	api.POST("/reindex", handleAdminReindex)
 }
 
+// GET /admin/status: краткая информация о data_dir и числе культур.
 func handleAdminStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":  true,
@@ -60,6 +63,7 @@ func handleAdminStatus(c *gin.Context) {
 	})
 }
 
+// GET /admin/articles: список .txt статей для crop_id.
 func handleAdminListArticles(c *gin.Context) {
 	cropID, err := normalizeCropID(c.Query("crop_id"))
 	if err != nil {
@@ -85,6 +89,7 @@ func handleAdminListArticles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "crop_id": cropID, "files": files})
 }
 
+// POST /admin/upload: загрузка .txt статьи в data/{crop_id}/.
 func handleAdminUpload(c *gin.Context) {
 	cropID, err := normalizeCropID(c.PostForm("crop_id"))
 	if err != nil {
@@ -131,6 +136,7 @@ func handleAdminUpload(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "crop_id": cropID, "filename": name, "path": dst})
 }
 
+// POST /admin/reindex: запуск переиндексации Chroma в Python.
 func handleAdminReindex(c *gin.Context) {
 	if err := triggerRAGReindex(); err != nil {
 		log.Printf("Admin reindex: %v", err)
@@ -140,6 +146,7 @@ func handleAdminReindex(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Переиндексация RAG запущена"})
 }
 
+// Вызывает POST /admin/reindex на Python-сервисе с X-Admin-Secret.
 func triggerRAGReindex() error {
 	if config.AdminSecret == "" {
 		return fmt.Errorf("ADMIN_SECRET не задан")

@@ -47,6 +47,7 @@ func handleFeedback(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message_id": req.MessageID, "rating": req.Rating})
 }
 
+// Пишет событие аналитики в Postgres для текущего Telegram-пользователя.
 func logAnalytics(c *gin.Context, eventType string, payload map[string]any) {
 	tgUser, err := ctxTelegramUser(c)
 	if err != nil || chatStore == nil {

@@ -25,14 +25,8 @@ class AppleClassifier:
         'brown_rot'
     ]
 
+    # Инициализирует MobileNetV2, загружает веса и задаёт препроцессинг 224×224.
     def __init__(self, model_path: str = '../models/mobilenet_v2-b0353104.pth', num_classes: int = 10):
-        """
-        Initialize the classifier with MobileNetV2 model.
-
-        Args:
-            model_path: Path to pre-trained weights file (optional)
-            num_classes: Number of classes for classification
-        """
 
         # load_dotenv()
 
@@ -53,16 +47,8 @@ class AppleClassifier:
             )
         ])
 
+    # Собирает MobileNetV2 с головой на num_classes и подгружает checkpoint при наличии.
     def _load_model(self, model_path: str = None) -> nn.Module:
-        """
-        Load MobileNetV2 model with custom classifier head.
-
-        Args:
-            model_path: Path to pre-trained weights
-
-        Returns:
-            Loaded PyTorch model
-        """
         # Load pretrained MobileNetV2
         model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
 
@@ -80,16 +66,8 @@ class AppleClassifier:
 
         return model
 
+    # Классифицирует изображение по пути к файлу; возвращает label, confidence, top-3.
     def predict(self, image_path: str) -> Dict[str, Any]:
-        """
-        Predict class for a given image.
-
-        Args:
-            image_path: Path to the input image
-
-        Returns:
-            Dictionary containing prediction results
-        """
         try:
             # Load and preprocess image
             image = Image.open(image_path).convert('RGB')
@@ -133,16 +111,8 @@ class AppleClassifier:
                 'image_processed': False
             }
 
+    # Классифицирует изображение из байтов (для HTTP API Flask).
     def predict_from_bytes(self, image_bytes: bytes) -> Dict[str, Any]:
-        """
-        Predict class from image bytes (for API usage).
-
-        Args:
-            image_bytes: Raw image bytes
-
-        Returns:
-            Dictionary containing prediction results
-        """
         try:
             # Load image from bytes
             image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
@@ -187,16 +157,8 @@ class AppleClassifier:
             }
 
 
+# Фабрика: создаёт экземпляр AppleClassifier с опциональным путём к весам.
 def create_classifier(model_path: str = None) -> AppleClassifier:
-    """
-    Factory function to create an AppleClassifier instance.
-
-    Args:
-        model_path: Optional path to model weights
-
-    Returns:
-        Initialized AppleClassifier
-    """
     return AppleClassifier(model_path=model_path)
 
 

@@ -11,6 +11,7 @@ import (
 
 var onboardingQuestions map[string][]string
 
+// Загружает config/onboarding.json (подсказки-вопросы по культурам).
 func loadOnboardingConfig() error {
 	path := onboardingConfigPath()
 	body, err := os.ReadFile(path)
@@ -20,6 +21,7 @@ func loadOnboardingConfig() error {
 	return json.Unmarshal(body, &onboardingQuestions)
 }
 
+// Возвращает путь к onboarding.json.
 func onboardingConfigPath() string {
 	if p := os.Getenv("ONBOARDING_CONFIG_PATH"); p != "" {
 		return p
@@ -36,6 +38,7 @@ func onboardingConfigPath() string {
 	return filepath.Join("config", "onboarding.json")
 }
 
+// GET /onboarding: примеры вопросов для выбранной культуры.
 func handleOnboarding(c *gin.Context) {
 	cropID, err := normalizeCropID(c.Query("crop_id"))
 	if err != nil {

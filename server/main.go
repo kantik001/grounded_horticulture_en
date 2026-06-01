@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Точка входа: Postgres, миграции, каталоги культур, Gin-роутер и HTTP-сервер.
 func main() {
 	config = loadConfig()
 	logStartup(config)

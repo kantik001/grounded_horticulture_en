@@ -27,12 +27,8 @@ class AppleDataset(Dataset):
             ...
     """
 
+    # Сканирует подпапки root_dir (классы) и собирает пути к изображениям.
     def __init__(self, root_dir: str, transform=None):
-        """
-        Args:
-            root_dir: Directory with all class subdirectories
-            transform: Optional transform to be applied on a sample
-        """
         self.root_dir = root_dir
         self.transform = transform
         self.class_labels = []
@@ -52,9 +48,11 @@ class AppleDataset(Dataset):
         print(f"Loaded {len(self.image_paths)} images from {len(self.class_labels)} classes")
         print(f"Classes: {self.class_labels}")
 
+    # Возвращает число образцов в датасете.
     def __len__(self):
         return len(self.image_paths)
 
+    # Возвращает пару (тензор изображения, индекс класса) по индексу.
     def __getitem__(self, idx):
         img_path = self.image_paths[idx]
         image = Image.open(img_path).convert('RGB')
@@ -66,6 +64,7 @@ class AppleDataset(Dataset):
         return image, label
 
 
+# Обучает MobileNetV2 на train/val и сохраняет лучшую модель в save_path.
 def train_model(
     train_dir: str,
     val_dir: str,
@@ -75,18 +74,6 @@ def train_model(
     learning_rate: float = 0.001,
     save_path: str = 'apple_classifier.pth'
 ):
-    """
-    Train MobileNetV2 model for apple disease classification.
-
-    Args:
-        train_dir: Path to training data directory
-        val_dir: Path to validation data directory
-        num_classes: Number of classes
-        epochs: Number of training epochs
-        batch_size: Training batch size
-        learning_rate: Learning rate for optimizer
-        save_path: Path to save the best model
-    """
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")

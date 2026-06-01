@@ -25,7 +25,7 @@ type PredictionCandidate struct {
 	Confidence float64 `json:"confidence"`
 }
 
-// sendToClassifier sends image to Python classification service.
+// POST multipart с фото и crop_id в Python-сервис классификации.
 func sendToClassifier(imageData []byte, cropID string) (*ClassificationResult, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)

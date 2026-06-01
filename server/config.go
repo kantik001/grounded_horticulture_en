@@ -35,6 +35,7 @@ type Config struct {
 
 var config *Config
 
+// Загружает .env и собирает Config из переменных окружения.
 func loadConfig() *Config {
 	godotenv.Load()
 	godotenv.Load("../.env")
@@ -71,6 +72,7 @@ func loadConfig() *Config {
 	}
 }
 
+// Возвращает значение переменной окружения или defaultValue.
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -78,6 +80,7 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+// Пишет в лог основные настройки при старте сервера.
 func logStartup(cfg *Config) {
 	log.Printf("Starting Apple Gardener Server...")
 	log.Printf("Python Classify URL: %s", cfg.PythonServiceURL)

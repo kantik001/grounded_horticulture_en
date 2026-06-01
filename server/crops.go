@@ -27,6 +27,7 @@ type cropsFile struct {
 
 var cropCatalog cropsFile
 
+// Загружает config/crops.json в память (cropCatalog).
 func loadCropCatalog() error {
 	path := cropsConfigPath()
 	body, err := os.ReadFile(path)
@@ -46,6 +47,7 @@ func loadCropCatalog() error {
 	return nil
 }
 
+// Возвращает путь к crops.json (env или поиск по типовым каталогам).
 func cropsConfigPath() string {
 	if p := os.Getenv("CROPS_CONFIG_PATH"); p != "" {
 		return p
@@ -62,6 +64,7 @@ func cropsConfigPath() string {
 	return filepath.Join("config", "crops.json")
 }
 
+// Нормализует crop_id и проверяет, что культура есть в каталоге.
 func normalizeCropID(raw string) (string, error) {
 	id := strings.TrimSpace(strings.ToLower(raw))
 	if id == "" {
@@ -73,6 +76,7 @@ func normalizeCropID(raw string) (string, error) {
 	return id, nil
 }
 
+// Возвращает культуру по умолчанию из каталога.
 func defaultCropID() string {
 	if cropCatalog.DefaultCrop != "" {
 		return cropCatalog.DefaultCrop
@@ -80,6 +84,7 @@ func defaultCropID() string {
 	return "apple"
 }
 
+// Возвращает описание культуры по id.
 func cropInfo(cropID string) (CropInfo, bool) {
 	c, ok := cropCatalog.Crops[cropID]
 	return c, ok
@@ -94,6 +99,7 @@ type cropPrompts struct {
 
 var promptCatalog map[string]cropPrompts
 
+// Загружает config/prompts.json (системные промпты RAG и фото).
 func loadPromptCatalog() error {
 	path := promptsConfigPath()
 	body, err := os.ReadFile(path)
@@ -106,6 +112,7 @@ func loadPromptCatalog() error {
 	return nil
 }
 
+// Возвращает путь к prompts.json.
 func promptsConfigPath() string {
 	if p := os.Getenv("PROMPTS_CONFIG_PATH"); p != "" {
 		return p
@@ -122,6 +129,7 @@ func promptsConfigPath() string {
 	return filepath.Join("config", "prompts.json")
 }
 
+// Промпты для культуры с fallback на default_crop.
 func promptsForCrop(cropID string) cropPrompts {
 	if p, ok := promptCatalog[cropID]; ok {
 		return p
@@ -137,6 +145,7 @@ func promptsForCrop(cropID string) cropPrompts {
 	}
 }
 
+// GET /crops: список культур и флаги cv_enabled / rag_enabled.
 func handleListCrops(c *gin.Context) {
 	list := make([]gin.H, 0, len(cropCatalog.Crops))
 	for id, cinfo := range cropCatalog.Crops {
