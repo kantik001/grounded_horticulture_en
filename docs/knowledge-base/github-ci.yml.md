@@ -137,7 +137,7 @@ docker build -f Dockerfile.webapp -t doctor-gardens-webapp:ci .
 
 ### Что **не** делает
 
-- **Не** собирает `Dockerfile.classifier` (Python + PyTorch) — он тяжёлый и дольше; в CI сознательно урезали scope.
+- Собирает **`Dockerfile.classifier`** (Python + PyTorch) — дольше server/webapp, но ловит поломки entrypoint и `api/app.py`.
 - **Не** запускает `docker compose up` и smoke-тесты — только `build`.
 - **Не** пушит образы в registry — тег `:ci` локальный на runner, после job удаляется.
 
@@ -196,7 +196,7 @@ docker build -f Dockerfile.server -t test-server .
 - Деплой на сервер (CD) — отдельная тема.
 - E2E smoke (`scripts/smoke.ps1`) — не в workflow.
 - Eval RAG 30–50 вопросов — в плане, не в ci.yml.
-- Сборка classifier-образа — долго, опционально добавить позже.
+- Сборка classifier-образа включена в job `docker-build` (кэш Docker на runner).
 
 ---
 

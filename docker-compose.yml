@@ -1,3 +1,6 @@
+# Имя проекта Compose (сеть/volumes). Совпадает с Makefile PROJECT_NAME.
+name: union_ai_apple
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -71,6 +74,7 @@ services:
       - PROMPTS_CONFIG_PATH=/config/prompts.json
       - PHOTO_TEMPLATES_PATH=/config/photo_templates.json
       - ONBOARDING_CONFIG_PATH=/config/onboarding.json
+      - BRANDING_CONFIG_PATH=/config/branding.json
       - CONFIG_RELOAD_INTERVAL_SEC=${CONFIG_RELOAD_INTERVAL_SEC:-0}
       - DATA_DIR=/app/data
       - PYTHON_BASE_URL=http://classifier:5000
@@ -110,6 +114,12 @@ services:
       server:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   models:
