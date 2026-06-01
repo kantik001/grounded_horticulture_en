@@ -132,7 +132,7 @@ pytest tests/ -v --tb=short
 make test-py
 ```
 
-Ожидание: **7 passed** (4 verifier + 3 crops).
+Ожидание: **8 passed** (4 verifier + 4 crops, включая `demo_hr`).
 
 ---
 

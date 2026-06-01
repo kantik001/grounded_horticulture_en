@@ -10,7 +10,9 @@
 | `admin.html` | Админка: upload `.txt` + reindex RAG |
 | `nginx.conf` | Прокси `/api/` → Go, раздача HTML |
 
-Сборка: `Dockerfile.webapp` копирует все три файла в образ.
+Сборка: `Dockerfile.webapp` копирует `index.html`, `app.css`, `app.js`, `admin.html` в образ.
+
+Тексты шапки и дисклеймера подгружаются из **`GET /api/branding`** (`config/branding.json`) — при клоне платформы правят JSON, не обязательно HTML.
 
 ---
 
@@ -64,7 +66,7 @@ flowchart LR
 
 ### Внешний вид
 
-- Стиль «мессенджер»: пузыри user/assistant, шапка с дисклеймером.
+- Стиль «мессенджер»: пузыри user/assistant, шапка с дисклеймером (id: `headerTitle`, `headerSubtitle`, `headerDisclaimer` — заполняются из branding API).
 - CSS-переменные `--tg-theme-*` — подстройка под тему Telegram.
 - Выбор **культуры** (`cropSelect`) в шапке.
 - Онбординг: чипы с примерами вопросов (`onboardingRoot`).
@@ -96,6 +98,8 @@ tg.ready(); tg.expand();
 1. Пробует сохранённый base, затем `/api/`, затем `http://127.0.0.1:8080/api/`.
 2. Считает ответ «нашим», если JSON с полем **`success`** (отсекает чужие 404 HTML).
 3. Запоминает рабочий base в sessionStorage.
+
+При старте: `loadBranding()` → `/branding`, затем `loadCropsCatalog()` → `/crops`.
 
 Типичные пути:
 

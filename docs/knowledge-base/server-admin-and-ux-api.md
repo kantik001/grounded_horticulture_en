@@ -69,7 +69,7 @@ HTTP POST на `{PYTHON_BASE_URL}/admin/reindex` с заголовком **`X-Ad
 }
 ```
 
-`normalizeCropID` / `getCropMeta` — используются в messenger и RAG.
+`normalizeCropID` / `getCropMeta` — используются в обработчиках чата и RAG.
 
 ---
 
@@ -120,7 +120,7 @@ INSERT в `analytics_events` (`event_type`, `payload` JSONB).
 Вызывается из:
 
 - `feedback.go`
-- `logAnalytics` в `messenger.go` (`rag_answer`, `photo_classified`)
+- `logAnalytics` в `message_handlers.go` (`rag_answer`, `photo_classified`)
 
 Примеры SQL-аналитики в `LEARNING_SESSION_5.md`.
 

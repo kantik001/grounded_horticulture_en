@@ -6,6 +6,7 @@
 | Файл | Платформа | Задача |
 |------|-----------|--------|
 | `reindex_rag.py` | Python | Пересобрать Chroma из `data/` |
+| `run_rag_eval.py` | Python | Прогон `eval/*.jsonl` (retrieval), отчёт в `eval/results/` |
 | `smoke.sh` | Linux / macOS / Git Bash | Быстрая проверка API Go |
 | `smoke.ps1` | Windows PowerShell | То же для Windows |
 
@@ -71,6 +72,33 @@ python scripts/reindex_rag.py
 - **Admin/API** — когда всё в Docker и volume `chroma_data` внутри контейнера.
 
 Путь `chroma_db` должен быть тот же, что видит процесс, который потом отвечает на `/rag/context`.
+
+---
+
+## `run_rag_eval.py` — регрессии RAG
+
+### Зачем
+
+Проверить, что после reindex или смены промптов **retrieval** находит ожидаемые фрагменты (без вызова LLM).
+
+### Наборы
+
+| `--suite` | Файл |
+|-----------|------|
+| `apple` | `eval/rag_apple_baseline.jsonl` (30 Q) |
+| `demo_hr` | `eval/rag_demo_hr_baseline.jsonl` (5 Q) |
+| `all` | оба |
+
+### Запуск
+
+```bash
+# classifier должен слушать :5000
+set CLASSIFIER_RAG_URL=http://localhost:5000/rag/context
+python scripts/run_rag_eval.py --suite apple
+make eval-retrieval
+```
+
+Отчёт: `eval/results/`. Подробнее: [eval/README.md](../../eval/README.md), [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md).
 
 ---
 
