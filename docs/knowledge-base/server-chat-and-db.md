@@ -1,6 +1,6 @@
 ﻿# Разбор: чат и база данных (`server/`)
 
-**Файлы:** `messenger.go`, `chat_session.go`, `postgres_store.go`, `classify_flow.go` (фото)  
+**Файлы:** `message_handlers.go`, `session_handlers.go`, `chat_session.go`, `postgres_store.go`, `classify_flow.go` (фото)  
 **БД:** схема в [migrations-overview.md](./migrations-overview.md)  
 **Клиент:** [webapp-overview.md](./webapp-overview.md) → `POST /message`
 
@@ -67,7 +67,7 @@ flowchart TD
 
 ---
 
-## Сессии: `messenger.go` + `chat_session.go`
+## Сессии: `session_handlers.go` + `chat_session.go`
 
 ### `POST /session`
 
@@ -134,17 +134,20 @@ JSON `{ "crop_id": "apple" }` → новая `chat_sessions` + `session_id` (ran
 
 | | `/chat` | `/message` |
 |--|---------|------------|
+| Статус | **устарел** (`Deprecation: true`) | основной API |
 | История в БД | нет | да |
 | Сессия | не нужна | обязательна |
-| Использование | простой API | Web App |
+| Использование | legacy-интеграции | Telegram Web App |
 
-Оба используют `answerWithRAG`, но messenger сохраняет диалог.
+Web App шлёт только **`POST /api/message`**. Оба текстовых пути вызывают `answerWithRAG` (с проверкой `rag_enabled`); `/message` сохраняет диалог в Postgres.
+
+Фото в чате: multipart `image` + `readImageFromFormFile` → `classifyAndRecommend` (проверка `cv_enabled`).
 
 ---
 
-## Аналитика из messenger
+## Аналитика из обработчиков сообщений
 
-`logAnalytics` → `analytics_events` (см. [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)):
+`logAnalytics` в `message_handlers.go` → `analytics_events` (см. [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)):
 
 - `rag_answer` — успех/soft_fail RAG
 - `photo_classified` — результат CV
@@ -164,4 +167,4 @@ JSON `{ "crop_id": "apple" }` → новая `chat_sessions` + `session_id` (ran
 
 ## Краткий итог
 
-**messenger** — бизнес-логика чата (текст/фото). **postgres_store** — персистентность и изоляция пользователей. **chat_session** — хелперы Telegram user из context. Это центр продукта для садовода в Telegram.
+**message_handlers** / **session_handlers** — бизнес-логика чата (текст/фото). **postgres_store** — персистентность и изоляция пользователей. **chat_session** — хелперы Telegram user из context. Это центр продукта для садовода в Telegram.

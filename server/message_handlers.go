@@ -1,113 +1,12 @@
 package main
 
 import (
-	"io"
 	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
-
-var chatStore *ChatStore
-
-type newSessionRequest struct {
-	CropID string `json:"crop_id"`
-}
-
-// handleNewSession создаёт новую сессию переписки для текущего Telegram-пользователя.
-func handleNewSession(c *gin.Context) {
-	tgUser, err := ctxTelegramUser(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": err.Error()})
-		return
-	}
-
-	cropID := defaultCropID()
-	var req newSessionRequest
-	if c.Request.ContentLength > 0 {
-		_ = c.ShouldBindJSON(&req)
-	}
-	if req.CropID != "" {
-		cropID, err = normalizeCropID(req.CropID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
-			return
-		}
-	}
-
-	ctx := c.Request.Context()
-	userID, err := chatStore.UpsertUser(ctx, tgUser)
-	if err != nil {
-		log.Printf("UpsertUser: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка базы данных"})
-		return
-	}
-	sid, err := chatStore.CreateSession(ctx, userID, cropID)
-	if err != nil {
-		log.Printf("CreateSession: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Не удалось создать сессию"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"session_id": sid,
-		"crop_id":    cropID,
-		"messages":   []ChatMessage{},
-	})
-}
-
-// handleHistory возвращает сохранённую историю по session_id.
-func handleHistory(c *gin.Context) {
-	id := strings.TrimSpace(c.Query("session_id"))
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Нужен параметр session_id"})
-		return
-	}
-	tgUser, err := ctxTelegramUser(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": err.Error()})
-		return
-	}
-	msgs, err := chatStore.ListMessages(c.Request.Context(), id, tgUser.ID)
-	if err != nil {
-		if err == errSessionNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Сессия не найдена"})
-			return
-		}
-		log.Printf("ListMessages: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка базы данных"})
-		return
-	}
-	cropID, _ := chatStore.SessionCropID(c.Request.Context(), id, tgUser.ID)
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"session_id": id,
-		"crop_id":    cropID,
-		"messages":   msgs,
-	})
-}
-
-// handleMedia отдаёт фото по token (только владельцу сессии).
-func handleMedia(c *gin.Context) {
-	token := strings.TrimSpace(c.Param("token"))
-	tgUser, err := ctxTelegramUser(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": err.Error()})
-		return
-	}
-	ok, err := chatStore.UserCanAccessImage(c.Request.Context(), token, tgUser.ID)
-	if err != nil || !ok {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Файл не найден"})
-		return
-	}
-	data, err := chatStore.ReadImage(token)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Файл не найден"})
-		return
-	}
-	c.Data(http.StatusOK, "application/octet-stream", data)
-}
 
 type jsonMessageRequest struct {
 	SessionID string `json:"session_id"`
@@ -122,6 +21,7 @@ func handleMessage(c *gin.Context) {
 	var text string
 	var cropIDRaw string
 	var imageData []byte
+	var err error
 
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		if err := c.Request.ParseMultipartForm(int64(maxUploadImageBytes + 512*1024)); err != nil {
@@ -131,27 +31,10 @@ func handleMessage(c *gin.Context) {
 		sessionID = strings.TrimSpace(c.PostForm("session_id"))
 		text = strings.TrimSpace(c.PostForm("text"))
 		cropIDRaw = strings.TrimSpace(c.PostForm("crop_id"))
-		fh, err := c.FormFile("image")
-		if err == nil && fh != nil {
-			if fh.Size > maxUploadImageBytes {
-				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Изображение слишком большое (макс. 10 МБ)"})
-				return
-			}
-			f, err := fh.Open()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Не удалось прочитать файл"})
-				return
-			}
-			imageData, err = io.ReadAll(io.LimitReader(f, maxUploadImageBytes+1))
-			_ = f.Close()
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Ошибка чтения изображения"})
-				return
-			}
-			if len(imageData) > maxUploadImageBytes {
-				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Изображение слишком большое"})
-				return
-			}
+		imageData, err = readImageFromFormFile(c, "image")
+		if err != nil {
+			jsonError(c, http.StatusBadRequest, err)
+			return
 		}
 	} else {
 		var req jsonMessageRequest
@@ -171,13 +54,13 @@ func handleMessage(c *gin.Context) {
 
 	tgUser, err := ctxTelegramUser(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": err.Error()})
+		jsonError(c, http.StatusUnauthorized, err)
 		return
 	}
 
 	requestCropID, err := normalizeCropID(cropIDRaw)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		jsonError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -198,7 +81,7 @@ func handleMessage(c *gin.Context) {
 	handleTextMessage(c, sid, sessionCrop, tgUser.ID, text)
 }
 
-// Отвечает JSON с полной историей сообщений сессии после обработки.
+// respondWithMessages отвечает JSON с полной историей сообщений сессии после обработки.
 func respondWithMessages(c *gin.Context, sid, cropID string, telegramID int64, extra gin.H, status int) {
 	msgs, err := chatStore.ListMessages(c.Request.Context(), sid, telegramID)
 	if err != nil {
@@ -213,7 +96,7 @@ func respondWithMessages(c *gin.Context, sid, cropID string, telegramID int64, e
 	c.JSON(status, body)
 }
 
-// Текстовое сообщение: RAG+LLM, сохранение в БД, ответ с историей.
+// handleTextMessage: RAG+LLM, сохранение в БД, ответ с историей.
 func handleTextMessage(c *gin.Context, sid, cropID string, telegramID int64, text string) {
 	ctx := c.Request.Context()
 	prior, err := chatStore.HistoryForLLM(ctx, sid, telegramID, 0)
@@ -255,7 +138,7 @@ func handleTextMessage(c *gin.Context, sid, cropID string, telegramID int64, tex
 	respondWithMessages(c, sid, cropID, telegramID, nil, http.StatusOK)
 }
 
-// Фото в чате: CV, рекомендация LLM, сохранение token и истории.
+// handleImageMessage: CV, рекомендация LLM, сохранение token и истории.
 func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, caption string, imageData []byte) {
 	ctx := c.Request.Context()
 	prior, err := chatStore.HistoryForLLM(ctx, sid, telegramID, 0)
@@ -274,7 +157,7 @@ func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, ca
 
 	result, clsErr := classifyAndRecommend(imageData, cropID, caption, prior)
 	if clsErr != nil {
-		errText := clsErr.Error()
+		errText := publicAPIError(clsErr)
 		log.Printf("Messenger classify error: %v", clsErr)
 		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{
 			Role: "user", Content: caption, Kind: "image", ImageToken: token,

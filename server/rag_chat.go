@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -93,109 +90,7 @@ func buildRAGUserPrompt(question, context, fewShot, taskIntro string) string {
 }
 
 // ragAnswerDisclaimer — общий дисклеймер в конце ответа (без названий статей).
-const ragAnswerDisclaimer = "Справочная информация из базы знаний. Не заменяет очный осмотр агронома; решения по препаратам — с учётом инструкций и законодательства."
-
-var (
-	reNumberWord = regexp.MustCompile(`\b\d+(?:\.\d+)?\b`)
-	reMultiSpace = regexp.MustCompile(`\s+`)
-	reThink      = regexp.MustCompile(`(?i)</?think>`)
-	reAnswerTag  = regexp.MustCompile(`(?i)</?answer>`)
-	reSystemTag  = regexp.MustCompile(`(?i)</?system>`)
-	reAbot       = regexp.MustCompile(`(?i)\bаботчик\b`)
-	reIntro      = regexp.MustCompile(`(?i)^(Хорошо|Давайте посмотрим|Итак|Я думаю|мне нужно ответить|Из контекста видно|Теперь я понимаю|Из таблицы видно)[,:.]?\s*`)
-	reSourceLine = regexp.MustCompile(`(?im)^\s*Источник:.*\n?`)
-)
-
-// Извлекает числа из текста для верификации ответа RAG.
-func extractNumbersFromText(s string) []float64 {
-	s = strings.ReplaceAll(s, ",", ".")
-	var out []float64
-	for _, m := range reNumberWord.FindAllString(s, -1) {
-		v, err := strconv.ParseFloat(m, 64)
-		if err == nil {
-			out = append(out, v)
-		}
-	}
-	return out
-}
-
-// Убирает служебные теги и вводные фразы из ответа LLM.
-func cleanRAGAnswer(text string) string {
-	if text == "" {
-		return "Ответ не сформирован корректно."
-	}
-	text = reThink.ReplaceAllString(text, "")
-	text = reAnswerTag.ReplaceAllString(text, "")
-	text = reSystemTag.ReplaceAllString(text, "")
-	text = reAbot.ReplaceAllString(text, "")
-	text = reIntro.ReplaceAllString(text, "")
-	text = strings.TrimSpace(reMultiSpace.ReplaceAllString(text, " "))
-	if text == "" {
-		return "Ответ не сформирован корректно."
-	}
-	return text
-}
-
-// Удаляет строки «Источник:» из ответа перед показом пользователю.
-func stripSourceAttribution(answer string) string {
-	s := reSourceLine.ReplaceAllString(answer, "")
-	return strings.TrimSpace(reMultiSpace.ReplaceAllString(s, " "))
-}
-
-// Добавляет дисклеймер в конец ответа RAG.
-func appendRAGDisclaimer(answer string) string {
-	body := stripSourceAttribution(answer)
-	if body == "" {
-		return ragAnswerDisclaimer
-	}
-	if strings.Contains(body, "Не заменяет очный осмотр агронома") {
-		return body
-	}
-	return body + "\n\n" + ragAnswerDisclaimer
-}
-
-// Текст ответа без дисклеймера и источников — для проверки чисел.
-func answerBodyForVerification(answer string) string {
-	s := stripSourceAttribution(answer)
-	s = strings.ReplaceAll(s, ragAnswerDisclaimer, "")
-	return strings.TrimSpace(s)
-}
-
-// Проверяет, что все числа в ответе есть во фрагментах статей.
-func verifyRAGAnswer(answer string, fragments []RAGFragment) (bool, string) {
-	if answer == "" {
-		return false, "Ответ отсутствует"
-	}
-	var ctx strings.Builder
-	for _, f := range fragments {
-		ctx.WriteString(f.Content)
-		ctx.WriteByte('\n')
-	}
-	numsAns := extractNumbersFromText(answerBodyForVerification(answer))
-	if len(numsAns) == 0 {
-		return true, "Верификация пройдена"
-	}
-	numsCtx := extractNumbersFromText(ctx.String())
-	var missing []float64
-	for _, n := range numsAns {
-		found := false
-		for _, c := range numsCtx {
-			if math.Abs(n-c) < 0.01 {
-				found = true
-				break
-			}
-		}
-		if !found {
-			missing = append(missing, n)
-		}
-	}
-	if len(missing) > 0 {
-		return false, fmt.Sprintf("Число(а) %v не найдены в источниках.", missing)
-	}
-	return true, "Верификация пройдена"
-}
-
-// ChatRequest — тело POST /chat от Web App.
+// ChatRequest — тело POST /chat (устаревший API; используйте POST /message).
 type ChatRequest struct {
 	Question string `json:"question"`
 	CropID   string `json:"crop_id"`
@@ -210,13 +105,16 @@ func answerWithRAG(q, cropID string, history []Message) (answer string, success 
 
 	cropID, err := normalizeCropID(cropID)
 	if err != nil {
-		return "", false, err.Error(), false
+		return "", false, publicAPIError(err), false
+	}
+	if err := requireRAGEnabled(cropID); err != nil {
+		return "", false, publicAPIError(err), false
 	}
 
 	ragOut, err := fetchRAGContext(q, cropID)
 	if err != nil {
 		log.Printf("RAG fetch error: %v", err)
-		msg := err.Error()
+		msg := publicAPIError(err)
 		if ragOut != nil && ragOut.Error != "" {
 			msg = ragOut.Error
 		}
@@ -242,7 +140,7 @@ func answerWithRAG(q, cropID string, history []Message) (answer string, success 
 	raw, err := callLLMCompletion(msgs)
 	if err != nil {
 		log.Printf("LLM chat error: %v", err)
-		return "", false, err.Error(), false
+		return "", false, publicAPIError(err), false
 	}
 	answer = cleanRAGAnswer(raw)
 	answer = appendRAGDisclaimer(answer)
@@ -253,7 +151,7 @@ func answerWithRAG(q, cropID string, history []Message) (answer string, success 
 	return answer, true, "", false
 }
 
-// POST /chat: RAG + LLM без сессии (одиночный вопрос из Web App).
+// POST /chat: RAG + LLM без сессии. Устарел: Web App использует POST /message.
 func handleChat(c *gin.Context) {
 	var req ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

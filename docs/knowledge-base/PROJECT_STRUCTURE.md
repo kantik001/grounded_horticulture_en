@@ -41,6 +41,7 @@
 ## `cv/` (Python: Computer Vision)
 
 - `apple_classifier.py` — MobileNetV2, inference. → [cv-apple_classifier.md](./cv-apple_classifier.md)
+- `labels_config.py` — метки классов из `cv_class_labels.json`
 - `registry.py` — фабрика и кэш моделей по `crop_id`. → [cv-registry.md](./cv-registry.md)
 - `train_classifier.py` — offline-обучение `.pth`. → [cv-train_classifier.md](./cv-train_classifier.md)
 - `requirements.txt` — зависимости Python-сервиса (CV + RAG + Flask).
@@ -49,7 +50,7 @@
 
 → [config-overview.md](./config-overview.md)
 
-- `crops.json`, `prompts.json`, `photo_templates.json`, `few_shot.json`, `onboarding.json`, `article_titles.json`
+- `crops.json`, `prompts.json`, `photo_templates.json`, `cv_class_labels.json`, `few_shot.json`, `onboarding.json`, `article_titles.json`
 
 ## `data/` (база знаний для RAG)
 
@@ -111,7 +112,8 @@
 | `main.go`, `config.go`, `health.go` | [server-overview.md](./server-overview.md) — старт, конфиг, health |
 | `llm.go`, `classifier_client.go`, `classify_flow.go`, `photo_recommendations.go`, `photo_templates.go`, `classify_handler.go` | [server-overview.md](./server-overview.md) — LLM и CV по фото |
 | `auth_telegram.go`, `middleware.go`, `ratelimit.go` | [server-auth-and-limits.md](./server-auth-and-limits.md) |
-| `messenger.go`, `chat_session.go`, `postgres_store.go` | [server-chat-and-db.md](./server-chat-and-db.md) |
+| `message_handlers.go`, `session_handlers.go`, `chat_session.go`, `postgres_store.go` | [server-chat-and-db.md](./server-chat-and-db.md) |
+| `rag_verify.go`, `crop_guards.go`, `api_errors.go`, `routes.go`, `config_reload.go` | [server-overview.md](./server-overview.md) |
 | `rag_chat.go` | [server-rag_chat.md](./server-rag_chat.md) |
 | `admin.go`, `onboarding.go`, `feedback.go`, `analytics_store.go`, `crops.go` | [server-admin-and-ux-api.md](./server-admin-and-ux-api.md) |
 | `go.mod`, `go.sum` | зависимости Go |
@@ -130,7 +132,7 @@
 
 → [webapp-overview.md](./webapp-overview.md)
 
-- `index.html` — Telegram Web App: чат, фото, онбординг, feedback.
+- `index.html`, `app.css`, `app.js` — Telegram Web App: чат, фото, онбординг, feedback.
 - `admin.html` — админка: upload `.txt`, reindex (Basic auth).
 - `nginx.conf` — прокси `/api/` → Go, раздача HTML.
 

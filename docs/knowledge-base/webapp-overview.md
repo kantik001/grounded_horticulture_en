@@ -4,7 +4,9 @@
 
 | Файл | Роль |
 |------|------|
-| `index.html` | Чат для пользователя (Telegram Web App) |
+| `index.html` | Разметка чата (Telegram Web App) |
+| `app.css` | Стили чата |
+| `app.js` | Логика чата, `apiFetch`, сессии, `/message` |
 | `admin.html` | Админка: upload `.txt` + reindex RAG |
 | `nginx.conf` | Прокси `/api/` → Go, раздача HTML |
 
@@ -58,7 +60,7 @@ flowchart LR
 
 ## `index.html` — пользовательский чат
 
-~970 строк: **вёрстка + стили + один `<script>`**. Telegram Web App SDK подключается с `telegram.org`.
+**`index.html`** — разметка; **`app.css`** — стили; **`app.js`** — логика (~600 строк). Telegram Web App SDK подключается с `telegram.org`.
 
 ### Внешний вид
 
@@ -205,7 +207,7 @@ loadCropsCatalog → ensureSession → loadOnboarding
 
 | Тема | Файл |
 |------|------|
-| Маршруты Go | [server-overview.md](./server-overview.md), `server/messenger.go` |
+| Маршруты Go | [server-overview.md](./server-overview.md), `server/message_handlers.go` |
 | Онбординг JSON | `config/onboarding.json` |
 | Admin backend | `server/admin.go` |
 | RAG после reindex | [rag-vector_store.md](./rag-vector_store.md) |
