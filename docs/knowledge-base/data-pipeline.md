@@ -35,7 +35,7 @@ flowchart LR
 - Имя файла: **латиница**, `article_n.txt` (правила admin — [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)).
 - Опционально: красивое название в [config/article_titles.json](./config-overview.md).
 
-В репозитории для яблони: **15 статей** в `data/apple/` (`article1`–`article3`, `article4_scab` … `article15_organic_calendar`). Цель пилота — расширять до 25+ по мере сбора материалов.
+В репозитории для яблони: **16 статей** в `data/apple/` (`article1`–`article3`, `article4_scab` … `article15_organic_calendar`, `article16_planting_pit`). Цель пилота — расширять до 25+ по мере сбора материалов.
 
 ### Шаг 2 — положить в репозиторий или upload
 

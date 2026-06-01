@@ -35,7 +35,7 @@
 - [x] Промпты/few-shot по культуре (config/)
 
 ## Фаза 3 — Качество RAG
-- [x] 15 статей на яблоню (`data/apple/`, включая article4–15)
+- [x] 16 статей на яблоню (`data/apple/`, включая article4–16)
 - [x] Скрипт переиндексации (`scripts/reindex_rag.py`, admin reindex)
 - [x] Feedback 👍/👎
 - [x] Sandbox-домен `demo_hr` (RAG без CV) — проверка универсальности
