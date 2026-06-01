@@ -42,7 +42,7 @@ make eval-retrieval
 
 ## Когда гонять
 
-- После `reindex_rag.py` / admin reindex.
+- После `reindex_rag.py` / admin reindex. В Docker после reindex: `docker compose restart classifier` (см. [data-pipeline.md](../docs/knowledge-base/data-pipeline.md)).
 - После правок `data/`, `prompts.json`, `few_shot.json`.
 - Перед пилотом и перед релизом.
 

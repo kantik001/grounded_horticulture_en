@@ -54,10 +54,11 @@
 
 ## `data/` (база знаний для RAG)
 
-### `data/apple/` (15 файлов)
+### `data/apple/` (16 файлов)
 
 - `article1.txt` … `article3.txt` — исходные статьи.
-- `article4_scab.txt` … `article15_organic_calendar.txt` — болезни, уход, почва, вредители (см. [data-pipeline.md](./data-pipeline.md)).
+- `article4_scab.txt` … `article15_organic_calendar.txt` — болезни, уход, почва, вредители.
+- `article16_planting_pit.txt` — посадочная яма (см. [data-pipeline.md](./data-pipeline.md)).
 
 ### `data/demo_hr/` (sandbox платформы)
 
