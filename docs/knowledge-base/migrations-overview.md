@@ -26,7 +26,7 @@
 ```mermaid
 sequenceDiagram
     participant DC as docker compose up server
-    participant Go as server/main.go
+    participant Go as server (main.go + postgres_store.go)
     participant PG as PostgreSQL
 
     DC->>Go: старт контейнера

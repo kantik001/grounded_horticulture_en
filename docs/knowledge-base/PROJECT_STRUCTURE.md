@@ -105,7 +105,8 @@
 
 | Файл | Статья |
 |------|--------|
-| `main.go` | [server-overview.md](./server-overview.md) |
+| `main.go`, `config.go`, `health.go` | [server-overview.md](./server-overview.md) — старт, конфиг, health |
+| `llm.go`, `classifier_client.go`, `photo_recommendations.go`, `classify_handler.go` | [server-overview.md](./server-overview.md) — LLM и CV по фото |
 | `auth_telegram.go`, `middleware.go`, `ratelimit.go` | [server-auth-and-limits.md](./server-auth-and-limits.md) |
 | `messenger.go`, `chat_session.go`, `postgres_store.go` | [server-chat-and-db.md](./server-chat-and-db.md) |
 | `rag_chat.go` | [server-rag_chat.md](./server-rag_chat.md) |

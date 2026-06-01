@@ -47,7 +47,7 @@
 
 | Документ | Описание |
 |----------|----------|
-| [server-overview.md](./server-overview.md) | Старт, конфиг, таблица всех маршрутов, LLM/CV из `main.go` |
+| [server-overview.md](./server-overview.md) | Старт, конфиг, маршруты, разбиение `server/*.go` (LLM, CV, health) |
 | [server-auth-and-limits.md](./server-auth-and-limits.md) | Telegram initData, CORS, rate limit |
 | [server-chat-and-db.md](./server-chat-and-db.md) | `POST /message`, Postgres, фото, сессии |
 | [server-rag_chat.md](./server-rag_chat.md) | RAG + LLM + verify + дисклеймер |
