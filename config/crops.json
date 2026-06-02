@@ -12,13 +12,13 @@
       "name_ru": "Груша",
       "emoji": "🍐",
       "cv_enabled": false,
-      "rag_enabled": false
+      "rag_enabled": true
     },
     "plum": {
       "name_ru": "Слива",
       "emoji": "🍑",
       "cv_enabled": false,
-      "rag_enabled": false
+      "rag_enabled": true
     },
     "demo_hr": {
       "name_ru": "HR (демо платформы)",
