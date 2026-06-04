@@ -43,6 +43,7 @@ func registerAdminRoutes(router *gin.Engine, cfg *Config) {
 	g.Use(auth)
 	g.GET("/status", handleAdminStatus)
 	g.GET("/articles", handleAdminListArticles)
+	g.GET("/feedback", handleAdminFeedback)
 	g.POST("/upload", handleAdminUpload)
 	g.POST("/reindex", handleAdminReindex)
 
@@ -50,6 +51,7 @@ func registerAdminRoutes(router *gin.Engine, cfg *Config) {
 	api.Use(auth)
 	api.GET("/status", handleAdminStatus)
 	api.GET("/articles", handleAdminListArticles)
+	api.GET("/feedback", handleAdminFeedback)
 	api.POST("/upload", handleAdminUpload)
 	api.POST("/reindex", handleAdminReindex)
 }
@@ -60,6 +62,45 @@ func handleAdminStatus(c *gin.Context) {
 		"success":  true,
 		"data_dir": config.DataDir,
 		"crops":    len(cropCatalog.Crops),
+	})
+}
+
+// GET /admin/feedback?rating=-1&limit=50 — оценки ответов с вопросом и текстом ответа.
+func handleAdminFeedback(c *gin.Context) {
+	if chatStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"success": false, "error": "База данных недоступна"})
+		return
+	}
+	ratingFilter := 0
+	if r := strings.TrimSpace(c.Query("rating")); r != "" {
+		switch r {
+		case "1", "-1":
+			if _, err := fmt.Sscanf(r, "%d", &ratingFilter); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "rating: 1, -1 или пусто"})
+				return
+			}
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "rating: 1, -1 или пусто"})
+			return
+		}
+	}
+	limit := 50
+	if l := strings.TrimSpace(c.Query("limit")); l != "" {
+		if _, err := fmt.Sscanf(l, "%d", &limit); err != nil || limit < 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "limit: число 1–200"})
+			return
+		}
+	}
+	items, summary, err := chatStore.ListFeedbackReport(c.Request.Context(), ratingFilter, limit)
+	if err != nil {
+		log.Printf("Admin feedback list: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Не удалось загрузить оценки"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"summary": summary,
+		"items":   items,
 	})
 }
 

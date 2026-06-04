@@ -22,6 +22,8 @@ RESULTS_DIR = EVAL_DIR / "results"
 
 SUITES = {
     "apple": EVAL_DIR / "rag_apple_baseline.jsonl",
+    "pear": EVAL_DIR / "rag_pear_baseline.jsonl",
+    "plum": EVAL_DIR / "rag_plum_baseline.jsonl",
     "demo_hr": EVAL_DIR / "rag_demo_hr_baseline.jsonl",
 }
 
@@ -120,7 +122,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="RAG eval (retrieval)")
     parser.add_argument(
         "--suite",
-        choices=["apple", "demo_hr", "all"],
+        choices=["apple", "pear", "plum", "demo_hr", "all"],
         default="apple",
         help="Набор вопросов",
     )

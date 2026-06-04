@@ -45,6 +45,14 @@ def get_pretty_title(crop_id: str, filename: str) -> str:
     return _titles_map().get(crop_id, {}).get(filename, filename)
 
 
+# Мета-файлы папок data/, которые не являются базой знаний и не индексируются.
+_SKIP_FILENAMES = {"readme.txt"}
+
+
+def _is_indexable(file_path: str) -> bool:
+    return os.path.basename(file_path).lower() not in _SKIP_FILENAMES
+
+
 # Собирает .txt из data/{crop}/ и устаревшие data/*.txt в корне (как apple).
 def load_all_documents():
     all_docs = []
@@ -55,9 +63,13 @@ def load_all_documents():
         if not os.path.isdir(crop_dir):
             continue
         for file_path in glob.glob(os.path.join(crop_dir, "*.txt")):
+            if not _is_indexable(file_path):
+                continue
             all_docs.extend(_load_file(crop_id, file_path))
 
     for file_path in glob.glob(os.path.join(DATA_DIR, "*.txt")):
+        if not _is_indexable(file_path):
+            continue
         all_docs.extend(_load_file("apple", file_path))
 
     return all_docs

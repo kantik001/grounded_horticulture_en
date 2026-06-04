@@ -54,7 +54,7 @@ func loadConfig() *Config {
 		PythonRAGURL:     getEnv("CLASSIFIER_RAG_URL", "http://classifier:5000/rag/context"),
 		LLMAPIKey:        getEnv("LLM_API_KEY", ""),
 		LLMBaseURL:       getEnv("LLM_BASE_URL", "https://openrouter.ai/api"),
-		LLMModel:         getEnv("LLM_MODEL", "openrouter/free"),
+		LLMModel:         getEnv("LLM_MODEL", "openai/gpt-oss-120b:free"),
 		ServerPort:       getEnv("SERVER_PORT", "8080"),
 
 		TelegramBotToken:       getEnv("TELEGRAM_BOT_TOKEN", ""),

@@ -85,6 +85,14 @@ eval-retrieval:
 	pip install requests
 	python scripts/run_rag_eval.py --suite all
 
+## RAG eval по одной культуре: make eval-apple | eval-pear | eval-plum
+eval-apple:
+	python scripts/run_rag_eval.py --suite apple
+eval-pear:
+	python scripts/run_rag_eval.py --suite pear
+eval-plum:
+	python scripts/run_rag_eval.py --suite plum
+
 ## Помощь по доступным командам
 help:
 	@echo "Доступные команды:"
