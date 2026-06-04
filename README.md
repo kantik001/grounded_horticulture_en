@@ -105,7 +105,7 @@ cp .env.example .env
 
 Отредактируйте `.env` при необходимости:
 
-См. **`.env.example`**: `TELEGRAM_BOT_TOKEN`, `LLM_API_KEY`, `DATABASE_URL`, `UPLOAD_DIR`, `CLASSIFIER_URL`, `CLASSIFIER_RAG_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_REQUESTS_PER_MINUTE`.
+См. **`.env.example`**: `TELEGRAM_BOT_TOKEN`, **`LLM_API_KEY`** (ключ OpenRouter или другого OpenAI-совместимого API; переменная `OPENROUTER_API_KEY` не используется), `DATABASE_URL`, `UPLOAD_DIR`, `CLASSIFIER_URL`, `CLASSIFIER_RAG_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_REQUESTS_PER_MINUTE`.
 
 **Локальная разработка без Telegram:** в `.env` задайте `TELEGRAM_AUTH_DISABLED=true` (только dev, не для продакшена).
 

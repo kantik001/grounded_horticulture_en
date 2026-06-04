@@ -24,25 +24,25 @@ function Test-Endpoint {
         Write-Host "[FAIL] $Name HTTP $($r.StatusCode)"
         $script:failed++
     } catch {
-        Write-Host "[FAIL] $Name — $($_.Exception.Message)"
+        Write-Host "[FAIL] $Name - $($_.Exception.Message)"
         $script:failed++
     }
     return $null
 }
 
 Write-Host "Smoke test: $BaseUrl"
-Write-Host "(ожидается TELEGRAM_AUTH_DISABLED=true для /api/session)"
+Write-Host "Requires TELEGRAM_AUTH_DISABLED=true for POST /api/session"
 
 Test-Endpoint "health" GET "/health" | Out-Null
 Test-Endpoint "crops" GET "/api/crops" | Out-Null
-$sessionBody = '{"crop_id":"apple"}'
+$sessionBody = @{ crop_id = "apple" } | ConvertTo-Json -Compress
 $sessionJson = Test-Endpoint "session" POST "/api/session" $sessionBody
 if ($sessionJson -match '"session_id"\s*:\s*"([^"]+)"') {
     $sid = $Matches[1]
     Test-Endpoint "onboarding" GET "/api/onboarding?crop_id=apple" | Out-Null
     Write-Host "[INFO] session_id=$sid"
 } else {
-    Write-Host "[WARN] session: проверьте TELEGRAM_AUTH_DISABLED или initData"
+    Write-Host "[WARN] session: set TELEGRAM_AUTH_DISABLED=true or pass Telegram initData"
 }
 
 if ($failed -gt 0) {

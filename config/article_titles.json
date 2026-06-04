@@ -96,13 +96,39 @@
     "article94_rootstocks_azerbaijan.txt": "Подвои яблони и груши: опыт Азербайджана (справочно)",
     "article95_explant_sanitation_in_vitro.txt": "Подвои яблони: санация эксплантов in vitro (справочно)",
     "article96_mycorrhiza_sk7_prikubanskoe.txt": "Яблоня Прикубанское: микориза саженцев на СК-7",
-    "article97_basis_mother_plantings_2024.txt": "Маточники яблони категории «Базисные» (2024)"
+    "article97_basis_mother_plantings_2024.txt": "Маточники яблони категории «Базисные» (2024)",
+    "article98_skfnc_research_productivity_review.txt": "СКФНЦ: оценка результатов интенсивного садоводства (справочно)",
+    "article99_genetic_resources_2026.txt": "Генофонд плодовых: селекция, Rvi6, ДНК-маркеры (2026, справочно)",
+    "article100_fruit_quality_lifecycle_2026.txt": "Качество плодов: хранение и переработка (2026, справочно)",
+    "article101_productivity_complex_relief_krasnodar.txt": "Продуктивность сада на сложном рельефе (Краснодар)",
+    "article102_sk_rootstocks_yield_potential.txt": "Подвои СК: урожайность и глубина посадки 25–29 см",
+    "article103_biotech_agro_models_2026.txt": "Биологизированные модели сада: крона, защита, почва (2026)",
+    "article104_winter_adaptive_fruit_south.txt": "Зимний период и урожайность плодовых на юге",
+    "article105_kbr_gis_fruit_placement.txt": "КБР: ГИС-размещение яблони и абрикоса",
+    "article106_golden_stream_st_rootstocks.txt": "Яблоня Золотой поток на подвоях серии Ст",
+    "article107_phytosanitary_protection_2026.txt": "Защита сада: марссониоз, интегрированные схемы (2026)",
+    "article108_wild_fruit_disturbed_lands_kbr.txt": "Дикоплодовые на нарушенных землях КБР (справочно)",
+    "article109_mountain_agroecology_review_kbr.txt": "Горное садоводство: экология и антропоген (справочно)",
+    "article110_apple_adaptive_potential_krasnodar.txt": "Яблоня: адаптивный потенциал по рельефу (Краснодар)",
+    "article111_st_rootstocks_belarus.txt": "Подвои Ст для яблони в Беларуси (справочно)",
+    "article112_apple_arid_astrahan_rootstocks.txt": "Яблоня в ариде: подвои южной селекции (Астрахань)",
+    "article113_gis_soil_orchard_mapping.txt": "ГИС-картирование плодородия почв под сады",
+    "article114_seedlings_growth_stimulators_orel.txt": "Саженцы яблони: НВ-101 и гуматы (Орел)",
+    "article115_climate_fruit_placement_kbr.txt": "Климат и размещение плодовых в горах (КБР)",
+    "article116_hardwood_cuttings_apple_rootstocks.txt": "Подвои яблони: одревесневшие черенки (Крым)",
+    "article117_apple_moisture_predgorie_kbr.txt": "Яблоня в предгорье КБР: увлажнение и урожай",
+    "article118_kazakhstan_orchard_development.txt": "Садоводство Казахстана (справочно)",
+    "article119_apple_terraces_kbr_2025.txt": "Яблоня на террасах КБР: экспозиция склонов (2025)",
+    "article120_pollinators_siberian_apple_kbr.txt": "Яблоня: сорта-опылители и синхрон цветения",
+    "article121_sk_rootstocks_arid_astrahan_bio.txt": "Подвои СК в ариде: зимостойкость и биопотенциал"
   },
   "pear": {
     "article1_pear_varieties_stavropol.txt": "Груша: сорта и подвои, урожайность (Ставрополь, юг России)",
     "article2_belarus_chelate_foliar.txt": "Груша: хелатные подкормки (Беларусь, справочно)",
     "article3_pear_green_cuttings_rooting.txt": "Груша: зелёное черенкование с регуляторами роста",
-    "article4_pear_quince_mother_trees.txt": "Груша и айва: маточные деревья и черенки"
+    "article4_pear_quince_mother_trees.txt": "Груша и айва: маточные деревья и черенки",
+    "article5_pear_adaptive_potential_kbr.txt": "Груша: адаптационный потенциал в горах КБР",
+    "article6_pear_winter_hardiness_slopes.txt": "Груша: зимостойкость сортов на склонах КБР"
   },
   "plum": {
     "article1_plum_winter_hardiness_maykop.txt": "Слива: зимостойкость сортов (Майкоп, предгорье)",
@@ -120,6 +146,12 @@
     "article13_nursery_bacterial_canker.txt": "Слива: питомник без бактериального рака корней",
     "article14_plum_ppv_bud_take.txt": "Слива: толерантность к шарке (PPV), приживаемость глазков",
     "article15_plum_in_vitro_growth_stimulators.txt": "Слива: микроразмножение in vitro (справочно)",
-    "article16_plum_ppv_pcr_diagnosis.txt": "Слива: ПЦР-диагностика вируса шарки (PPV)"
+    "article16_plum_ppv_pcr_diagnosis.txt": "Слива: ПЦР-диагностика вируса шарки (PPV)",
+    "article17_plum_clone_rootstocks_green_cuttings.txt": "Слива: клоновые подвои, зелёное черенкование",
+    "article18_plum_renklod_altana_astrahan_rootstocks.txt": "Слива Ренклод Альтана: клоновые подвои (Астрахань)",
+    "article19_crimea_rootstocks_plum_peach_apricot.txt": "Подвои сливы, персика, абрикоса — серия Крым",
+    "article20_plum_terraces_kbr_productivity.txt": "Слива на террасах КБР: экспозиция и урожай (2025)",
+    "article21_stonefruit_rootstocks_south_russia.txt": "Косточковые: устойчивые подвои для юга",
+    "article22_plum_rootstock_deficiency_score.txt": "Слива: оценка дефицитности подвоев (чек-лист)"
   }
 }

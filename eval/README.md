@@ -7,7 +7,14 @@
 | Файл | Домен (`crop_id`) | Вопросов |
 |------|-------------------|----------|
 | `rag_apple_baseline.jsonl` | `apple` | 30 |
+| `rag_pear_baseline.jsonl` | `pear` | 8 |
+| `rag_plum_baseline.jsonl` | `plum` | 10 |
 | `rag_demo_hr_baseline.jsonl` | `demo_hr` | 5 |
+
+> Наборы синхронизированы с академической базой статей (журнал «Плодоводство и
+> виноградарство Юга России»): подвои, склоны/террасы КБР, питание, защита
+> (марссониоз, плодожорка). Старые вопросы под удалённые микро-статьи (мучнистая
+> роса, бактериальный ожог, ржавчина, тля и т.п.) убраны — их нет в текущей KB.
 
 Формат строки JSON:
 
@@ -30,6 +37,8 @@
 ```bash
 # Retrieval-only (Python POST /rag/context)
 python scripts/run_rag_eval.py --suite apple
+python scripts/run_rag_eval.py --suite pear
+python scripts/run_rag_eval.py --suite plum
 python scripts/run_rag_eval.py --suite demo_hr
 python scripts/run_rag_eval.py --suite all
 
