@@ -11,11 +11,12 @@
 Проверяют **логику без Docker, без LLM, без Chroma, без Telegram**:
 
 - верно ли парсятся числа в ответе RAG;
-- корректно ли читается `config/crops.json`.
+- корректно ли читается `config/crops.json`;
+- RRF, BM25, токенизация, категории вопросов, diversify чанков.
 
 Это **unit-тесты** — быстрые, дешёвые, гоняются на каждый push в CI.
 
-Не заменяют [smoke](scripts-overview.md) и ручной чат в webapp.
+Не заменяют [smoke](scripts-overview.md), [eval](../../eval/README.md) и ручной чат в webapp.
 
 ---
 
@@ -26,7 +27,12 @@
 | `conftest.py` | Общая настройка pytest: корень проекта в `PYTHONPATH` |
 | `test_verifier.py` | Тесты `rag/verifier.py` |
 | `test_crops_config.py` | Тесты `rag/crops_config.py` |
-| `requirements-test.txt` | Минимальные зависимости для pytest (без PyTorch/Chroma) |
+| `test_hybrid_search.py` | BM25, RRF, токенизация (`rag/hybrid.py`, `rag/bm25_store.py`) |
+| `test_rag_retrieval.py` | `classify_question`, `diversify_fragments` |
+| `test_rag_eval_match.py` | стем-матчинг `expect_contains` в eval |
+| `test_embeddings.py` | e5 префиксы `query:` / `passage:` |
+| `test_vector_titles.py` | заголовки статей из metadata |
+| `requirements-test.txt` | pytest + langchain-core + rank-bm25 (без PyTorch/Chroma) |
 
 Папки `tests/__pycache__/` и `.pytest_cache/` — автогенерация, в git не нужны.
 
@@ -50,12 +56,10 @@ sys.path.insert(0, _ROOT)
 ```
 pytest>=8.0.0
 langchain-core>=0.3.0
+rank-bm25>=0.2.2,<0.3
 ```
 
-- **pytest** — раннер тестов;
-- **langchain-core** — только класс `Document` в тестах verifier (как в проде).
-
-Намеренно **нет** `torch`, `langchain-chroma`, `flask` — CI и локальный `pytest` остаются лёгкими.
+Намеренно **нет** `torch`, `langchain-chroma`, `flask`, `sentence-transformers` — CI и локальный `pytest` остаются лёгкими.
 
 ---
 
@@ -80,11 +84,24 @@ langchain-core>=0.3.0
 - Ответ: «Рентабельность 72%»
 - `verify_answer` → **провал**, в reason есть «72» или «не найдены».
 
-Это тот же кейс, из-за которого в чате ответ мог не пройти verify.
-
 ### `test_strip_source_attribution`
 
 - Убирает строку `Источник: "Журнал"`, оставляет «Факт».
+
+---
+
+## `test_hybrid_search.py`
+
+- `tokenize` — русский текст и коды (`СК-4`, `М9`);
+- `rrf_merge` — объединение двух ранжированных списков;
+- BM25 на мини-корпусе (3 документа — иначе IDF нулевой на 2 чанках).
+
+---
+
+## `test_rag_retrieval.py`
+
+- категории: `rootstock`, `disease`, `relief`;
+- `diversify_fragments` — лимит чанков с одной статьи, порядок релевантности.
 
 ---
 
@@ -98,8 +115,6 @@ langchain-core>=0.3.0
 
 1. `monkeypatch.setenv("CROPS_CONFIG_PATH", .../config/crops.json)`
 2. Сброс `rag.crops_config._CONFIG = None` — перечитать JSON заново.
-
-Без этого тесты могли бы взять неверный путь или старый кэш.
 
 ### `test_normalize_crop_id_apple`
 
@@ -132,7 +147,7 @@ pytest tests/ -v --tb=short
 make test-py
 ```
 
-Ожидание: **8 passed** (4 verifier + 4 crops, включая `demo_hr`).
+Ожидание: **~23 passed** (verifier, crops, hybrid, retrieval, eval match, embeddings, titles).
 
 ---
 
@@ -140,13 +155,14 @@ make test-py
 
 | Не тестируется | Почему |
 |----------------|--------|
-| Chroma / embeddings | тяжело, медленно |
-| `vector_store.py`, `retrieval.py` end-to-end | нужен индекс и HF-модель |
+| Chroma / e5 embeddings end-to-end | тяжело, медленно |
+| Cross-encoder reranker | нужен HF + torch |
+| `retrieval.py` + живой индекс | eval-набор вместо unit |
 | LLM API | платно, недетерминировано |
 | Flask `api/app.py` | нет HTTP-тестов |
 | PostgreSQL | нет testcontainers |
 
-Это нормально для текущего этапа; расширение — eval-набор (в плане).
+Регрессии retrieval: `python scripts/run_rag_eval.py --suite all` (см. [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md)).
 
 ---
 
@@ -157,38 +173,9 @@ make test-py
 | Файл | Что проверяет |
 |------|----------------|
 | `rag_chat_test.go` | числа, verify, дисклеймер, очистка ответа (зеркало Python verifier) |
-| `crops_test.go` | `normalizeCropID`, загрузка crops.json |
-| `auth_telegram_test.go` | подпись `initData` (валидный / неверный hash) |
-| `admin_test.go` | regex имён файлов для upload (только латиница, `.txt`) |
-
-Синхронизация: при смене логики в `rag/verifier.py` проверьте и `rag_chat_test.go`.
-
----
-
-## Связь с CI и Makefile
-
-| Команда | Действие |
-|---------|----------|
-| `make test-py` | только `tests/` |
-| `make test-go` | только `server/*_test.go` |
-| `make test` | оба |
-| GitHub `python-test` | как `make test-py` + env `CROPS_CONFIG_PATH` |
-
-Smoke (`make smoke`) — **не** pytest, см. [scripts-overview.md](./scripts-overview.md).
-
----
-
-## Как добавить новый Python-тест
-
-1. Создать `tests/test_<модуль>.py`.
-2. Импорт из `rag.*` или другого пакета — `conftest` уже добавляет корень в path.
-3. Если нужен env — фикстура с `monkeypatch` как в `test_crops_config.py`.
-4. Тяжёлые зависимости — только если без них нельзя; иначе CI раздуется.
-
-Именование: `test_что_проверяем` — pytest подхватит автоматически.
 
 ---
 
 ## Краткий итог
 
-`tests/` — **7 быстрых unit-тестов** на критичную бизнес-логику RAG (числа) и конфиг культур. Дешёвые, в CI на каждый push. Полный путь «статья → поиск → LLM» здесь не тестируется — для этого smoke, ручные проверки и будущий eval-набор.
+`tests/` — быстрые unit-тесты RAG-логики и конфига. Hybrid BM25 проверяется без Chroma; полный retrieval — через **eval** и Docker CI job `rag-eval`.

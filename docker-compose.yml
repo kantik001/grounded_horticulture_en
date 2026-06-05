@@ -1,4 +1,6 @@
 # Имя проекта Compose (сеть/volumes). Совпадает с Makefile PROJECT_NAME.
+# Продакшен: задайте POSTGRES_PASSWORD, ADMIN_PASSWORD, ADMIN_SECRET, TELEGRAM_BOT_TOKEN в .env.
+# После изменений data/: make docker-reindex-apply (Chroma + BM25 reindex + restart classifier).
 name: union_ai_apple
 
 services:
@@ -37,9 +39,11 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1}
       - PYTHONUTF8=1
       - PYTHONIOENCODING=utf-8
+      - HF_TOKEN=${HF_TOKEN:-}
     volumes:
       - models:/app/models
       - chroma_data:/app/chroma_db
+      - bm25_data:/app/bm25_db
       - ./api:/app/api:ro
       - ./cv:/app/cv:ro
       - ./rag:/app/rag:ro
@@ -128,5 +132,6 @@ services:
 volumes:
   models:
   chroma_data:
+  bm25_data:
   postgres_data:
   uploads_data:

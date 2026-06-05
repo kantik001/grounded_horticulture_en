@@ -36,7 +36,7 @@
 
 1. Клиент → Go `POST /message` (сессия + auth).
 2. Go → Python `POST /rag/context` (`question`, `crop_id`).
-3. Chroma возвращает фрагменты + few-shot из `config/`.
+3. Python hybrid search (Chroma + BM25 + reranker) возвращает фрагменты + few-shot из `config/`.
 4. Go собирает промпт → LLM → `cleanRAGAnswer` → `verifyRAGAnswer` → дисклеймер.
 5. Ответ и метаданные → Postgres; структурированный лог RAG (`rag_log.go`).
 

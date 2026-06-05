@@ -1,4 +1,4 @@
-.PHONY: build up down restart logs clean ps help test test-go test-py smoke eval-retrieval reindex
+.PHONY: build up down restart logs clean ps help test test-go test-py smoke eval-retrieval reindex docker-reindex docker-reindex-apply eval-apple eval-pear eval-plum
 
 # Имя проекта Docker Compose
 PROJECT_NAME := union_ai_apple
@@ -76,14 +76,19 @@ test: test-go test-py
 smoke:
 	powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 
-## Переиндексация Chroma (локально)
+## Переиндексация Chroma + BM25 (локально)
 reindex:
 	python scripts/reindex_rag.py
 
-## Пересборка classifier + reindex в Docker volume chroma_data
+## Пересборка classifier + reindex в Docker volumes chroma_data + bm25_data
 docker-reindex:
-	docker compose build classifier
-	docker compose run --rm -e FORCE_RAG_REINDEX=true classifier python scripts/reindex_rag.py
+	docker compose -p $(PROJECT_NAME) build classifier
+	docker compose -p $(PROJECT_NAME) run --rm -e FORCE_RAG_REINDEX=true classifier python scripts/reindex_rag.py
+
+## Reindex в Docker + перезапуск classifier (после правок data/)
+docker-reindex-apply:
+	$(MAKE) docker-reindex
+	docker compose -p $(PROJECT_NAME) restart classifier
 
 ## RAG eval retrieval-only (CLASSIFIER_RAG_URL, classifier на :5000)
 eval-retrieval:
@@ -119,4 +124,11 @@ help:
 	@echo "  make test-py        - Unit-тесты Python (tests/)"
 	@echo "  make test           - test-go + test-py"
 	@echo "  make smoke          - Smoke API (localhost:8080)"
+	@echo "  make reindex        - Переиндексация Chroma+BM25 (локально; на Windows — docker-reindex)"
+	@echo "  make docker-reindex - Reindex в Docker volumes chroma_data + bm25_data"
+	@echo "  make docker-reindex-apply - docker-reindex + restart classifier"
+	@echo "  make eval-retrieval - RAG eval retrieval-only (все культуры)"
+	@echo "  make eval-apple     - RAG eval: apple"
+	@echo "  make eval-pear      - RAG eval: pear"
+	@echo "  make eval-plum      - RAG eval: plum"
 	@echo "  make help           - Эта справка"

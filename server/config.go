@@ -102,4 +102,27 @@ func logStartup(cfg *Config) {
 	log.Printf("Rate limit: %d req/min per user", cfg.RateLimitPerMinute)
 	log.Printf("Database URL: configured")
 	log.Printf("Upload dir: %s", cfg.UploadDir)
+	warnInsecureStartup(cfg)
+}
+
+// Предупреждения о небезопасных дефолтах (не блокирует старт — для dev).
+func warnInsecureStartup(cfg *Config) {
+	if cfg.TelegramAuthDisabled {
+		log.Printf("SECURITY: TELEGRAM_AUTH_DISABLED=true — только локальная разработка")
+	}
+	if cfg.TelegramBotToken == "" && !cfg.TelegramAuthDisabled {
+		log.Printf("SECURITY: задайте TELEGRAM_BOT_TOKEN для продакшена")
+	}
+	if cfg.AdminPassword == "" {
+		log.Printf("SECURITY: ADMIN_PASSWORD не задан — /api/admin/* недоступен")
+	}
+	if cfg.AdminSecret == "" {
+		log.Printf("SECURITY: ADMIN_SECRET не задан — POST /admin/reindex недоступен")
+	}
+	if strings.Contains(cfg.DatabaseURL, "gardener:gardener@") {
+		log.Printf("SECURITY: смените POSTGRES_PASSWORD (дефолт gardener/gardener)")
+	}
+	if strings.Contains(cfg.LLMModel, ":free") {
+		log.Printf("SECURITY: LLM_MODEL=%s — бесплатная модель нестабильна для продакшена", cfg.LLMModel)
+	}
 }

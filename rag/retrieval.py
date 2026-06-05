@@ -24,9 +24,23 @@ def _load_few_shot() -> dict:
     return _few_shot_cache
 
 
-# Категория вопроса по ключевым словам: удобрения, болезни, сорта, общее.
+# Категория вопроса по ключевым словам (влияет на few-shot, не на поиск).
 def classify_question(question: str) -> str:
     q_lower = question.lower()
+    if any(
+        kw in q_lower
+        for kw in [
+            "подвой",
+            "подво",
+            "привой",
+            "окулиров",
+            "черенк",
+            "саженц",
+            "питомник",
+            "книп",
+        ]
+    ):
+        return "rootstock"
     if any(
         kw in q_lower
         for kw in [
@@ -38,6 +52,8 @@ def classify_question(question: str) -> str:
             "азот",
             "фосфор",
             "калий",
+            "фертигац",
+            "листов",
         ]
     ):
         return "fertilizer"
@@ -51,9 +67,38 @@ def classify_question(question: str) -> str:
             "ржавчин",
             "мучнист",
             "лечени",
+            "вредител",
+            "плодожорк",
+            "тля",
+            "марссон",
+            "шарк",
+            "фитосанит",
         ]
     ):
         return "disease"
+    if any(
+        kw in q_lower
+        for kw in [
+            "полив",
+            "орошен",
+            "капельн",
+            "засух",
+            "влаго",
+        ]
+    ):
+        return "irrigation"
+    if any(
+        kw in q_lower
+        for kw in [
+            "склон",
+            "рельеф",
+            "террас",
+            "кбр",
+            "предгор",
+            "gis",
+        ]
+    ):
+        return "relief"
     if any(
         kw in q_lower
         for kw in [
@@ -63,7 +108,8 @@ def classify_question(question: str) -> str:
             "триумф",
             "президент",
             "рентабельность",
-            "склон",
+            "либерти",
+            "стенлей",
         ]
     ):
         return "variety"

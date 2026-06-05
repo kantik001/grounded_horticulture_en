@@ -50,7 +50,7 @@
 
 ## Зачем Go в проекте
 
-Python-сервис (`api/` + `cv/` + `rag/`, контейнер compose: `classifier`) — **ML** (PyTorch, Chroma).  
+Python-сервис (`api/` + `cv/` + `rag/`, контейнер compose: `classifier`) — **ML** (PyTorch, Chroma, BM25, reranker).  
 Go — **лёгкий backend**:
 
 - проверка Telegram `initData`;
@@ -139,7 +139,7 @@ flowchart TB
 | GET | `/admin/status`, `/api/admin/status` | статус, `data_dir` |
 | GET | `/admin/articles` | список `.txt` |
 | POST | `/admin/upload` | загрузка статьи |
-| POST | `/admin/reindex` | reindex Chroma |
+| POST | `/admin/reindex` | reindex Chroma + BM25 |
 
 → [server-admin-and-ux-api.md](./server-admin-and-ux-api.md) (`admin.go`)
 

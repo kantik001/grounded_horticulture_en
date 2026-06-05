@@ -2,6 +2,10 @@
 
 Актуальный план развития продукта. Отмечайте выполненное по мере работы.
 
+## Аудит пилота
+
+- [x] Чеклист готовности: [`docs/PILOT_READINESS_AUDIT.md`](PILOT_READINESS_AUDIT.md) (2026-06-05)
+
 ## Фаза 0 — Подготовка
 - [x] `.env.example`
 - [x] README (актуальный flow)
@@ -35,8 +39,11 @@
 - [x] Промпты/few-shot по культуре (config/)
 
 ## Фаза 3 — Качество RAG
-- [x] 16 статей на яблоню (`data/apple/`, включая article4–16)
-- [x] Скрипт переиндексации (`scripts/reindex_rag.py`, admin reindex)
+- [x] База статей журнала ПВЮР (`data/apple/` ~344, `data/pear/` ~42, `data/plum/` ~108)
+- [x] Чистка miscategorized статей в `data/plum/` (75 файлов удалено)
+- [x] E5 префиксы, chunking 650/80, diversify top-k
+- [x] BM25 hybrid + cross-encoder reranker (`rag/bm25_store.py`, `rag/reranker.py`)
+- [x] Скрипт переиндексации (`scripts/reindex_rag.py`, admin reindex) — Chroma + BM25
 - [x] Feedback 👍/👎
 - [x] Sandbox-домен `demo_hr` (RAG без CV) — проверка универсальности
 - [ ] Qdrant (при росте объёма)
@@ -45,7 +52,7 @@
 - [x] Набор **30 вопросов** по яблоне (`eval/rag_apple_baseline.jsonl`)
 - [x] Mini-eval **demo_hr** (`eval/rag_demo_hr_baseline.jsonl`)
 - [x] `scripts/run_rag_eval.py` + `eval/results/`, `make eval-retrieval`
-- [ ] Прогон eval в CI (опционально, нужен classifier в job)
+- [x] Прогон eval retrieval в CI (classifier image + `run_rag_eval.py --suite all`)
 - [ ] Manual score 1–5 выборочно после пилота
 - Документация: [`docs/knowledge-base/quality-eval-and-rag-logs.md`](knowledge-base/quality-eval-and-rag-logs.md), [`eval/README.md`](../eval/README.md)
 

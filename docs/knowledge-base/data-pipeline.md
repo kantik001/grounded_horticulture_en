@@ -20,10 +20,10 @@
 
 ```mermaid
 flowchart LR
-    A[Статья .txt] --> B[data/apple/]
+    A[Статья .txt] --> B[data/crop/]
     B --> C[reindex]
-    C --> D[chroma_db]
-    D --> E[search при вопросе]
+    C --> D[chroma_db + bm25_db]
+    D --> E[hybrid search при вопросе]
     E --> F[Go + LLM]
     F --> G[Пользователь]
 ```
@@ -35,7 +35,7 @@ flowchart LR
 - Имя файла: **латиница**, `article_n.txt` (правила admin — [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)).
 - Опционально: красивое название в [config/article_titles.json](./config-overview.md).
 
-В репозитории для яблони: **16 статей** в `data/apple/` (`article1`–`article3`, `article4_scab` … `article15_organic_calendar`, `article16_planting_pit`). Цель пилота — расширять до 25+ по мере сбора материалов.
+В репозитории (оценка): **~344** apple, **~42** pear, **~108** plum в `data/{crop}/` (журнал ПВЮР). В `data/plum/` удалены miscategorized статьи (вишня, клубника и т.д.) — см. `docs/knowledge-base/plum_miscategorized_audit.md`.
 
 ### Шаг 2 — положить в репозиторий или upload
 
@@ -55,7 +55,7 @@ data/apple/my_article.txt
 
 ### Шаг 3 — переиндексация (обязательно)
 
-Без reindex Chroma **не видит** новые файлы.
+Без reindex Chroma и BM25 **не видят** новые файлы.
 
 | Способ | Команда / действие |
 |--------|-------------------|
@@ -66,7 +66,7 @@ data/apple/my_article.txt
 
 Подробно: [rag-vector_store.md](./rag-vector_store.md), [scripts-overview.md](./scripts-overview.md).
 
-Ожидайте **минуты** при первом запуске (embeddings `multilingual-e5-small`).
+Ожидайте **минуты** при первом запуске (embeddings `multilingual-e5-small` + BM25 по всему корпусу). Первый **запрос** после старта может дополнительно грузить reranker (`BAAI/bge-reranker-base`).
 
 **Docker:** после `reindex_rag.py` или admin reindex перезапустите classifier, иначе в памяти останется старый кэш Chroma и поиск даст `Error finding id`:
 
@@ -86,7 +86,7 @@ docker compose restart classifier
 
 - Правка `.txt` → снова **reindex**.
 - Удаление статьи → удалить файл + reindex.
-- Backup: volume `chroma_data` (Docker) или папка `chroma_db` локально.
+- Backup: volumes `chroma_data` + `bm25_data` (Docker) или папки `chroma_db/` + `bm25_db/` локально.
 
 ---
 
@@ -140,7 +140,7 @@ python train_classifier.py
 
 ## Чеклист сессии 4 (контент)
 
-- [x] 16 `.txt` в `data/apple/` (включая `article16_planting_pit.txt`; цель пилота — 25+)
+- [x] Корпус ПВЮР в `data/` (~344 apple, ~42 pear, ~108 plum)
 - [x] `run_rag_eval.py` + `eval/rag_apple_baseline.jsonl`
 - [ ] reindex после пачки
 - [ ] 5–10 тестовых вопросов вручную
@@ -158,7 +158,8 @@ python train_classifier.py
 | Ответ без связи со статьёй | мало чанков / нерелевантный вопрос |
 | Upload OK, RAG пустой | reindex не нажали |
 | CV всегда «случайный» класс | нет `.pth` в volume models |
-| reindex на хосте, Docker пустой | chroma на хосте ≠ volume `chroma_data` |
+| reindex на хосте, Docker пустой | индексы на хосте ≠ volumes `chroma_data` / `bm25_data` |
+| Hybrid отключился после restart | нет `bm25_data` volume или не было reindex |
 | `Error finding id` после reindex | не перезапущен classifier — `docker compose restart classifier` |
 
 ---

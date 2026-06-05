@@ -8,7 +8,7 @@
 
 ## Роль файла
 
-Go **не** ищет в Chroma сам. Цепочка:
+Go **не** ищет в индексах сам. Цепочка:
 
 1. **`fetchRAGContext`** → Python `POST /rag/context` → context, few_shot, fragments.
 2. Сборка **промпта** (`buildRAGUserPrompt` + `config/prompts.json`).
@@ -143,7 +143,7 @@ JSON: `{ "question", "crop_id" }`.
 
 ## Отладка
 
-1. Лог `RAG fetch error` — Python/Chroma.
+1. Лог `RAG fetch error` — Python (Chroma/BM25/reranker).
 2. Ответ «нет в справочных материалах» — RAG пустой или LLM по промпту.
 3. ⚠️ verify — число в ответе не из статей (классический кейс «72%»).
 4. 503 — нет `LLM_API_KEY`.

@@ -9,8 +9,12 @@
 *.env.*
 !.env.example
 
+# Локальные PDF/каталоги журнала (не коммитить)
+_tmp/
+
 # RAG / логи
 chroma_db/
+bm25_db/
 logs.json
 uploads/
 data/uploads/

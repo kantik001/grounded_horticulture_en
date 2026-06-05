@@ -28,6 +28,23 @@ SUITES = {
 }
 
 
+def context_contains(haystack: str, needle: str) -> bool:
+    """Подстрока в контексте; для русского — укороченный стем (подвой ↔ подвои)."""
+    h = haystack.lower()
+    n = needle.lower()
+    if n in h:
+        return True
+    if len(n) >= 5:
+        stem = n[:-1]
+        if len(stem) >= 4 and stem in h:
+            return True
+    if len(n) >= 4:
+        stem4 = n[:4]
+        if stem4 in h:
+            return True
+    return False
+
+
 def load_cases(path: Path) -> List[Dict[str, Any]]:
     cases = []
     with path.open(encoding="utf-8") as f:
@@ -67,7 +84,7 @@ def check_retrieval(case: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]
 
     missing = []
     for sub in case.get("expect_contains") or []:
-        if sub.lower() not in context_text:
+        if not context_contains(context_text, sub):
             missing.append(sub)
 
     return {

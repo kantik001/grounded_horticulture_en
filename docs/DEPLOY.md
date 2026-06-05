@@ -20,11 +20,12 @@ docker compose up -d --build
 | Go API | http://localhost:8080/health |
 | Python | http://localhost:5000/health |
 
-После добавления статей в `data/`:
+После добавления статей в `data/` (пересборка Chroma **и** BM25):
 
 ```bash
-python scripts/reindex_rag.py
-# или POST /admin/reindex с Basic auth
+make docker-reindex-apply
+# или: python scripts/reindex_rag.py + restart classifier
+# или POST /admin/reindex с X-Admin-Secret
 ```
 
 ---
@@ -76,7 +77,7 @@ make eval-retrieval
 
 Результаты: `eval/results/YYYYMMDD_HHMMSS.json`.
 
-Гонять после: reindex, смены `prompts.json`, смены `LLM_MODEL`.
+Гонять после: reindex (Chroma+BM25), смены `data/`, `prompts.json`, `few_shot.json`, настроек `RAG_*`.
 
 ---
 
