@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article20_agroecosystem_biologized_methods
+- Заголовок: Биологизированные методы устойчивости сада
 - URL: http://journalkubansad.ru/pdf/24/02/08.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2024-2-86-126-149
 - Культура (RAG): apple

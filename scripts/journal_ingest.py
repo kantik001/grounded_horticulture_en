@@ -226,6 +226,17 @@ def norm_text(s: str) -> str:
     return s.replace("\r\n", "\n").replace("\r", "\n").strip()
 
 
+def _needs_pdf_title(title: str) -> bool:
+    t = title.strip()
+    if not t or t.startswith("article"):
+        return True
+    if re.match(r"^(?:УДК|UDC)\b", t, re.I):
+        return True
+    if re.match(r"^Плодоводство", t, re.I):
+        return True
+    return len(t) < 15
+
+
 def build_article_body(item: dict, pdf_text: str) -> str:
     item = {k: norm_text(v) if isinstance(v, str) else v for k, v in item.items()}
     pdf_text = clean_pdf_text(pdf_text) if pdf_text else ""
@@ -255,7 +266,7 @@ def build_article_body(item: dict, pdf_text: str) -> str:
     numbers = numeric_facts((pdf_text or abstract)[:80000])
 
     title = norm_text(item["title"]).split(" - Авторы:")[0].strip()
-    if title.startswith("article") or len(title) < 15:
+    if _needs_pdf_title(title):
         pdf_title = extract_title_from_pdf(pdf_text)
         if pdf_title:
             title = pdf_title

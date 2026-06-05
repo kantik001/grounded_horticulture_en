@@ -76,9 +76,14 @@ test: test-go test-py
 smoke:
 	powershell -ExecutionPolicy Bypass -File scripts/smoke.ps1
 
-## Переиндексация Chroma (нужен Python-сервис / локальное окружение)
+## Переиндексация Chroma (локально)
 reindex:
 	python scripts/reindex_rag.py
+
+## Пересборка classifier + reindex в Docker volume chroma_data
+docker-reindex:
+	docker compose build classifier
+	docker compose run --rm -e FORCE_RAG_REINDEX=true classifier python scripts/reindex_rag.py
 
 ## RAG eval retrieval-only (CLASSIFIER_RAG_URL, classifier на :5000)
 eval-retrieval:

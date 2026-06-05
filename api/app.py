@@ -20,7 +20,15 @@ from rag.retrieval import retrieve_rag_context
 from rag import vector_store as vs
 
 app = Flask(__name__)
-CORS(app)
+_cors_origins = [
+    o.strip()
+    for o in os.environ.get(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost,http://127.0.0.1",
+    ).split(",")
+    if o.strip()
+]
+CORS(app, origins=_cors_origins, supports_credentials=True)
 
 
 @app.route("/classify", methods=["POST"])
@@ -68,7 +76,7 @@ def rag_context():
         payload = retrieve_rag_context(question, crop_id=crop_id)
         resp = jsonify(payload)
         resp.headers.set("Content-Type", "application/json; charset=utf-8")
-        status = 200 if payload.get("success") else 200
+        status = 200 if payload.get("success") else 422
         return resp, status
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

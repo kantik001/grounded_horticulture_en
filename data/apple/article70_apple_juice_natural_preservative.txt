@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article70_apple_juice_natural_preservative
+- Заголовок: Яблочный сок: натуральный консервант (справочно)
 - URL: http://journalkubansad.ru/pdf/22/06/25.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2022-6-78-383-395
 - Культура (RAG): apple

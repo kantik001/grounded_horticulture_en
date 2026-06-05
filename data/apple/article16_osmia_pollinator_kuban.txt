@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article16_osmia_pollinator_kuban
+- Заголовок: Опыление Osmia rufa на Кубани (справочно)
 - URL: http://journalkubansad.ru/pdf/20/02/06.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2020-2-62-58-71
 - Культура (RAG): apple

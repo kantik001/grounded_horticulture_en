@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article32_tank_mix_fertilizer_szr
+- Заголовок: Удобрения в баковой смеси со СЗР (яблоня)
 - URL: http://journalkubansad.ru/pdf/18/01/06.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2018-1-49-65-77
 - Культура (RAG): apple

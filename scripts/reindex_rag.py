@@ -7,6 +7,12 @@ import sys
 _root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, _root)
 
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 os.environ["FORCE_RAG_REINDEX"] = "true"
 
 from rag.vector_store import create_vector_store  # noqa: E402

@@ -55,6 +55,10 @@ func fetchRAGContext(question, cropID string) (*pythonRAGContextResponse, error)
 	if err := json.Unmarshal(responseBody, &out); err != nil {
 		return nil, fmt.Errorf("parse RAG response: %w: %s", err, string(responseBody))
 	}
+	// 422 от Python = штатный «нет контекста» (success:false), не транспортная ошибка.
+	if resp.StatusCode == http.StatusUnprocessableEntity && !out.Success {
+		return &out, nil
+	}
 	if resp.StatusCode != http.StatusOK {
 		if out.Error != "" {
 			return &out, fmt.Errorf("%s", out.Error)

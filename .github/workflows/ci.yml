@@ -60,3 +60,12 @@ jobs:
 
       - name: Build classifier image
         run: docker build -f Dockerfile.classifier -t doctor-gardens-classifier:ci .
+
+      - name: Verify classifier torch and imports
+        run: |
+          docker run --rm doctor-gardens-classifier:ci python -c "
+          import torch, torchvision, transformers, sentence_transformers
+          assert torch.__version__.startswith('2.5'), torch.__version__
+          from rag.vector_store import load_all_documents
+          print('torch', torch.__version__, 'docs', len(load_all_documents()))
+          "

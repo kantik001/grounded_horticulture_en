@@ -5,9 +5,10 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: union_ai_apple_postgres
+    # Продакшен: задайте POSTGRES_PASSWORD в .env (не gardener/gardener).
     environment:
       POSTGRES_USER: gardener
-      POSTGRES_PASSWORD: gardener
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gardener}
       POSTGRES_DB: gardener
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -33,6 +34,9 @@ services:
       - CV_CLASS_LABELS_PATH=/config/cv_class_labels.json
       - FORCE_RAG_REINDEX=${FORCE_RAG_REINDEX:-false}
       - ADMIN_SECRET=${ADMIN_SECRET:-}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1}
+      - PYTHONUTF8=1
+      - PYTHONIOENCODING=utf-8
     volumes:
       - models:/app/models
       - chroma_data:/app/chroma_db
@@ -67,7 +71,7 @@ services:
       - TELEGRAM_INIT_DATA_MAX_AGE_SEC=${TELEGRAM_INIT_DATA_MAX_AGE_SEC:-86400}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1}
       - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE:-30}
-      - DATABASE_URL=postgres://gardener:gardener@postgres:5432/gardener?sslmode=disable
+      - DATABASE_URL=postgres://gardener:${POSTGRES_PASSWORD:-gardener}@postgres:5432/gardener?sslmode=disable
       - UPLOAD_DIR=/data/uploads
       - MIGRATIONS_DIR=/migrations
       - CROPS_CONFIG_PATH=/config/crops.json

@@ -50,7 +50,11 @@ class AppleClassifier:
         if not model_path:
             return None
         try:
-            return torch.load(model_path, map_location=self.device)
+            return torch.load(
+                model_path,
+                map_location=self.device,
+                weights_only=False,
+            )
         except Exception:
             return None
 

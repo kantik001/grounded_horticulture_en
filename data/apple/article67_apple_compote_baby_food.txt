@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article67_apple_compote_baby_food
+- Заголовок: Яблоня: компот детского питания (переработка)
 - URL: http://journalkubansad.ru/pdf/23/03/21.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2023-3-81-322-336
 - Культура (RAG): apple

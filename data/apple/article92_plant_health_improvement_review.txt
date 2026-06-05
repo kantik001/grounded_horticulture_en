@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article92_plant_health_improvement_review
+- Заголовок: Оздоровление растений от вирусов (обзор)
 - URL: http://journalkubansad.ru/pdf/18/05/07.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2018-5-53-67-79
 - Культура (RAG): apple
