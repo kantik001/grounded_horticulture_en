@@ -7,7 +7,6 @@ import os
 from typing import Any, Dict, List
 
 from rag.crops_config import get_crop, normalize_crop_id
-from rag.vector_store import search
 
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _few_shot_cache = None
@@ -151,6 +150,8 @@ def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str
             "Выберите другую культуру или вернитесь позже."
         )
         return empty
+
+    from rag.vector_store import search
 
     fragments = search(q, crop_id=crop_id, k=8)
     if not fragments:

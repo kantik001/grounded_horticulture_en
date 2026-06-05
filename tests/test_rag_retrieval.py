@@ -2,8 +2,8 @@
 
 from langchain_core.documents import Document
 
+from rag.chunking import diversify_fragments
 from rag.retrieval import classify_question
-from rag.vector_store import diversify_fragments
 
 
 def test_classify_rootstock():

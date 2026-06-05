@@ -2,9 +2,7 @@
 # Векторное хранилище Chroma: статьи по культурам data/{crop_id}/*.txt
 # ----------------------------------------------------------------------
 import glob
-import json
 import os
-import re
 import sys
 
 
@@ -31,23 +29,22 @@ from rag.bm25_store import (
     reset_bm25_store,
     save_bm25_indexes,
 )
-from rag.chunking import assign_chunk_ids, chunk_id_for, split_documents
+from rag.chunking import assign_chunk_ids, chunk_id_for, diversify_fragments, split_documents
 from rag.crops_config import list_crops, normalize_crop_id
 from rag.embeddings import get_embeddings
 from rag.hybrid import hybrid_enabled, rerank_enabled, rrf_merge
 from rag.reranker import RERANK_TOP_N, rerank_documents
+from rag.titles import get_pretty_title
 
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(_PROJECT_ROOT, "data")
 PERSIST_DIR = os.path.join(_PROJECT_ROOT, "chroma_db")
 
 _vector_store = None
-_titles_cache = None
 
 # Сколько кандидатов взять из Chroma/BM25 перед rerank и дедупликацией по статьям.
 FETCH_K = int(os.environ.get("RAG_FETCH_K", "24"))
 BM25_FETCH_K = int(os.environ.get("RAG_BM25_FETCH_K", str(FETCH_K)))
-MAX_CHUNKS_PER_SOURCE = int(os.environ.get("RAG_MAX_CHUNKS_PER_SOURCE", "2"))
 
 
 # Сбрасывает in-memory кэш Chroma и BM25 перед принудительной переиндексацией.
@@ -55,62 +52,6 @@ def reset_vector_store():
     global _vector_store
     _vector_store = None
     reset_bm25_store()
-
-
-# Загружает config/article_titles.json для красивых имён статей.
-def _titles_map() -> dict:
-    global _titles_cache
-    if _titles_cache is not None:
-        return _titles_cache
-    path = os.path.join(_PROJECT_ROOT, "config", "article_titles.json")
-    if not os.path.isfile(path):
-        _titles_cache = {}
-        return _titles_cache
-    with open(path, encoding="utf-8") as f:
-        _titles_cache = json.load(f)
-    return _titles_cache
-
-
-# Имя файла → читаемый заголовок, если нет записи в article_titles.json.
-def _title_from_slug(filename: str) -> str:
-    stem = filename.replace(".txt", "")
-    m = re.match(r"article\d+_(.+)", stem, re.I)
-    if not m:
-        return filename
-    words = m.group(1).replace("_", " ").strip()
-    if not words:
-        return filename
-    return words[0].upper() + words[1:]
-
-
-# Читает «- Заголовок:» из шапки статьи (первые 20 строк).
-def _title_from_file_metadata(file_path: str) -> str | None:
-    try:
-        with open(file_path, encoding="utf-8") as f:
-            for _ in range(20):
-                line = f.readline()
-                if not line.startswith("- Заголовок:"):
-                    continue
-                title = line.split(":", 1)[1].strip()
-                if len(title) >= 12 and not title.endswith("…"):
-                    return title[:160]
-    except OSError:
-        pass
-    return None
-
-
-# Человекочитаемое название статьи по crop_id и имени файла.
-def get_pretty_title(crop_id: str, filename: str, file_path: str | None = None) -> str:
-    mapped = _titles_map().get(crop_id, {}).get(filename)
-    if mapped:
-        return mapped
-    if file_path:
-        from_meta = _title_from_file_metadata(file_path)
-        if from_meta:
-            return from_meta
-    if filename.endswith(".txt") and filename.startswith("article"):
-        return _title_from_slug(filename)
-    return filename
 
 
 # Мета-файлы папок data/, которые не являются базой знаний и не индексируются.
@@ -201,23 +142,6 @@ def load_vector_store(force_reindex: bool = False):
     else:
         _vector_store = create_vector_store()
     return _vector_store
-
-
-# Не более max_per_source чанков с одной статьи; сохраняет порядок релевантности.
-def diversify_fragments(docs, limit: int, max_per_source: int = MAX_CHUNKS_PER_SOURCE):
-    if max_per_source <= 0:
-        return docs[:limit]
-    picked = []
-    counts: dict[str, int] = {}
-    for doc in docs:
-        src = doc.metadata.get("source_file") or doc.metadata.get("filename") or ""
-        if counts.get(src, 0) >= max_per_source:
-            continue
-        picked.append(doc)
-        counts[src] = counts.get(src, 0) + 1
-        if len(picked) >= limit:
-            break
-    return picked
 
 
 def _chunk_key(doc: Document) -> str:

@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from rag.vector_store import _title_from_slug, get_pretty_title
+from rag.titles import get_pretty_title, title_from_slug as _title_from_slug
 
 
 @pytest.fixture(autouse=True)

@@ -1,18 +1,6 @@
 """Embeddings для multilingual-e5: обязательные префиксы query:/passage:."""
 
-from langchain_huggingface import HuggingFaceEmbeddings
-
 E5_MODEL = "intfloat/multilingual-e5-small"
-
-
-class E5Embeddings(HuggingFaceEmbeddings):
-    """intfloat/multilingual-e5-small ожидает префиксы при индексации и поиске."""
-
-    def embed_documents(self, texts):
-        return super().embed_documents([_passage(t) for t in texts])
-
-    def embed_query(self, text):
-        return super().embed_query(_query(text))
 
 
 def _passage(text: str) -> str:
@@ -29,5 +17,16 @@ def _query(text: str) -> str:
     return f"query: {t}"
 
 
-def get_embeddings() -> E5Embeddings:
+def get_embeddings():
+    from langchain_huggingface import HuggingFaceEmbeddings
+
+    class E5Embeddings(HuggingFaceEmbeddings):
+        """intfloat/multilingual-e5-small ожидает префиксы при индексации и поиске."""
+
+        def embed_documents(self, texts):
+            return super().embed_documents([_passage(t) for t in texts])
+
+        def embed_query(self, text):
+            return super().embed_query(_query(text))
+
     return E5Embeddings(model_name=E5_MODEL)

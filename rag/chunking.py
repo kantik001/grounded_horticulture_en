@@ -1,6 +1,7 @@
 """Чанкование статей для Chroma и BM25 (одинаковые фрагменты)."""
 
 import hashlib
+import os
 import re
 
 from langchain_core.documents import Document
@@ -55,3 +56,23 @@ def assign_chunk_ids(chunks: list[Document]) -> list[Document]:
 
 def slug_from_chunk_id(chunk_id: str) -> str:
     return re.sub(r"[^\w\-:.]", "_", chunk_id)
+
+
+MAX_CHUNKS_PER_SOURCE = int(os.environ.get("RAG_MAX_CHUNKS_PER_SOURCE", "2"))
+
+
+def diversify_fragments(docs, limit: int, max_per_source: int = MAX_CHUNKS_PER_SOURCE):
+    """Не более max_per_source чанков с одной статьи; сохраняет порядок релевантности."""
+    if max_per_source <= 0:
+        return docs[:limit]
+    picked = []
+    counts: dict[str, int] = {}
+    for doc in docs:
+        src = doc.metadata.get("source_file") or doc.metadata.get("filename") or ""
+        if counts.get(src, 0) >= max_per_source:
+            continue
+        picked.append(doc)
+        counts[src] = counts.get(src, 0) + 1
+        if len(picked) >= limit:
+            break
+    return picked
