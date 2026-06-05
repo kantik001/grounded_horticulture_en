@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article34_seasonal_nutrition_sk4
+- Заголовок: Сезонное питание яблони на подвое СК-4
 - URL: http://journalkubansad.ru/pdf/18/02/07.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2018-2-50-67-80
 - Культура (RAG): apple

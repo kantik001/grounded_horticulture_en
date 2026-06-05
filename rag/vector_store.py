@@ -4,6 +4,18 @@
 import glob
 import json
 import os
+import sys
+
+
+def _ensure_utf8_stdout() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+
+_ensure_utf8_stdout()
 
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import TextLoader

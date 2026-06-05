@@ -66,5 +66,11 @@ func sendToClassifier(imageData []byte, cropID string) (*ClassificationResult, e
 	if err = json.Unmarshal(responseBody, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse classifier response: %v", err)
 	}
+	if resp.StatusCode != http.StatusOK {
+		if result.Error != "" {
+			return &result, fmt.Errorf("classifier HTTP %d: %s", resp.StatusCode, result.Error)
+		}
+		return &result, fmt.Errorf("classifier HTTP %d: %s", resp.StatusCode, string(responseBody))
+	}
 	return &result, nil
 }

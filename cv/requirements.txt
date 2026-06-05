@@ -1,18 +1,19 @@
 # Requirements: классификация изображений + RAG
 python-dotenv==1.2.1
 
-# Core ML
-torch==2.3.0
-torchvision==0.18.0
-flask>=3.0.0
-flask-cors>=4.0.0
-pillow>=10.0.0
+# Core ML (torch/torchvision — парой; 2.5+ для transformers 5.x / sentence-transformers)
+torch==2.5.1
+torchvision==0.20.1
+flask>=3.0.0,<4
+flask-cors>=4.0.0,<7
+pillow>=10.0.0,<13
 
-# RAG (retrieval в Python; вызов LLM в Go)
-langchain-core>=0.2.0
-langchain-community>=0.2.0
-langchain-text-splitters>=0.2.0
-langchain-huggingface>=0.0.3
-langchain-chroma>=0.1.0
-chromadb>=0.4.0
-sentence-transformers>=2.6.0
+# RAG (retrieval в Python; вызов LLM в Go) — версии проверены с torch 2.5.1
+langchain-core>=1.4.0,<2
+langchain-community>=0.4.2,<1
+langchain-text-splitters>=1.1.2,<2
+langchain-huggingface>=1.2.2,<2
+langchain-chroma>=1.1.0,<2
+chromadb>=1.5.9,<2
+sentence-transformers>=5.5.1,<6
+transformers>=5.9.0,<5.10

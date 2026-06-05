@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article71_digital_food_industry
+- Заголовок: Цифровизация пищевой промышленности (справочно)
 - URL: http://journalkubansad.ru/pdf/23/06/15.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2023-6-84-209-235
 - Культура (RAG): apple

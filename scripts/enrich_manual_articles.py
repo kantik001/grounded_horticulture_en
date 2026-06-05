@@ -32,6 +32,10 @@ UNIT_RE = re.compile(
     r"(т/га|кг/га|г/л|л/га|мм|см|м\b|%|°C|балл|ц/га|мг/кг|мг/100|дер\./га|л/дерев)",
     re.I,
 )
+JOURNAL_URL_RE = re.compile(
+    r"https?://journal(?:kubansad|\.kubansad)\.ru/pdf/[^\s\)\]]+",
+    re.I,
+)
 
 
 def git_head_text(path: str) -> str:
@@ -57,7 +61,7 @@ def discover_manual_paths() -> list[str]:
             if not p.endswith(".txt"):
                 continue
             t = git_head_text(p)
-            if "journalkubansad.ru/pdf/" not in t:
+            if not JOURNAL_URL_RE.search(t):
                 continue
             if "Кратко для садовода" in t and "Цель и задачи:" in t:
                 continue
@@ -67,7 +71,7 @@ def discover_manual_paths() -> list[str]:
 
 
 def pdf_url_from_text(text: str) -> str:
-    m = re.search(r"https?://journalkubansad\.ru/pdf/[^\s\)\]]+", text)
+    m = JOURNAL_URL_RE.search(text)
     return m.group(0).rstrip(").,") if m else ""
 
 

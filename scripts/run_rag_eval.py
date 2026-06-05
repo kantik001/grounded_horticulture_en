@@ -79,7 +79,11 @@ def check_retrieval(case: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]
 
 
 def resp_status_ok(ctx: Dict[str, Any]) -> bool:
-    return 200 <= int(ctx.get("http_status", 0)) < 300
+    status = int(ctx.get("http_status", 0))
+    if 200 <= status < 300:
+        return True
+    # Python /rag/context: 422 = штатный «нет контекста», не сбой транспорта.
+    return status == 422 and ctx.get("success") is False
 
 
 def run_suite(

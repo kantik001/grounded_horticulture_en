@@ -25,6 +25,10 @@ from journal_ingest import (  # noqa: E402
 ROOT = _SCRIPTS.parent
 DATA = ROOT / "data"
 CROPS = ("apple", "pear", "plum")
+JOURNAL_URL_RE = re.compile(
+    r"https?://journal(?:kubansad|\.kubansad)\.ru/pdf/[^\s\)\]]+",
+    re.I,
+)
 
 CORRUPT = re.compile(
     r"Краткодля|мероприятийпо|яблонив|садоводаи|завязикак|Цельи\s|"
@@ -38,7 +42,7 @@ def doi_map() -> dict[str, str]:
     for crop in CROPS:
         for p in (DATA / crop).glob("article*.txt"):
             t = p.read_text(encoding="utf-8", errors="ignore")
-            url_m = re.search(r"https?://journalkubansad\.ru/pdf/[^\s\)\]]+", t)
+            url_m = JOURNAL_URL_RE.search(t)
             doi_m = re.search(r"10\.30679/2219-5335-[^\s\)\]]+", t)
             if url_m and doi_m:
                 m[doi_m.group(0).rstrip(").,")] = url_m.group(0).rstrip(").,")

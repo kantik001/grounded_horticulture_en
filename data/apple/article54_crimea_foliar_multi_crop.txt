@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article54_crimea_foliar_multi_crop
+- Заголовок: Внекорневое питание (Крым, справочно)
 - URL: http://journalkubansad.ru/pdf/21/02/17.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2021-2-68-204-214
 - Культура (RAG): apple

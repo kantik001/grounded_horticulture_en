@@ -1,5 +1,5 @@
 Метаданные источника:
-- Заголовок: article88_planting_material_russia
+- Заголовок: Посадочный материал в России: доли культур (обзор)
 - URL: http://journalkubansad.ru/pdf/15/06/05.pdf
 - DOI: https://doi.org/10.30679/2219-5335-2018-4-52-42-49
 - Культура (RAG): apple

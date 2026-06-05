@@ -26,6 +26,10 @@ from journal_ingest import (  # noqa: E402
 ROOT = _SCRIPTS.parent
 DATA = ROOT / "data"
 CATALOG = ROOT / "_tmp" / "journal_catalog.json"
+JOURNAL_URL_RE = re.compile(
+    r"https?://journal(?:kubansad|\.kubansad)\.ru/pdf/[^\s\)\]]+",
+    re.I,
+)
 CROPS = ("apple", "pear", "plum")
 
 
@@ -35,7 +39,7 @@ def parse_item_from_file(path: Path, crop: str) -> dict:
     m = re.search(r"-\s*Заголовок:\s*(.+?)(?=\n-\s|\n\n|$)", text, re.DOTALL | re.I)
     if m:
         title = norm_text(m.group(1).split(" - URL:")[0])
-    url_m = re.search(r"https?://journalkubansad\.ru/pdf/[^\s\)]+", text)
+    url_m = JOURNAL_URL_RE.search(text)
     pdf_url = url_m.group(0).rstrip(").,") if url_m else ""
     doi_m = re.search(r"10\.30679/2219-5335-[^\s]+", text)
     authors = ""
@@ -81,7 +85,7 @@ def is_corrupted(text: str) -> bool:
 
 def is_auto_ingest(text: str) -> bool:
     return "Кратко для садовода" in text or (
-        "Цель и задачи:" in text and "journalkubansad.ru/pdf/" in text
+        "Цель и задачи:" in text and JOURNAL_URL_RE.search(text)
     )
 
 
@@ -100,7 +104,7 @@ def main() -> None:
                 skipped += 1
                 continue
             text = path.read_text(encoding="utf-8", errors="ignore")
-            if "journalkubansad.ru/pdf/" not in text:
+            if not JOURNAL_URL_RE.search(text):
                 continue
             if "Кратко:" in text and "Новое для" in text:
                 skipped += 1

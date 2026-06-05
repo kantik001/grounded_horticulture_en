@@ -60,6 +60,17 @@ func callLLMCompletion(messages []Message) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read LLM response: %v", err)
 	}
+	if resp.StatusCode != http.StatusOK {
+		var errPayload struct {
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if json.Unmarshal(responseBody, &errPayload) == nil && errPayload.Error.Message != "" {
+			return "", fmt.Errorf("LLM API HTTP %d: %s", resp.StatusCode, errPayload.Error.Message)
+		}
+		return "", fmt.Errorf("LLM API HTTP %d: %s", resp.StatusCode, string(responseBody))
+	}
 	var llmResp LLMResponse
 	if err := json.Unmarshal(responseBody, &llmResp); err != nil {
 		return "", fmt.Errorf("failed to parse LLM response: %v", err)

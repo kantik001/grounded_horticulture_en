@@ -23,6 +23,7 @@ from journal_ingest import (  # noqa: E402
 ROOT = _SCRIPTS.parent
 DATA = ROOT / "data"
 CATALOG = ROOT / "_tmp" / "journal_catalog.json"
+TITLES_PATH = ROOT / "config" / "article_titles.json"
 CROPS = ("apple", "pear", "plum")
 MAX_NUM = 122
 MAX_LEN = 9500
@@ -52,7 +53,13 @@ MANUAL_PDF_OVERRIDES: dict[str, str] = {
     "article90_in_vitro_antibiotics_sk": "http://journalkubansad.ru/pdf/19/06/09.pdf",
     "article23_stress_resistance_agrotech_prichko": "http://journalkubansad.ru/pdf/21/06/09.pdf",
     "article6_pear_winter_hardiness_slopes": "http://journalkubansad.ru/pdf/11/04/11.pdf",
+    "article110_apple_adaptive_potential_krasnodar": "http://journalkubansad.ru/pdf/12/01/04.pdf",
 }
+
+WRONG_PDF_MARKERS = (
+    "Попова Валентина Петровна",
+    "РАЗРАБОТКА ПРИЕМОВ УПРАВЛЕНИЯ УСТОЙЧИВОСТЬЮ ПЛОДОВЫХ ЦЕНОЗОВ",
+)
 
 
 def norm_journal_url(url: str) -> str:
@@ -193,7 +200,50 @@ def kratko_keywords(text: str) -> list[str]:
     return out
 
 
-def resolve_from_corpus(path: Path, text: str) -> str:
+def author_surnames(meta: dict[str, str]) -> list[str]:
+    authors = meta.get("Авторы", "")
+    skip = {
+        "краснодар", "ставрополь", "северо", "кабардино", "нальчик",
+        "москва", "орел", "орёл", "астрахань", "беларусь",
+    }
+    out: list[str] = []
+    for w in re.findall(r"[А-ЯЁ][а-яё]{3,}", authors):
+        low = w.lower()
+        if low in skip:
+            continue
+        if low not in out:
+            out.append(low)
+    return out[:4]
+
+
+def pdf_matches_topic(pdf_text: str, text: str, meta: dict[str, str]) -> bool:
+    low = pdf_text.lower()
+    authors = author_surnames(meta)
+    if authors and not any(a in low for a in authors):
+        return False
+    if any(m.lower() in low for m in WRONG_PDF_MARKERS):
+        if authors and "попова" not in authors:
+            return False
+    kws = kratko_keywords(text)
+    if len(kws) < 3:
+        return True
+    score = sum(1 for k in kws if k in low)
+    return score >= max(3, len(kws) // 2)
+
+
+def has_wrong_pdf_assignment(text: str, meta: dict[str, str]) -> bool:
+    if not any(m in text for m in WRONG_PDF_MARKERS):
+        return False
+    authors = author_surnames(meta)
+    return bool(authors) and "попова" not in authors
+
+
+def resolve_from_corpus(
+    path: Path,
+    text: str,
+    session: requests.Session,
+    meta: dict[str, str],
+) -> str:
     """Найти PDF по совпадению ключевых слов с уже расширенной статьёй той же культуры."""
     crop = path.parent.name
     kws = kratko_keywords(text)
@@ -206,14 +256,24 @@ def resolve_from_corpus(path: Path, text: str) -> str:
         other = p.read_text(encoding="utf-8", errors="ignore")
         if len(other) < MAX_LEN:
             continue
+        if has_wrong_pdf_assignment(other, parse_meta(other)):
+            continue
         url_m = JOURNAL_URL_RE.search(other)
         if not url_m:
             continue
         body_low = other.lower()
         score = sum(1 for k in kws if k in body_low)
         if score > best_score and score >= max(3, len(kws) // 2):
+            url = norm_journal_url(url_m.group(0))
+            try:
+                pdf_path = ensure_pdf(url, session)
+                pdf_text = extract_pdf_text(pdf_path)
+            except Exception:
+                continue
+            if not pdf_matches_topic(pdf_text, text, meta):
+                continue
             best_score = score
-            best_url = norm_journal_url(url_m.group(0))
+            best_url = url
     return best_url
 
 
@@ -239,41 +299,89 @@ def resolve_pdf_url(
     text: str,
     session: requests.Session,
     by_doi: dict[str, str],
+    meta: dict[str, str],
 ) -> str:
     stem = path.stem
     if stem in MANUAL_PDF_OVERRIDES:
         return MANUAL_PDF_OVERRIDES[stem]
 
+    ignore_url = has_wrong_pdf_assignment(text, meta)
+
     url_m = JOURNAL_URL_RE.search(text)
-    if url_m:
-        return norm_journal_url(url_m.group(0))
+    if url_m and not ignore_url:
+        url = norm_journal_url(url_m.group(0))
+        try:
+            pdf_path = ensure_pdf(url, session)
+            if pdf_matches_topic(extract_pdf_text(pdf_path), text, meta):
+                return url
+        except Exception:
+            pass
 
     doi = norm_doi(text)
     if doi:
         found = resolve_pdf_by_doi(doi, session, by_doi)
         if found:
-            return found
+            try:
+                pdf_path = ensure_pdf(found, session)
+                if pdf_matches_topic(extract_pdf_text(pdf_path), text, meta):
+                    return found
+            except Exception:
+                pass
 
     found = resolve_by_keywords(text, session)
     if found:
-        return found
+        try:
+            pdf_path = ensure_pdf(found, session)
+            if pdf_matches_topic(extract_pdf_text(pdf_path), text, meta):
+                return found
+        except Exception:
+            pass
 
-    return resolve_from_corpus(path, text)
+    return resolve_from_corpus(path, text, session, meta)
 
 
-def should_expand(path: Path, text: str) -> bool:
+def is_ingest_expanded(text: str) -> bool:
+    return (
+        "Метаданные источника:" in text
+        and JOURNAL_URL_RE.search(text)
+        and "Основные результаты:" in text
+        and len(text) > 5000
+        and (
+            "Цель и задачи:" in text
+            or "Объекты, методы" in text
+            or "Дополнение из ручной разметки" in text
+        )
+    )
+
+
+def should_expand(path: Path, text: str, *, repair: bool = False) -> bool:
     if article_num(path) > MAX_NUM:
         return False
+    meta = parse_meta(text)
+    if repair:
+        return has_wrong_pdf_assignment(text, meta)
     if "Кратко для садовода и ассистента:" in text and "Цель исследований:" in text:
         return False
-    if "Кратко для садовода" in text and "Цель и задачи:" in text and len(text) > MAX_LEN:
+    if is_ingest_expanded(text) and not has_wrong_pdf_assignment(text, meta):
         return False
-    if len(text) > MAX_LEN and "Кратко:" not in text:
+    if (
+        "Кратко для садовода" in text
+        and "Цель и задачи:" in text
+        and len(text) > MAX_LEN
+        and not has_wrong_pdf_assignment(text, meta)
+    ):
+        return False
+    if (
+        len(text) > MAX_LEN
+        and "Кратко:" not in text
+        and not has_wrong_pdf_assignment(text, meta)
+    ):
         return False
     return bool(
         re.search(r"Кратко(?:\s+для\s+садовода)?\s*:", text, re.I)
         or "Практика:" in text
         or "Новое для региона:" in text
+        or has_wrong_pdf_assignment(text, meta)
     )
 
 
@@ -332,7 +440,21 @@ def merge_body(pdf_body: str, manual_extra: str, meta: dict[str, str]) -> str:
     return pdf_body.rstrip() + "\n" + "\n".join(extra_lines) + "\n"
 
 
+def display_title(path: Path) -> str:
+    if TITLES_PATH.exists():
+        try:
+            titles = json.loads(TITLES_PATH.read_text(encoding="utf-8"))
+            crop = path.parent.name
+            title = titles.get(crop, {}).get(path.name)
+            if title:
+                return title
+        except Exception:
+            pass
+    return path.stem
+
+
 def main() -> None:
+    repair = "--repair" in sys.argv
     session = requests.Session()
     session.headers["User-Agent"] = "doctor_gardens_ai-kb-bot/1.0 (research; local)"
     by_doi = doi_map()
@@ -341,12 +463,12 @@ def main() -> None:
     for crop in CROPS:
         for path in sorted((DATA / crop).glob("article*.txt")):
             text = path.read_text(encoding="utf-8", errors="ignore")
-            if not should_expand(path, text):
+            if not should_expand(path, text, repair=repair):
                 skip += 1
                 continue
 
             meta = parse_meta(text)
-            pdf_url = resolve_pdf_url(path, text, session, by_doi)
+            pdf_url = resolve_pdf_url(path, text, session, by_doi, meta)
             if not pdf_url:
                 print(f"skip no pdf {crop}/{path.name}", flush=True)
                 skip += 1
@@ -354,7 +476,7 @@ def main() -> None:
 
             manual_extra = extract_manual_extra(text)
             item = {
-                "title": path.stem,
+                "title": display_title(path),
                 "pdf_url": pdf_url,
                 "doi": norm_doi(text),
                 "authors": meta.get("Авторы", ""),

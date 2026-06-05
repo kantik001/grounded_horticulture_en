@@ -1,9 +1,35 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func TestFetchRAGContext422IsSoftMiss(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"success":false,"error":"Не нашёл информации в статьях"}`))
+	}))
+	defer srv.Close()
+
+	old := config
+	config = &Config{PythonRAGURL: srv.URL}
+	defer func() { config = old }()
+
+	out, err := fetchRAGContext("тест", "apple")
+	if err != nil {
+		t.Fatalf("422 soft miss should not return transport error: %v", err)
+	}
+	if out == nil || out.Success {
+		t.Fatalf("expected success=false, got %+v", out)
+	}
+	if out.Error == "" {
+		t.Fatal("expected error message in body")
+	}
+}
 
 func TestExtractNumbersFromText(t *testing.T) {
 	nums := extractNumbersFromText("Прирост 748,5 см и 31.8%")
