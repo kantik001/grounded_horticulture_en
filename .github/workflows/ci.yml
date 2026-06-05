@@ -70,33 +70,5 @@ jobs:
           print('torch', torch.__version__, 'docs', len(load_all_documents()))
           "
 
-  rag-eval:
-    runs-on: ubuntu-latest
-    needs: docker-build
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Reindex and start classifier for eval
-        run: |
-          docker run -d --name rag-eval-clf -p 5000:5000 \
-            -e FORCE_RAG_REINDEX=true \
-            doctor-gardens-classifier:ci \
-            bash -c "python scripts/reindex_rag.py && exec python api/app.py"
-          for i in $(seq 1 36); do
-            curl -sf http://127.0.0.1:5000/health && break
-            sleep 10
-          done
-          curl -sf http://127.0.0.1:5000/health
-
-      - name: RAG eval retrieval (all suites)
-        run: |
-          pip install requests
-          python scripts/run_rag_eval.py --suite all
-
-      - name: Stop classifier container
-        if: always()
-        run: docker rm -f rag-eval-clf || true
+  # rag-eval отключён: образ classifier:ci не переносится между job-ами GHA.
+  # Прогон вручную: make docker-reindex-apply && python scripts/run_rag_eval.py --suite all
