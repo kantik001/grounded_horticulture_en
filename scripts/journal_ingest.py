@@ -58,18 +58,105 @@ def slug_from_pdf(pdf_url: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", name.lower())[:40].strip("_") or "journal"
 
 
+def join_wrapped_lines(raw: str) -> str:
+    """Склеить переносы PDF в связные абзацы (без обрыва «товарн»)."""
+    lines = raw.replace("\r", "\n").split("\n")
+    blocks: list[str] = []
+    buf = ""
+    for line in lines:
+        line = re.sub(r"[ \t]+", " ", line.strip())
+        if not line:
+            if buf:
+                blocks.append(buf)
+                buf = ""
+            continue
+        if re.search(
+            r"journal(?:kubansad|\.kubansad)\.ru/pdf/|Fruit growing and viticulture",
+            line,
+            re.I,
+        ):
+            if buf:
+                blocks.append(buf)
+                buf = ""
+            continue
+        if not buf:
+            buf = line
+            continue
+        if buf.endswith("-"):
+            buf = buf[:-1] + line
+        elif not re.search(r"[.!?;:»\"\)]$", buf) and len(line) < 160:
+            buf = f"{buf} {line}"
+        else:
+            blocks.append(buf)
+            buf = line
+    if buf:
+        blocks.append(buf)
+    return "\n\n".join(blocks)
+
+
 def clean_pdf_text(raw: str) -> str:
     t = raw.replace("\r", "\n")
     t = re.sub(r"-\s*\n\s*", "", t)
+    t = join_wrapped_lines(t)
     t = re.sub(r"[ \t]+", " ", t)
     t = re.sub(r"\n{3,}", "\n\n", t)
     return t.strip()
 
 
-def extract_pdf_text(path: Path) -> str:
+def clip_text(text: str, max_len: int = 2800) -> str:
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= max_len:
+        return text
+    chunk = text[:max_len]
+    for pat in (r"[^.!?]+[.!?]\s*", r"[^,;]+[,;]\s*"):
+        matches = list(re.finditer(pat, chunk))
+        if matches:
+            end = matches[-1].end()
+            if end > max_len * 0.55:
+                return text[:end].strip()
+    sp = chunk.rfind(" ")
+    if sp > max_len * 0.6:
+        return text[:sp].strip() + "…"
+    return chunk.strip() + "…"
+
+
+def extract_abstract_from_pdf(text: str) -> str:
+    m = re.search(
+        r"Аннотация\.\s*(.+?)(?=Ключевые слова|Key words|Введение|1\.\s*Введение|\nВведение)",
+        text,
+        re.DOTALL | re.I,
+    )
+    if not m:
+        return ""
+    return clip_text(re.sub(r"\s+", " ", m.group(1)), 3500)
+
+
+def extract_title_from_pdf(text: str) -> str:
+    """Заголовок из блока «Для цитирования» без тяжёлого regex."""
+    idx = text.lower().find("для цитирования:")
+    if idx == -1:
+        return ""
+    snippet = text[idx + len("для цитирования:") : idx + 1500]
+    end_m = re.search(r"\.\s*Плодоводство", snippet, re.I)
+    if not end_m:
+        return ""
+    cite = re.sub(r"\s+", " ", snippet[: end_m.start()]).strip().rstrip(".")
+    segs = [s.strip() for s in cite.split(",") if s.strip()]
+    if len(segs) < 2:
+        return ""
+    title = segs[-1]
+    title = re.sub(r"^[А-ЯЁA-Z]\.\s*[А-ЯЁ]\.,\s*", "", title)
+    if 12 < len(title) < 200:
+        return title
+    return ""
+
+
+def extract_pdf_text(path: Path, max_pages: int = 18) -> str:
     reader = PdfReader(str(path))
     chunks = []
-    for page in reader.pages:
+    for i, page in enumerate(reader.pages):
+        if i >= max_pages:
+            break
         try:
             chunks.append(page.extract_text() or "")
         except Exception:
@@ -78,18 +165,36 @@ def extract_pdf_text(path: Path) -> str:
 
 
 def split_paragraphs(text: str) -> list[str]:
-    paras = [p.strip() for p in re.split(r"\n\s*\n", text) if len(p.strip()) > 40]
+    paras = [re.sub(r"\s+", " ", p.strip()) for p in re.split(r"\n\s*\n", text) if len(p.strip()) > 50]
     if len(paras) < 3:
-        paras = [p.strip() for p in text.split(". ") if len(p.strip()) > 60]
+        paras = [
+            re.sub(r"\s+", " ", s.strip())
+            for s in re.split(r"(?<=[.!?])\s+", text)
+            if len(s.strip()) > 80
+        ]
     return paras
 
 
-def pick_paragraphs(paras: list[str], keywords: tuple[str, ...], limit: int = 6) -> list[str]:
-    out = []
+def pick_paragraphs(
+    paras: list[str],
+    keywords: tuple[str, ...],
+    limit: int = 6,
+    max_len: int = 2800,
+) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
     for p in paras:
         low = p.lower()
-        if any(k in low for k in keywords):
-            out.append(p[:1200])
+        if low.startswith("аннотация.") or low.startswith("ключевые слова"):
+            continue
+        if not any(k in low for k in keywords):
+            continue
+        clipped = clip_text(p, max_len)
+        key = clipped[:120]
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(clipped)
         if len(out) >= limit:
             break
     return out
@@ -111,7 +216,7 @@ def numeric_facts(text: str, limit: int = 35) -> list[str]:
         if key in seen:
             continue
         seen.add(key)
-        facts.append(f"- {line[:350]}")
+        facts.append(f"- {clip_text(line, 400)}")
         if len(facts) >= limit:
             break
     return facts
@@ -123,27 +228,37 @@ def norm_text(s: str) -> str:
 
 def build_article_body(item: dict, pdf_text: str) -> str:
     item = {k: norm_text(v) if isinstance(v, str) else v for k, v in item.items()}
-    pdf_text = norm_text(pdf_text)
+    pdf_text = clean_pdf_text(pdf_text) if pdf_text else ""
     paras = split_paragraphs(pdf_text) if pdf_text else []
-    goal = pick_paragraphs(paras, ("цель", "задач", "актуальност"), 3)
+
+    abstract = (item.get("abstract") or "").strip()
+    if not abstract or len(abstract) < 120:
+        abstract = extract_abstract_from_pdf(pdf_text)
+    abstract = re.sub(r"^(?:и ассистента:\s*)+", "", abstract, flags=re.I)
+
+    goal = pick_paragraphs(paras, ("цель и задач", "целью работ", "актуальност"), 2)
     methods = pick_paragraphs(
         paras,
-        ("материал", "метод", "опыт", "сорт", "подвой", "посадк", "повторност"),
-        5,
+        ("материал", "метод", "объект", "опыт", "посадк", "повторност"),
+        4,
     )
     results = pick_paragraphs(
         paras,
-        ("результат", "установлен", "показател", "урожай", "выявлен"),
-        6,
+        ("результат", "установлен", "показал", "урожай", "выявлен", "обсужден"),
+        5,
     )
     practice = pick_paragraphs(
         paras,
         ("вывод", "рекоменд", "практик", "целесообраз", "следует"),
-        4,
+        3,
     )
-    numbers = numeric_facts(pdf_text or item.get("abstract", ""))
+    numbers = numeric_facts((pdf_text or abstract)[:80000])
 
     title = norm_text(item["title"]).split(" - Авторы:")[0].strip()
+    if title.startswith("article") or len(title) < 15:
+        pdf_title = extract_title_from_pdf(pdf_text)
+        if pdf_title:
+            title = pdf_title
     lines = [
         "Метаданные источника:",
         f"- Заголовок: {title}",
@@ -156,17 +271,9 @@ def build_article_body(item: dict, pdf_text: str) -> str:
     lines.append(f"- Культура (RAG): {item['crop_id']}")
     lines.append("")
 
-    abstract = (item.get("abstract") or "").strip()
-    abstract = re.sub(r"^(?:и ассистента:\s*)+", "", abstract, flags=re.I)
     if abstract:
         lines.append("Кратко для садовода и ассистента:")
-        if len(abstract) > 900:
-            lines.append(abstract[:900] + "…")
-            lines.append("")
-            lines.append("Реферат (полный):")
-            lines.append(abstract)
-        else:
-            lines.append(abstract)
+        lines.append(clip_text(abstract, 2200))
         lines.append("")
 
     if goal:
@@ -193,13 +300,6 @@ def build_article_body(item: dict, pdf_text: str) -> str:
         lines.append("Практические выводы:")
         lines.extend(practice)
         lines.append("")
-
-    if pdf_text and len(pdf_text) > 500:
-        extra = pick_paragraphs(paras, ("яблон", "груш", "слив", "подвой", "сад"), 4)
-        if extra:
-            lines.append("Дополнительно из полного текста:")
-            lines.extend(extra)
-            lines.append("")
 
     lines.append(
         "Дисклеймер: конспект для RAG по открытой публикации; "

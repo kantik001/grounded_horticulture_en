@@ -79,7 +79,14 @@ def is_corrupted(text: str) -> bool:
     )
 
 
+def is_auto_ingest(text: str) -> bool:
+    return "Кратко для садовода" in text or (
+        "Цель и задачи:" in text and "journalkubansad.ru/pdf/" in text
+    )
+
+
 def main() -> None:
+    force = "--force" in sys.argv
     by_url = catalog_by_url()
     manual = set(discover_manual_paths())
     session = requests.Session()
@@ -98,7 +105,7 @@ def main() -> None:
             if "Кратко:" in text and "Новое для" in text:
                 skipped += 1
                 continue
-            if not is_corrupted(text) and "Кратко для садовода" in text:
+            if not force and not is_corrupted(text) and is_auto_ingest(text):
                 skipped += 1
                 continue
             corrupted = is_corrupted(text)
