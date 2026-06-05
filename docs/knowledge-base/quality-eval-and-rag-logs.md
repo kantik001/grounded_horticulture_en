@@ -131,7 +131,7 @@ WHERE mf.rating = -1;
 
 ```mermaid
 flowchart LR
-    A[16 статей в data/apple] --> B[eval 30 вопросов + run_rag_eval]
+    A[~494 статей data/ + hybrid reindex] --> B[eval 53 вопроса + run_rag_eval]
     B --> C[Ручной прогон в чате + feedback]
     C --> D[Логи 3C в БД опционально]
     F --> G[Пилот пользователей]
@@ -146,7 +146,7 @@ flowchart LR
 
 ## Чеклист «готово к пилоту» (качество)
 
-- [x] ≥16 статей в `data/apple/`, reindex после добавления  
+- [x] Корпус ПВЮР (~344 apple, ~42 pear, ~108 plum), reindex Chroma+BM25 после изменений  
 - [x] Eval-набор 30 вопросов (`rag_apple_baseline.jsonl`), скрипт прогона  
 - [x] Retrieval baseline apple 30/30 (после правок KB; отчёты локально в `eval/results/`)  
 - [ ] Verify pass rate известен (retrieval + выборочно full LLM)  

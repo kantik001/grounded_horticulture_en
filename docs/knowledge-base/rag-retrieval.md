@@ -11,7 +11,7 @@
 Слой **retrieval** в классической схеме RAG:
 
 1. Принять вопрос и `crop_id`.
-2. Найти фрагменты в Chroma (`vector_store.search`).
+2. Найти фрагменты (`vector_store.search` — hybrid vector + BM25 + rerank).
 3. Собрать **context** для LLM.
 4. Подобрать **few-shot** пример по типу вопроса.
 5. Отдать JSON Go — **без генерации ответа**.
@@ -33,7 +33,7 @@
 | `error` | текст ошибки на русском |
 | `context` | большой текст из фрагментов для промпта |
 | `few_shot` | пример вопрос-ответ из `config/few_shot.json` |
-| `category` | `fertilizer` / `disease` / `variety` / `general` |
+| `category` | категория вопроса (см. ниже) |
 | `fragments` | список `{filename, content}` для верификации на Go |
 | `crop_id` | нормализованный id |
 
@@ -42,7 +42,7 @@
 1. Пустой вопрос → `success: false`.
 2. `normalize_crop_id` — неверная культура → ошибка.
 3. `get_crop` → если `rag_enabled: false` → «база статей не подключена».
-4. `search(q, crop_id, k=8)` — векторный поиск.
+4. `search(q, crop_id, k=8)` — гибридный поиск (см. [rag-hybrid-search.md](./rag-hybrid-search.md)).
 5. Нет фрагментов → «Не нашёл информации в статьях…».
 6. Склейка контекста:
 
@@ -63,16 +63,17 @@
 
 ## Классификация вопроса: `classify_question`
 
-**Rule-based** (ключевые слова), не ML:
+**Rule-based** (ключевые слова), не ML. Влияет только на **few-shot**, не на поиск.
 
 | Категория | Примеры слов в вопросе |
 |-----------|-------------------------|
-| `fertilizer` | удобрение, доза, азот, подкормк… |
-| `disease` | болезн, парша, пятна, гниль, лечени… |
-| `variety` | сорт, рентабельность, склон, Триумф… |
+| `rootstock` | подвой, привой, черенк, саженц, питомник… |
+| `fertilizer` | удобрение, доза, азот, подкормк, фертигац… |
+| `disease` | болезн, парша, плодожорк, марссон, шарк… |
+| `irrigation` | полив, капельн, засух, влаго… |
+| `relief` | склон, террас, кбр, gis, рельеф… |
+| `variety` | сорт, рентабельность, либерти, голден… |
 | `general` | всё остальное |
-
-Зачем: в `few_shot.json` разные примеры тона и детализации по теме.
 
 ---
 
@@ -85,6 +86,7 @@
   "apple": {
     "fertilizer": "Пример вопроса: ... Пример ответа: ...",
     "disease": "...",
+    "rootstock": "...",
     "general": "..."
   }
 }
@@ -102,16 +104,16 @@
 sequenceDiagram
     participant Go as server/rag_chat.go
     participant Py as retrieval.py
-    participant Chroma as vector_store
+    participant VS as vector_store
 
     Go->>Py: POST /rag/context {question, crop_id}
-    Py->>Chroma: search
-    Chroma-->>Py: fragments
+    Py->>VS: search hybrid
+    VS-->>Py: fragments
     Py-->>Go: context, few_shot, fragments
     Go->>Go: LLM + verifyRAGAnswer + disclaimer
 ```
 
-Go **не** ходит в Chroma напрямую — только через Python.
+Go **не** ходит в Chroma/BM25 напрямую — только через Python.
 
 ---
 
@@ -121,7 +123,7 @@ Go **не** ходит в Chroma напрямую — только через Py
 [RAG:apple] источник: article1.txt
 ```
 
-Помогает отладке: какие чанки попали в контекст (в чат пользователю имена статей не обязательны).
+Помогает отладке: какие чанки попали в контекст.
 
 ---
 
@@ -129,9 +131,9 @@ Go **не** ходит в Chroma напрямую — только через Py
 
 | Ситуация | Где решается |
 |----------|----------------|
-| Нет чанков в Chroma | `error` здесь, Go не зовёт LLM с пустым контекстом |
-| LLM выдумал цифру | `verifyRAGAnswer` в Go (+ дубль логики в `verifier.py` для тестов) |
-| Нет фактов в статьях, но LLM ответил | промпт в `rag_chat.go`: «нет в справочных материалах» |
+| Нет чанков | `error` здесь, Go не зовёт LLM с пустым контекстом |
+| LLM выдумал цифру | `verifyRAGAnswer` в Go (+ дубль в `verifier.py`) |
+| Нет фактов в статьях | промпт в `rag_chat.go`: «нет в справочных материалах» |
 
 ---
 
@@ -139,7 +141,7 @@ Go **не** ходит в Chroma напрямую — только через Py
 
 | Тема | Файл |
 |------|------|
-| Chroma, chunking | [rag-vector_store.md](./rag-vector_store.md) |
+| Chroma, BM25, rerank | [rag-vector_store.md](./rag-vector_store.md), [rag-hybrid-search.md](./rag-hybrid-search.md) |
 | Верификация чисел | [rag-verifier.md](./rag-verifier.md), `server/rag_chat.go` |
 | HTTP | [python-api.md](./python-api.md) |
 
@@ -147,4 +149,4 @@ Go **не** ходит в Chroma напрямую — только через Py
 
 ## Краткий итог
 
-`retrieval.py` — **оркестратор RAG-поиска**: культура → поиск → context + few-shot + fragments для Go. Генерация ответа — не здесь.
+`retrieval.py` — **оркестратор RAG-поиска**: культура → hybrid search → context + few-shot + fragments для Go. Генерация ответа — не здесь.

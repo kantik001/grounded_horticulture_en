@@ -95,12 +95,14 @@
 
 ## `rag/` (Python: retrieval и верификация)
 
-- `__init__.py` — пакетный маркер (пустой/минимальный, в базе знаний не разбирается).
 - `crops_config.py` → [rag-crops_config.md](./rag-crops_config.md)
+- `embeddings.py` — e5 `query:` / `passage:` префиксы
+- `chunking.py` — общее чанкование 650/80 + `chunk_id`
 - `vector_store.py` → [rag-vector_store.md](./rag-vector_store.md)
+- `bm25_store.py`, `hybrid.py`, `reranker.py` → [rag-hybrid-search.md](./rag-hybrid-search.md)
 - `retrieval.py` → [rag-retrieval.md](./rag-retrieval.md)
 - `verifier.py` → [rag-verifier.md](./rag-verifier.md)
-- `__pycache__/` — автокэш Python (см. FAQ в чате / не коммитить).
+- `__pycache__/` — автокэш Python (не коммитить).
 
 ## `scripts/` (утилиты)
 
@@ -116,7 +118,10 @@
 → [eval/README.md](../../eval/README.md)
 
 - `rag_apple_baseline.jsonl` — 30 вопросов по яблоне.
+- `rag_pear_baseline.jsonl` — 8 вопросов по груше.
+- `rag_plum_baseline.jsonl` — 10 вопросов по сливе.
 - `rag_demo_hr_baseline.jsonl` — 5 вопросов sandbox HR.
+- `plum_miscategorized_audit.json` — отчёт аудита `data/plum/`.
 - `results/` — отчёты прогонов.
 
 ## `server/` (backend API)
@@ -142,7 +147,10 @@
 - `conftest.py` — pytest: `PYTHONPATH` на корень проекта.
 - `test_crops_config.py` — тесты `rag/crops_config.py`.
 - `test_verifier.py` — тесты `rag/verifier.py`.
-- `requirements-test.txt` — pytest + langchain-core (без Chroma/PyTorch).
+- `test_hybrid_search.py` — BM25, RRF, токенизация (без Chroma/HF).
+- `test_rag_retrieval.py` — категории вопросов, diversify.
+- `test_rag_eval_match.py`, `test_embeddings.py`, `test_vector_titles.py`
+- `requirements-test.txt` — pytest + langchain-core + rank-bm25 (без PyTorch/Chroma).
 
 ## `webapp/` (клиентский интерфейс)
 
@@ -160,7 +168,7 @@
 2. [`ARCHITECTURE.md`](../ARCHITECTURE.md) → платформа vs domain pack, клонирование.
 3. `docker-compose.yml` → как связаны сервисы.
 4. [server-overview.md](./server-overview.md) → маршруты и старт.
-5. [rag-vector_store.md](./rag-vector_store.md) → [rag-retrieval.md](./rag-retrieval.md) → `server/rag_chat.go` → ядро RAG.
+5. [rag-vector_store.md](./rag-vector_store.md) → [rag-hybrid-search.md](./rag-hybrid-search.md) → [rag-retrieval.md](./rag-retrieval.md) → `server/rag_chat.go` → ядро RAG.
 6. [python-api.md](./python-api.md) + [cv-apple_classifier.md](./cv-apple_classifier.md) → CV-ветка.
 7. `migrations/*.sql` + `server/postgres_store.go` → БД и персистентность.
 8. `tests/`, `eval/`, `server/*_test.go` → качество и регрессии.

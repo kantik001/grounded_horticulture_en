@@ -1,0 +1,1954 @@
+{
+  "generated_at": "2026-06-05T14:29:04.498568+00:00",
+  "total": 108,
+  "ok": 98,
+  "mixed": 10,
+  "misc": 0,
+  "review": 0,
+  "articles": [
+    {
+      "file": "article100_izuchenie_tolerantnosti_sli_vy_k_virusu.txt",
+      "title": "УДК 632.92:632.7:634.2",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 4,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article101_razrabotka_effektivnyh.txt",
+      "title": "Плодоводство и виноградарство Юга России № 53(05), 2018 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 14,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article103_fitosanitarnyy.txt",
+      "title": "Плодоводство и виноградарство Юга России № 50(02), 2018 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 1,
+        "cherry": 6,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 1, другие cherry 6.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article104_ozdorovlenie_pitomnikov.txt",
+      "title": "Плодоводство и виноградарство Юга России № 50(02), 2018 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 7,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article107_formirovanie.txt",
+      "title": "Плодоводство и виноградарство Юга России № 48(06), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 3,
+        "cherry": 1,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article108_adaptivnyy_sortiment_slivy_intensivnyh_sadov.txt",
+      "title": "Плодоводство и виноградарство Юга России № 47(05), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 43,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article109_osnovnye_transformatsii.txt",
+      "title": "Плодоводство и виноградарство Юга России № 44(02), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 8,
+        "cherry": 9,
+        "apricot": 2,
+        "peach": 1,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article10_plum_adaptive_rootstocks.txt",
+      "title": "Слива: адаптивные подвои для юга (СКФНЦ)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 28,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article110_monitoring.txt",
+      "title": "Плодоводство и виноградарство Юга России № 44(02), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 4,
+        "cherry": 3,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article111_sterilizatsiya_eksplantov.txt",
+      "title": "Плодоводство и виноградарство Юга России № 44(02), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 12,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article115_tehnologiya_vozdelyvaniya_slivy_usloviy.txt",
+      "title": "Плодоводство и виноградарство Юга России № 42(06), 2016 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 46,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article116_vliyanie_srokov_primeneniya_bornoy_kisloty.txt",
+      "title": "Плодоводство и виноградарство Юга России № 41(05), 2016 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 16,
+        "cherry": 15,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article118_optimizatsiya.txt",
+      "title": "Плодоводство и виноградарство Юга России № 39(03), 2016 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 22,
+        "cherry": 8,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article119_rostovye_reaktsii.txt",
+      "title": "Плодоводство и виноградарство Юга России № 36(06), 2015 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 6,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article11_stonefruit_rootstock_bav.txt",
+      "title": "Подвои косточковых: БАВ в питомнике",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 22,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article121_genotipicheskaya_harakteristika_kollektsii_kosto.txt",
+      "title": "Плодоводство и виноградарство Юга России № 36(06), 2015 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 5,
+        "cherry": 4,
+        "apricot": 4,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article123_osobennosti_razvitiya_vozbuditelya_klyasterospor.txt",
+      "title": "article123_osobennosti_razvitiya_vozbuditelya_klyasterospor",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 20,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article124_sortospetsifichnost.txt",
+      "title": "article124_sortospetsifichnost",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 5,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article128_monitoring_virusa_sharki_slivy_s_pomoschyu.txt",
+      "title": "article128_monitoring_virusa_sharki_slivy_s_pomoschyu",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 21,
+        "cherry": 17,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article129_tendentsii_rasprostraneniya_bolezney_kostochkovy.txt",
+      "title": "article129_tendentsii_rasprostraneniya_bolezney_kostochkovy",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 16,
+        "cherry": 25,
+        "apricot": 4,
+        "peach": 1,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 16, другие cherry 25.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article12_fitaktiv_rooting_heavy_soil.txt",
+      "title": "Слива: укоренение подвоев на суглинистых почвах",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 34,
+        "cherry": 0,
+        "apricot": 2,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article131_kachestvo_plodov_perspektivnyh_sortov.txt",
+      "title": "article131_kachestvo_plodov_perspektivnyh_sortov",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 37,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article13_nursery_bacterial_canker.txt",
+      "title": "Слива: питомник без бактериального рака корней",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 8,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article140_ekologizirovannye_elementy_zaschity_kostochkovyh.txt",
+      "title": "article140_ekologizirovannye_elementy_zaschity_kostochkovyh",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 18,
+        "cherry": 4,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article141_novye_vidy_patogenov_kostochkovyh_kultur.txt",
+      "title": "article141_novye_vidy_patogenov_kostochkovyh_kultur",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 5,
+        "cherry": 10,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 5, другие cherry 10.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article142_elementy_ekologizirovannoy_zaschity_vishni_slivy.txt",
+      "title": "article142_elementy_ekologizirovannoy_zaschity_vishni_slivy",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 41,
+        "cherry": 16,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article143_sorta_slivy_domashney_selektsii_skzniisiv.txt",
+      "title": "СОРТА СЛИВЫ ДОМАШНЕЙ СЕЛЕКЦИИ СКЗНИИСИВ",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 45,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article14_plum_ppv_bud_take.txt",
+      "title": "Слива: толерантность к шарке (PPV), приживаемость глазков",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 96,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 2,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article151_osnovnye_printsipy_optimalnogo_podbora.txt",
+      "title": "article151_osnovnye_printsipy_optimalnogo_podbora",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 34,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article153_selektsiya_slivy_domashney_kachestvo_plodov.txt",
+      "title": "СЕЛЕКЦИЯ СЛИВЫ ДОМАШНЕЙ НА КАЧЕСТВО ПЛОДОВ",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 52,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 3,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article156_chetyrehnogie_kleschi_plodovyh_nasazhdeniy.txt",
+      "title": "article156_chetyrehnogie_kleschi_plodovyh_nasazhdeniy",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 7,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 10,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "peach",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article157_selektsiya_sortov_kostochkovyh_kultur.txt",
+      "title": "article157_selektsiya_sortov_kostochkovyh_kultur",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 27,
+        "cherry": 30,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article15_plum_in_vitro_growth_stimulators.txt",
+      "title": "Слива: микроразмножение in vitro (справочно)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 27,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article160_otsenka_sortov_klonovyh_podvoev_sozdaniya_skorop.txt",
+      "title": "ОЦЕНКА СОРТОВ И КЛОНОВЫХ ПОДВОЕВ ДЛЯ СОЗДАНИЯ СКОРОПЛОДНЫХ САДОВ СЛИВЫ ДОМАШНЕЙ",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 33,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article161_vyraschivanie_kachestvennyh_sazhentsev_kostochko.txt",
+      "title": "article161_vyraschivanie_kachestvennyh_sazhentsev_kostochko",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 9,
+        "cherry": 9,
+        "apricot": 15,
+        "peach": 8,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "apricot",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 9, другие apricot 15.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article163_vospriimchivost_sortov_slivy_k_virusu_sharki.txt",
+      "title": "article163_vospriimchivost_sortov_slivy_k_virusu_sharki",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 118,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article164_vydelenie_sortov.txt",
+      "title": "article164_vydelenie_sortov",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 16,
+        "cherry": 21,
+        "apricot": 3,
+        "peach": 3,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 16, другие cherry 21.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article167_produktivnost_razlichnyh_konstruktsiy_nasazhdeni.txt",
+      "title": "article167_produktivnost_razlichnyh_konstruktsiy_nasazhdeni",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 38,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article168_podbor_sorto_podvoynyh_kombinatsiy_intensivnyh_t.txt",
+      "title": "article168_podbor_sorto_podvoynyh_kombinatsiy_intensivnyh_t",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 54,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article169_ekologo_geneticheskie_aspekty_plastichnosti_sliv.txt",
+      "title": "article169_ekologo_geneticheskie_aspekty_plastichnosti_sliv",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 27,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article16_plum_ppv_pcr_diagnosis.txt",
+      "title": "**ПЦР-диагностика** вируса шарки сливы (PPV) — идентификация в образцах с симптомами и в меристемах. Практика: -…",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 57,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article170_ispolzovanie.txt",
+      "title": "article170_ispolzovanie",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 1,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article175_elementy_integrirovannoy_zaschity_slivy_ot_osnov.txt",
+      "title": "article175_elementy_integrirovannoy_zaschity_slivy_ot_osnov",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 41,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article176_razrabotka_ekologizirovannoy_zaschity_slivy_ot_k.txt",
+      "title": "article176_razrabotka_ekologizirovannoy_zaschity_slivy_ot_k",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 26,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article177_biohimicheskie_osobennosti_adaptatsii_slivy_k_st.txt",
+      "title": "article177_biohimicheskie_osobennosti_adaptatsii_slivy_k_st",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 51,
+        "cherry": 8,
+        "apricot": 4,
+        "peach": 4,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article179_skoroplodnost_sorto_podvoynyh_kombinatsiy_slivy.txt",
+      "title": "article179_skoroplodnost_sorto_podvoynyh_kombinatsiy_slivy",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 21,
+        "cherry": 17,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article17_plum_clone_rootstocks_green_cuttings.txt",
+      "title": "Клоновые подвои сливы: зелёное черенкование (ВВА-1, ПК СК-1, ПК СК-2, ВПК-1)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 31,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 1,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article182_genofond_kostochkovyh_plodovyh_rasteniy_osobenno.txt",
+      "title": "article182_genofond_kostochkovyh_plodovyh_rasteniy_osobenno",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 23,
+        "cherry": 41,
+        "apricot": 7,
+        "peach": 15,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 23, другие cherry 41.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article183_perspektivnye_sorta_gibridy_slivy_domashney.txt",
+      "title": "article183_perspektivnye_sorta_gibridy_slivy_domashney",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 67,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article18_plum_renklod_altana_astrahan_rootstocks.txt",
+      "title": "1. Клоновые подвои ускоряют фенологию: конец покоя **на 12–14 сут.** раньше; вегетация и цветение **на 8–10** и …",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 49,
+        "cherry": 1,
+        "apricot": 8,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article19_crimea_rootstocks_plum_peach_apricot.txt",
+      "title": "1. Серия подвоев Крымской ОСС: адаптивность, слаборослость, продуктивность, размножение зелёными и одревесневшим…",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 42,
+        "cherry": 2,
+        "apricot": 16,
+        "peach": 14,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article1_plum_winter_hardiness_maykop.txt",
+      "title": "Слива: зимостойкость сортов (Майкоп, предгорье)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 62,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 4,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article20_plum_terraces_kbr_productivity.txt",
+      "title": "1. Экстенсивные сливовые сады на склонах КБР — низкая отдача; нужны интенсивные технологии и обновление сортимен…",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 65,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article21_stonefruit_rootstocks_south_russia.txt",
+      "title": "1. Акцент селекции подвоев на устойчивость к **жаре, засухе весна–лето**, размножение **одревесневшими** черенка…",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 35,
+        "cherry": 0,
+        "apricot": 3,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article22_plum_rootstock_deficiency_score.txt",
+      "title": "article22_plum_rootstock_deficiency_score.txt",
+      "rag_crop": "?",
+      "scores": {
+        "plum": 25,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article23_effektivnost_razmnozheniya_podvoev_kostochkovyh.txt",
+      "title": "О. Эффективность размножения подвоев косточковых культур in vitro, в зависимости от концентрации 6-БАП и продолжительнос",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 5,
+        "cherry": 4,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article25_ekologo_ekonomicheskaya_otsenka_effektivnosti_ad.txt",
+      "title": "ЧЕТЫРЕХНОГИЕ КЛЕЩИ ПЛОДОВЫХ НАСАЖДЕНИЙ И МЕРЫ БОРЬБЫ С НИМИ",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 3,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 1,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article26_realizatsiya_potentsialnoy_produktivnosti_sortov.txt",
+      "title": "УДК 634.2:631.526.1/4:631.527",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 5,
+        "cherry": 5,
+        "apricot": 1,
+        "peach": 5,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article27_izuchenie_nekotoryh_pokazateley_zimostoykosti_so.txt",
+      "title": "Плодоводство и виноградарство Юга России № 46(04), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 10,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 1
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article2_plum_rootstocks_stanley_krasnodar.txt",
+      "title": "На тяжёлых и засоленных/закисленных почвах предгорий подвой сильно влияет на состояние и урожай сливы. Урожайнос…",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 50,
+        "cherry": 1,
+        "apricot": 2,
+        "peach": 2,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article30_razrabotka_prirodnopodobnyh.txt",
+      "title": "УДК 632.92:632.7:634.2",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 4,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article31_novyy_perspektivnyy_sort.txt",
+      "title": "УДК 634.2:631.526.1/4:631.527",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 5,
+        "cherry": 5,
+        "apricot": 1,
+        "peach": 5,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article32_otsenka_kachestva_plodov.txt",
+      "title": "Плодоводство и виноградарство Юга России № 46(04), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 10,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 1
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article33_osobennosti_realizatsii_produktivnogo_potentsial.txt",
+      "title": "Ш., Кочубей А л.А. Особенности реализации продуктивного потенциала интродуцированных сортов сливы китайской",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 12,
+        "cherry": 0,
+        "apricot": 2,
+        "peach": 2,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article35_sensornyy_analiz.txt",
+      "title": "УДК 634.228:631.526.32:664.8/.9",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 24,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article36_trehkomponentnyy.txt",
+      "title": "DOI 10.30679/2219-5335-2023-3-81-246-260",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 6,
+        "cherry": 3,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 1,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article37_razrabotka_metoda.txt",
+      "title": "Федорович Святослав Валерьевич 1 младший научный сотрудник лаборатории вирусологии",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 32,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article3_polimiks_stanley_kuban.txt",
+      "title": "Слива Стенлей: ПолиМикс-Агро, урожай до 21 т/га",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 44,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article40_kachestvo_produktov.txt",
+      "title": "Плодоводство и виноградарство Юга России № 52(04), 2018 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 80,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 6,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article41_vliyanie_preparata.txt",
+      "title": "Плодоводство и виноградарство Юга России № 52(04), 2018 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 12,
+        "cherry": 0,
+        "apricot": 2,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article42_proizvodstvo_posadochnogo.txt",
+      "title": "Современный этап развития садоводства основывается на новых",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 6,
+        "cherry": 9,
+        "apricot": 1,
+        "peach": 4,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 6, другие cherry 9.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article43_printsip_vydeleniya.txt",
+      "title": "Плодоводство и виноградарство Юга России № 46(04), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 10,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 1
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article44_vyraschivanie_posadochnogo.txt",
+      "title": "Плодоводство и виноградарство Юга России № 46(04), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 10,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 1
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article45_rasprostranennost.txt",
+      "title": "Плодоводство и виноградарство Юга России № 44(02), 2017 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 12,
+        "cherry": 19,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 2,
+        "tomato": 1,
+        "strawberry": 10
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 12, другие cherry 19.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article48_otsenka_ustoychivosti_sortov_kostochkovyh_kultur.txt",
+      "title": "Плодоводство и виноградарство Юга России № 25(01), 2014 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 13,
+        "cherry": 13,
+        "apricot": 0,
+        "peach": 1,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article49_perspektivnye_sorto_podvoynye_kombinatsii_slivy.txt",
+      "title": "У ДК 634.22:631.52:631.541",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 45,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article4_stanley_fertilizer_bav.txt",
+      "title": "Слива Стенлей: удобрения и БАВ (Краснодар)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 43,
+        "cherry": 8,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article52_adaptivnyy_sortiment.txt",
+      "title": "УДК 634.22:631.526",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 15,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article53_otsenka_klonovyh.txt",
+      "title": "УДК 634.22:631. 541(471.63)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 17,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article54_osnovnye_tendentsii.txt",
+      "title": "УДК 632.92:632.7:634.2",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 4,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article56_razrabotka_ekologicheski.txt",
+      "title": "УДК 632.6:634.1:632.951",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 3,
+        "cherry": 1,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article58_sovershenstvovanie.txt",
+      "title": "СОВЕРШЕНСТВОВАНИЕ ЭЛЕМЕНТОВ ТЕХНОЛОГИИ ПРОИЗВОДСТВА ПЛОДОВ КОСТОЧКОВЫХ КУЛЬТУР В УСЛОВИЯХ ПРОЯВЛЕНИЯ КЛИМАТИЧЕСКИХ СТРЕС",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 6,
+        "cherry": 9,
+        "apricot": 1,
+        "peach": 4,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 6, другие cherry 9.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article5_nursery_pruning_oda.txt",
+      "title": "Саженцы сливы: обрезка в питомнике",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 25,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article62_otnositelnoe_soderzhanie_vody_vyhod_elektrolitov.txt",
+      "title": "Е., Копнина Т.А., Караваева А.В. Относительное содержание воды и выход электролитов в листьях косточковых культур после ",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 20,
+        "cherry": 20,
+        "apricot": 1,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article63_razrabotka_prirodopodobnoy_tehnologii_razmnozhen.txt",
+      "title": "П., Кочкин Д.А., Тымчик Н.Е., Щеглов С.Н., Драбудько Н.Н. , Разработка природоподобной технологии размножения низкорослы",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 1,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "cherry",
+      "verdict": "mixed",
+      "reason": "Косточковые mixed: слива 1, другие cherry 2.",
+      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+    },
+    {
+      "file": "article65_otsenka_sortov_slivy_spetsificheskih_usloviy_pre.txt",
+      "title": "В., Буттаева З.М. Оценка сортов сливы для специфических условий предгорий Кабардино -Балкарии",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 58,
+        "cherry": 2,
+        "apricot": 1,
+        "peach": 1,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article67_k_nauchnym_osnovam.txt",
+      "title": "УДК 634.32.631.521",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 1,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 1,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article69_holodnoe_hranenie.txt",
+      "title": "Е., Васеха В.В. Прореживание завязи как элемент сортовой агротехники",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 1,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article6_plum_cherry_plum_rootstock.txt",
+      "title": "Слива на подвое алыча: крона-ряд, до 26 т/га",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 48,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article70_otsenka.txt",
+      "title": "Плодоводство и виноградарство Юга России № 77(5), 2022 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 1,
+        "cherry": 1,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article72_zasuhoustoychivost.txt",
+      "title": "Плодоводство и виноградарство Юга России № 76(4), 2022 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 4,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 2,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article73_vodouderzhivayuschaya.txt",
+      "title": "Плодоводство и виноградарство Юга России № 75(3), 2022 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 25,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article75_osobennosti_razvitiya.txt",
+      "title": "Плодоводство и виноградарство Юга России № 73(1), 2022 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 25,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article77_otsenka_nekotoryh.txt",
+      "title": "Плодоводство и виноградарство Юга России № 73(1), 2022 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 21,
+        "cherry": 0,
+        "apricot": 1,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article78_ustoychivost_grushi_pyrus_l.txt",
+      "title": "ЧЕТЫРЕХНОГИЕ КЛЕЩИ ПЛОДОВЫХ НАСАЖДЕНИЙ И МЕРЫ БОРЬБЫ С НИМИ",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 3,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 1,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article7_plum_cherry_plum_compotes.txt",
+      "title": "Слива и алыча: сорта для компотов (Майкоп, ВИР)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 102,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 6,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article80_klyuchevye_voprosy.txt",
+      "title": "Плодоводство и виноградарство Юга России № 71(5), 2021 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 3,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 3
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article82_nauchnoe_obosnovanie.txt",
+      "title": "Плодоводство и виноградарство Юга России № 70(4), 2021 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 5,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article84_bioekologicheskie.txt",
+      "title": "Плодоводство и виноградарство Юга России № 69(3), 2021 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 19,
+        "cherry": 1,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article85_introduktsiya.txt",
+      "title": "Плодоводство и виноградарство Юга России № 67(1), 2021 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 26,
+        "cherry": 1,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article88_otsenka_zimnih_povrezhdeniy_skeletnoy_chasti_der.txt",
+      "title": "Плодоводство и виноградарство Юга России № 65(5), 2020 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 41,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 4,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article8_plum_chinese_conserves_crimea.txt",
+      "title": "Слива китайская: консервы, генофонд Крыма (справочно)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 45,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article91_vliyanie_biogennyh_elementov_ca_mg_aktivnost_kat.txt",
+      "title": "Плодоводство и виноградарство Юга России № 60(06), 2019 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 1,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article93_kompleksnaya_otsenka_ishodnogo_materiala_slivy_d.txt",
+      "title": "Плодоводство и виноградарство Юга России № 59(5), 2019 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 43,
+        "cherry": 1,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article96_perspektivy_ispolzovaniya_razmnozheniya_in_vitro.txt",
+      "title": "Плодоводство и виноградарство Юга России № 56(02), 2019 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 9,
+        "cherry": 9,
+        "apricot": 4,
+        "peach": 3,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article98_izuchenie_osobennostey.txt",
+      "title": "Плодоводство и виноградарство Юга России № 54(06), 2018 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 60,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 4,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article99_vydelenie_adaptivnyh_form_podvoev_slivy.txt",
+      "title": "Плодоводство и виноградарство Юга России № 54(06), 2018 г.",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 26,
+        "cherry": 2,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    },
+    {
+      "file": "article9_plum_in_vitro_sterilization.txt",
+      "title": "Слива: стерилизация эксплантов in vitro (справочно)",
+      "rag_crop": "plum",
+      "scores": {
+        "plum": 33,
+        "cherry": 0,
+        "apricot": 0,
+        "peach": 0,
+        "pear": 0,
+        "tomato": 0,
+        "strawberry": 0
+      },
+      "primary_crop": "plum",
+      "verdict": "ok",
+      "reason": "Имя файла и текст указывают на сливу.",
+      "suggested_action": "оставить"
+    }
+  ]
+}

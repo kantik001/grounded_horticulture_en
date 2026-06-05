@@ -179,7 +179,7 @@ loadCropsCatalog → ensureSession → loadOnboarding
 ### Важно
 
 - Админка **не** для обучения CV и **не** для загрузки `.pth` — только **текстовые статьи** в `data/{crop}/`.
-- После upload нужен **Reindex**, иначе Chroma не обновится.
+- После upload нужен **Reindex**, иначе Chroma и BM25 не обновятся.
 
 ---
 

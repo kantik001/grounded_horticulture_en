@@ -18,5 +18,15 @@ os.environ["FORCE_RAG_REINDEX"] = "true"
 from rag.vector_store import create_vector_store  # noqa: E402
 
 if __name__ == "__main__":
-    create_vector_store()
-    print("Переиндексация RAG завершена.")
+    try:
+        create_vector_store()
+        print("Переиндексация RAG завершена.")
+    except Exception as e:
+        err = str(e).lower()
+        if "hnsw" in err or "compaction" in err:
+            print(
+                "Ошибка Chroma на Windows при большом индексе. "
+                "Используйте: make docker-reindex && docker compose restart classifier",
+                file=sys.stderr,
+            )
+        raise

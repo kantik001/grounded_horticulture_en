@@ -17,7 +17,7 @@
 | `POST /rag/context` | Найти фрагменты статей для текстового вопроса (без LLM) |
 | `GET /crops` | Список культур из конфига |
 | `GET /health` | Проверка, что сервис жив |
-| `POST /admin/reindex` | Пересобрать векторную базу Chroma |
+| `POST /admin/reindex` | Пересобрать Chroma + BM25 |
 
 Go ходит сюда, например: `http://classifier:5000/classify` (см. `CLASSIFIER_URL`, `CLASSIFIER_RAG_URL` в `.env`).
 
@@ -39,7 +39,7 @@ load_dotenv(os.path.join(_root, ".env"))
 
 - `get_classifier_for_crop` — CV-модель для культуры (`cv/registry.py`).
 - `retrieve_rag_context` — поиск по статьям (`rag/retrieval.py`).
-- `vector_store` — переиндексация Chroma.
+- `vector_store` — переиндексация Chroma и BM25.
 
 ---
 
@@ -127,7 +127,7 @@ CORS(app)
 
 - пустой `question` → 400;
 - `retrieve_rag_context(question, crop_id)` в `rag/retrieval.py`:
-  - поиск в Chroma (embeddings);
+  - hybrid search (vector + BM25 + reranker);
   - сбор **context** (тексты фрагментов);
   - **few_shot** по категории вопроса;
   - **fragments** для верификации на стороне Go.
@@ -161,7 +161,7 @@ Smoke-тесты и проверка Docker.
 **Действия:**
 
 1. `vs.reset_vector_store()` — сброс in-memory кэша.
-2. `vs.load_vector_store(force_reindex=True)` — чтение `data/{crop}/*.txt`, chunking, embeddings, запись в `chroma_db/`.
+2. `vs.load_vector_store(force_reindex=True)` — чтение `data/{crop}/*.txt`, chunking, embeddings → `chroma_db/`, BM25 → `bm25_db/`.
 
 Go-админка после upload `.txt` вызывает этот эндпоинт через `PYTHON_BASE_URL` + `/admin/reindex`.
 
@@ -223,4 +223,4 @@ sequenceDiagram
 
 ## Краткий итог
 
-`app.py` — **тонкий HTTP-слой**: валидация входа, делегирование в `cv/*` и `rag/*`, JSON на выходе. CV — PyTorch; RAG-поиск — Chroma/LangChain; LLM в этом файле **не участвует**.
+`app.py` — **тонкий HTTP-слой**: валидация входа, делегирование в `cv/*` и `rag/*`, JSON на выходе. CV — PyTorch; RAG-поиск — Chroma + BM25 hybrid + reranker; LLM в этом файле **не участвует**.

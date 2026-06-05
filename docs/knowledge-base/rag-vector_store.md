@@ -2,16 +2,18 @@
 
 **Исходный файл:** `rag/vector_store.py`  
 **Данные:** `data/{crop_id}/*.txt`  
-**Хранилище:** папка `chroma_db/` (в Docker — volume `chroma_data`)  
+**Хранилища:** `chroma_db/` (вектор), `bm25_db/` (keyword) — в Docker volumes `chroma_data`, `bm25_data`  
 **Кто вызывает:** `rag/retrieval.py` → `search()`, админка → `load_vector_store(force_reindex=True)`
+
+**Подробнее про hybrid:** [rag-hybrid-search.md](./rag-hybrid-search.md)
 
 ---
 
 ## Зачем этот файл
 
-Ядро **векторного RAG**: превратить `.txt` статьи в embeddings и искать по смыслу вопроса в **Chroma**.
+Ядро **RAG retrieval**: превратить `.txt` статьи в индексы и искать релевантные фрагменты по вопросу.
 
-LLM здесь **нет** — только индексация и similarity search.
+LLM здесь **нет** — только индексация и поиск (vector + BM25 + rerank).
 
 ---
 
@@ -21,6 +23,7 @@ LLM здесь **нет** — только индексация и similarity se
 |------------|------|
 | `DATA_DIR` | `{корень}/data` |
 | `PERSIST_DIR` | `{корень}/chroma_db` |
+| BM25 | `{корень}/bm25_db` (`rag/bm25_store.py`) |
 
 ---
 
@@ -28,12 +31,12 @@ LLM здесь **нет** — только индексация и similarity se
 
 ```mermaid
 flowchart LR
-    A[data/apple/*.txt] --> B[TextLoader]
-    B --> C[metadata crop_id filename]
-    C --> D[RecursiveCharacterTextSplitter]
-    D --> E[chunk 500 overlap 50]
-    E --> F[HuggingFaceEmbeddings e5-small]
-    F --> G[Chroma persist chroma_db]
+    A[data/crop/*.txt] --> B[TextLoader + metadata]
+    B --> C[chunking.py split 650/80]
+    C --> D[chunk_id в metadata]
+    D --> E[E5Embeddings passage:]
+    E --> F[Chroma chroma_db]
+    D --> G[BM25Okapi bm25_db]
 ```
 
 ### `load_all_documents()`
@@ -41,6 +44,8 @@ flowchart LR
 - Обходит все культуры из `crops.json`;
 - для каждой — `data/{crop_id}/*.txt`;
 - **legacy:** файлы прямо в `data/*.txt` считаются яблоней (`apple`).
+
+Корпус (оценка): **~344** apple, **~42** pear, **~108** plum (после чистки miscategorized в `data/plum/`).
 
 ### `_load_file(crop_id, file_path)`
 
@@ -55,9 +60,11 @@ flowchart LR
 ### `create_vector_store()`
 
 1. Загрузить все документы.
-2. **Chunking:** `chunk_size=500`, `chunk_overlap=50` символов.
-3. **Embeddings:** `intfloat/multilingual-e5-small` (мультиязычно, русский ок).
-4. `Chroma.from_documents(..., persist_directory=PERSIST_DIR)`.
+2. **Chunking** (`rag/chunking.py`): 650/80, секционные разделители.
+3. **chunk_id** в metadata каждого чанка.
+4. **Embeddings:** `intfloat/multilingual-e5-small` с префиксами `passage:` / `query:` (`rag/embeddings.py`).
+5. **Chroma** → `chroma_db/`.
+6. **BM25** → `bm25_db/` (`rag/bm25_store.py`).
 
 Если статей нет → `None`, поиск пустой.
 
@@ -68,11 +75,11 @@ flowchart LR
 | Ситуация | Поведение |
 |----------|-----------|
 | Кэш `_vector_store` в памяти | вернуть его |
-| `force_reindex=True` или `FORCE_RAG_REINDEX=true` | удалить `chroma_db`, пересоздать |
-| `chroma_db` не пустая | открыть существующую Chroma |
+| `force_reindex=True` или `FORCE_RAG_REINDEX=true` | удалить `chroma_db` и `bm25_db`, пересоздать |
+| `chroma_db` не пустая | открыть Chroma + загрузить BM25 с диска |
 | иначе | `create_vector_store()` |
 
-`reset_vector_store()` — сброс только RAM-кэша (перед admin reindex).
+`reset_vector_store()` — сброс RAM-кэша Chroma и BM25 (перед admin reindex).
 
 ### Admin reindex (`api/app.py`)
 
@@ -80,21 +87,21 @@ flowchart LR
 reset_vector_store() → load_vector_store(force_reindex=True)
 ```
 
-После upload новых `.txt` в `data/` — обязателен reindex, иначе Chroma не видит файлы.
+После upload новых `.txt` в `data/` — обязателен reindex, иначе индексы не видят файлы.
 
 ---
 
 ## Поиск: `search(query, crop_id, k=8)`
 
-```python
-store.similarity_search(query, k=k, filter={"crop_id": crop_id})
-```
+Не только `similarity_search` — полный pipeline:
 
-- **similarity_search** — ближайшие по embedding фрагменты;
-- **filter** — только статьи выбранной культуры (мультикультура);
-- **k=8** — до 8 чанков в контекст LLM.
+1. **Vector:** `similarity_search`, `k=FETCH_K`, filter `crop_id`.
+2. **BM25** (если `RAG_HYBRID_ENABLED` и есть `bm25_db`): top `BM25_FETCH_K`.
+3. **RRF** по `chunk_id` из обоих списков.
+4. **Reranker** (если `RAG_RERANK_ENABLED`): cross-encoder на пуле до `RERANK_TOP_N`.
+5. **diversify_fragments:** max 2 чанка с одной статьи → **8** в контекст.
 
-Первый вызов может **долго** тянуть embedding-модель с HuggingFace.
+Первый вызов может **долго** тянуть e5 и reranker с HuggingFace.
 
 ---
 
@@ -107,8 +114,11 @@ store.similarity_search(query, k=k, filter={"crop_id": crop_id})
 ## Docker
 
 - `./data:/app/data:ro` — статьи;
-- `chroma_data:/app/chroma_db` — индекс между перезапусками;
+- `chroma_data:/app/chroma_db` — векторный индекс;
+- `bm25_data:/app/bm25_db` — BM25 индекс;
 - `FORCE_RAG_REINDEX` — полная пересборка при старте.
+
+После reindex в Docker: **`docker compose restart classifier`** (сброс in-memory кэша).
 
 ---
 
@@ -116,11 +126,15 @@ store.similarity_search(query, k=k, filter={"crop_id": crop_id})
 
 ### Добавил `article4.txt`, RAG не видит
 
-Нужен **reindex** (админка или `scripts/reindex_rag.py`).
+Нужен **reindex** (`make docker-reindex-apply` или admin).
 
-### Папка `chroma_db` в git?
+### Папки `chroma_db/` / `bm25_db/` в git?
 
-Обычно нет — генерируется локально/volume.
+Нет — генерируются локально / в Docker volumes (`.gitignore`).
+
+### Hybrid не работает после restart
+
+Проверьте volume `bm25_data` и что после смены `data/` был reindex.
 
 ### Qdrant в roadmap
 
@@ -132,6 +146,7 @@ store.similarity_search(query, k=k, filter={"crop_id": crop_id})
 
 | Тема | Файл |
 |------|------|
+| BM25, RRF, reranker | [rag-hybrid-search.md](./rag-hybrid-search.md) |
 | Сборка контекста для Go | [rag-retrieval.md](./rag-retrieval.md) |
 | Культуры | [rag-crops_config.md](./rag-crops_config.md) |
 | HTTP reindex | [python-api.md](./python-api.md) |
@@ -140,4 +155,4 @@ store.similarity_search(query, k=k, filter={"crop_id": crop_id})
 
 ## Краткий итог
 
-`vector_store.py` — **индекс статей в Chroma** + **семантический поиск** с фильтром `crop_id`. Всё тяжёлое для RAG (embeddings, chunking) сосредоточено здесь.
+`vector_store.py` — **индексация** (Chroma + BM25) и **гибридный поиск** с reranker и diversify. Chunking вынесен в `rag/chunking.py`.

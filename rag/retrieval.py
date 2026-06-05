@@ -7,7 +7,6 @@ import os
 from typing import Any, Dict, List
 
 from rag.crops_config import get_crop, normalize_crop_id
-from rag.vector_store import search
 
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _few_shot_cache = None
@@ -24,9 +23,23 @@ def _load_few_shot() -> dict:
     return _few_shot_cache
 
 
-# Категория вопроса по ключевым словам: удобрения, болезни, сорта, общее.
+# Категория вопроса по ключевым словам (влияет на few-shot, не на поиск).
 def classify_question(question: str) -> str:
     q_lower = question.lower()
+    if any(
+        kw in q_lower
+        for kw in [
+            "подвой",
+            "подво",
+            "привой",
+            "окулиров",
+            "черенк",
+            "саженц",
+            "питомник",
+            "книп",
+        ]
+    ):
+        return "rootstock"
     if any(
         kw in q_lower
         for kw in [
@@ -38,6 +51,8 @@ def classify_question(question: str) -> str:
             "азот",
             "фосфор",
             "калий",
+            "фертигац",
+            "листов",
         ]
     ):
         return "fertilizer"
@@ -51,9 +66,38 @@ def classify_question(question: str) -> str:
             "ржавчин",
             "мучнист",
             "лечени",
+            "вредител",
+            "плодожорк",
+            "тля",
+            "марссон",
+            "шарк",
+            "фитосанит",
         ]
     ):
         return "disease"
+    if any(
+        kw in q_lower
+        for kw in [
+            "полив",
+            "орошен",
+            "капельн",
+            "засух",
+            "влаго",
+        ]
+    ):
+        return "irrigation"
+    if any(
+        kw in q_lower
+        for kw in [
+            "склон",
+            "рельеф",
+            "террас",
+            "кбр",
+            "предгор",
+            "gis",
+        ]
+    ):
+        return "relief"
     if any(
         kw in q_lower
         for kw in [
@@ -63,7 +107,8 @@ def classify_question(question: str) -> str:
             "триумф",
             "президент",
             "рентабельность",
-            "склон",
+            "либерти",
+            "стенлей",
         ]
     ):
         return "variety"
@@ -105,6 +150,8 @@ def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str
             "Выберите другую культуру или вернитесь позже."
         )
         return empty
+
+    from rag.vector_store import search
 
     fragments = search(q, crop_id=crop_id, k=8)
     if not fragments:

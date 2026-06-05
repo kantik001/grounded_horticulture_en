@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, main, "feature/**"]
+    branches: [master, main, "feature/**", "fix/**"]
   pull_request:
     branches: [master, main]
 
@@ -69,3 +69,6 @@ jobs:
           from rag.vector_store import load_all_documents
           print('torch', torch.__version__, 'docs', len(load_all_documents()))
           "
+
+  # rag-eval отключён: образ classifier:ci не переносится между job-ами GHA.
+  # Прогон вручную: make docker-reindex-apply && python scripts/run_rag_eval.py --suite all

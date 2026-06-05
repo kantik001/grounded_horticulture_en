@@ -45,7 +45,7 @@
 
 HTTP POST на `{PYTHON_BASE_URL}/admin/reindex` с заголовком **`X-Admin-Secret`** = `ADMIN_SECRET`.
 
-Сбрасывает Chroma в Python — см. [rag-vector_store.md](./rag-vector_store.md).
+Сбрасывает Chroma + BM25 в Python — см. [rag-vector_store.md](./rag-vector_store.md).
 
 ---
 

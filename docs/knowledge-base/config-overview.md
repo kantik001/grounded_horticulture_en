@@ -38,7 +38,7 @@
 
 - **`ui_hidden: true`** — домен есть в API/eval, но **не показывается** в `cropSelect` (sandbox платформы).
 - **UI:** `GET /api/crops` → выпадающий список в `index.html` (без скрытых доменов).
-- **Python:** `normalize_crop_id`, фильтр Chroma, проверка CV.
+- **Python:** `normalize_crop_id`, фильтр по `crop_id` в hybrid search, проверка CV.
 - **Go:** `normalizeCropID`, `requireCVEnabled` / `requireRAGEnabled` перед CV и RAG.
 
 Добавление новой культуры: запись в JSON + папка `data/{crop_id}/` + при необходимости блоки в `prompts.json`, `few_shot.json`, `onboarding.json`.
@@ -131,7 +131,7 @@ Env: `BRANDING_CONFIG_PATH` (Docker: `/config/branding.json`).
 
 ## `article_titles.json`
 
-Маппинг `имя_файла.txt` → длинное название для metadata Chroma и контекста LLM («Текст из статьи '…'»).
+Маппинг `имя_файла.txt` → длинное название для metadata индекса и контекста LLM («Текст из статьи '…'»).
 
 Если файла нет — используется имя файла как есть.  
 **Не** показывается пользователю в чате как «Источник: …» (политика дисклеймера).

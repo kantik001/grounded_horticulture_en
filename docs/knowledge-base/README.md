@@ -21,11 +21,12 @@
 | Документ | Описание |
 |----------|----------|
 | [rag-crops_config.md](./rag-crops_config.md) | `config/crops.json`, `crop_id`, `rag_enabled` / `cv_enabled` |
-| [rag-vector_store.md](./rag-vector_store.md) | Chroma, chunking, embeddings, reindex, `data/` → `chroma_db/` |
+| [rag-vector_store.md](./rag-vector_store.md) | Chroma + BM25, chunking, embeddings, reindex |
+| [rag-hybrid-search.md](./rag-hybrid-search.md) | BM25 hybrid, RRF, cross-encoder reranker, env |
 | [rag-retrieval.md](./rag-retrieval.md) | Поиск, context, few-shot, `POST /rag/context` |
 | [rag-verifier.md](./rag-verifier.md) | Проверка чисел в ответе, дисклеймер (дубль логики на Go) |
 
-**Порядок чтения RAG:** `crops_config` → `vector_store` → `retrieval` → `verifier` → `server/rag_chat.go`
+**Порядок чтения RAG:** `crops_config` → `vector_store` → `hybrid-search` → `retrieval` → `verifier` → `server/rag_chat.go`
 
 ### Утилиты (`scripts/`)
 

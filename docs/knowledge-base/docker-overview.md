@@ -73,7 +73,8 @@ docker compose up -d --force-recreate classifier server webapp
 | Volume | Где | Что хранит |
 |--------|-----|------------|
 | `postgres_data` | postgres | таблицы чата |
-| `chroma_data` | classifier `/app/chroma_db` | индекс RAG |
+| `chroma_data` | classifier `/app/chroma_db` | векторный индекс RAG |
+| `bm25_data` | classifier `/app/bm25_db` | BM25 индекс RAG |
 | `models` | classifier `/app/models` | `.pth` (не папка `./models` на хосте!) |
 | `uploads_data` | server `/data/uploads` | фото пользователей |
 
@@ -100,11 +101,12 @@ docker compose up -d --force-recreate classifier server webapp
 ## Сервис `classifier` (Python: `api/` + `cv/` + `rag/`)
 
 - Порт **5000**, entrypoint: `python api/app.py`
-- Env: `MODEL_PATH`, `ADMIN_SECRET`, `FORCE_RAG_REINDEX`, `CROPS_CONFIG_PATH`
-- Healthcheck: долгий `start_period: 120s` (embeddings при первом RAG)
+- Env: `MODEL_PATH`, `ADMIN_SECRET`, `FORCE_RAG_REINDEX`, `CROPS_CONFIG_PATH`, `HF_TOKEN`, `RAG_*` (hybrid/rerank)
+- Volumes: `chroma_data` → `/app/chroma_db`, `bm25_data` → `/app/bm25_db`
+- Healthcheck: долгий `start_period: 120s` (embeddings + reranker при первом RAG)
 - Endpoints: `/health`, `/classify`, `/rag/context`, `/admin/reindex`, `/crops`
 
-Первый запрос RAG может быть медленным (скачивание embedding-модели).
+Первый запрос RAG может быть медленным (скачивание e5 + reranker с HuggingFace).
 
 ---
 
@@ -188,4 +190,4 @@ GitHub Actions **собирает** образы server/webapp, но **не** п
 
 ## Краткий итог
 
-`docker-compose.yml` — **оркестрация всего продукта**: одна команда поднимает UI, API, ML и БД. Понимание volumes и портов объясняет, почему `.env`, статьи, Chroma и фото «живут» в разных местах.
+`docker-compose.yml` — **оркестрация всего продукта**: одна команда поднимает UI, API, ML и БД. Понимание volumes и портов объясняет, почему `.env`, статьи, индексы RAG (`chroma_data`, `bm25_data`) и фото «живут» в разных местах.

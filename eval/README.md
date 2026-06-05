@@ -29,7 +29,7 @@
 }
 ```
 
-- `expect_contains` — подстроки в **контексте** retrieval (режим по умолчанию) или в ответе LLM (`--full`).
+- `expect_contains` — подстроки в **контексте** retrieval (режим по умолчанию) или в ответе LLM (`--full`). Скрипт допускает русскую морфологию (стем: «подвой» ↔ «подвои»).
 - `expect_out_of_scope: true` — вопрос вне KB; ожидаем пустой/слабый контекст или фразу «нет в материалах» в full-режиме.
 
 ## Запуск
@@ -51,7 +51,7 @@ make eval-retrieval
 
 ## Когда гонять
 
-- После `reindex_rag.py` / admin reindex. В Docker после reindex: `docker compose restart classifier` (см. [data-pipeline.md](../docs/knowledge-base/data-pipeline.md)).
+- После `reindex_rag.py` / admin reindex (пересобираются Chroma **и** BM25). В Docker: `make docker-reindex-apply` или reindex + `docker compose restart classifier` (см. [data-pipeline.md](../docs/knowledge-base/data-pipeline.md)).
 - После правок `data/`, `prompts.json`, `few_shot.json`.
 - Перед пилотом и перед релизом.
 

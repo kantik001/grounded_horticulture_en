@@ -5,7 +5,8 @@
 
 | Файл | Платформа | Задача |
 |------|-----------|--------|
-| `reindex_rag.py` | Python | Пересобрать Chroma из `data/` |
+| `reindex_rag.py` | Python | Пересобрать Chroma + BM25 из `data/` |
+| `audit_plum_miscategorized.py` | Python | Аудит чужих культур в `data/plum/` |
 | `run_rag_eval.py` | Python | Прогон `eval/*.jsonl` (retrieval), отчёт в `eval/results/` |
 | `smoke.sh` | Linux / macOS / Git Bash | Быстрая проверка API Go |
 | `smoke.ps1` | Windows PowerShell | То же для Windows |
@@ -32,7 +33,7 @@ flowchart TD
 
 ### Зачем
 
-После добавления или изменения статей в `data/{crop_id}/*.txt` векторная база **Chroma** (`chroma_db/`) должна обновиться. Иначе `search()` не найдёт новый текст.
+После добавления или изменения статей в `data/{crop_id}/*.txt` индексы **Chroma** (`chroma_db/`) и **BM25** (`bm25_db/`) должны обновиться. Иначе `search()` не найдёт новый текст (или hybrid отключится без BM25).
 
 ### Как работает (построчно)
 
@@ -40,9 +41,9 @@ flowchart TD
 2. Ставит **`FORCE_RAG_REINDEX=true`** — тот же флаг, что понимает `rag/vector_store.py`.
 3. Вызывает **`create_vector_store()`** напрямую:
    - читает все `.txt`;
-   - режет на чанки;
-   - строит embeddings;
-   - пишет в `chroma_db/`.
+   - режет на чанки (`rag/chunking.py`);
+   - строит embeddings → `chroma_db/`;
+   - строит BM25 → `bm25_db/`.
 
 Не поднимает Flask и не нужен `ADMIN_SECRET`.
 
@@ -54,7 +55,7 @@ flowchart TD
 python scripts/reindex_rag.py
 ```
 
-Ожидаемый вывод: `Создаю новую векторную базу...`, `Фрагментов: N`, `RAG reindex complete.`
+Ожидаемый вывод: `Создаю новую векторную базу...`, `Фрагментов: N`, `BM25 индекс сохранён...`, `Переиндексация RAG завершена.`
 
 ### Альтернативы (то же по смыслу)
 
@@ -68,10 +69,10 @@ python scripts/reindex_rag.py
 
 ### Отличие от admin reindex
 
-- **Скрипт** — удобно на машине разработчика с локальной `chroma_db/`.
-- **Admin/API** — когда всё в Docker и volume `chroma_data` внутри контейнера.
+- **Скрипт** — удобно на машине разработчика с локальными `chroma_db/` и `bm25_db/`.
+- **Admin/API** — когда всё в Docker и volumes `chroma_data` + `bm25_data` внутри контейнера.
 
-Путь `chroma_db` должен быть тот же, что видит процесс, который потом отвечает на `/rag/context`.
+Пути индексов должны совпадать с тем, что видит процесс на `/rag/context`. После reindex: **`docker compose restart classifier`**.
 
 ---
 
