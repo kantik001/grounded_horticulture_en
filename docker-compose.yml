@@ -51,6 +51,8 @@ services:
       - ./rag:/app/rag:ro
       - ./data:/app/data:ro
       - ./config:/config:ro
+      - ./scripts:/app/scripts:ro
+      - ./eval:/app/eval
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
       interval: 15s

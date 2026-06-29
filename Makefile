@@ -1,4 +1,4 @@
-.PHONY: build up down restart logs clean ps help test test-go test-py smoke eval-retrieval reindex docker-reindex docker-reindex-apply eval-apple eval-pear eval-plum
+.PHONY: build up down restart logs clean ps help test test-go test-py smoke eval-retrieval eval-fast reindex docker-reindex docker-reindex-apply eval-apple eval-pear eval-plum
 
 # Имя проекта Docker Compose
 PROJECT_NAME := union_ai_apple
@@ -95,6 +95,10 @@ eval-retrieval:
 	pip install requests
 	python scripts/run_rag_eval.py --suite all
 
+## Быстрый smoke-eval in-process без rerank (~20 с в Docker)
+eval-fast:
+	docker compose -p $(PROJECT_NAME) exec classifier python scripts/run_rag_eval.py --suite all --in-process --fast
+
 ## RAG eval по одной культуре: make eval-apple | eval-pear | eval-plum
 eval-apple:
 	python scripts/run_rag_eval.py --suite apple
@@ -128,6 +132,7 @@ help:
 	@echo "  make docker-reindex - Reindex в Docker volumes chroma_data + bm25_data"
 	@echo "  make docker-reindex-apply - docker-reindex + restart classifier"
 	@echo "  make eval-retrieval - RAG eval retrieval-only (все культуры)"
+	@echo "  make eval-fast      - RAG smoke-eval: in-process + без rerank"
 	@echo "  make eval-apple     - RAG eval: apple"
 	@echo "  make eval-pear      - RAG eval: pear"
 	@echo "  make eval-plum      - RAG eval: plum"
