@@ -14,6 +14,8 @@ func registerPublicRoutes(router *gin.Engine) {
 	router.GET("/api/onboarding", handleOnboarding)
 	router.GET("/branding", handleBranding)
 	router.GET("/api/branding", handleBranding)
+	router.GET("/auth/info", handleAuthInfo)
+	router.GET("/api/auth/info", handleAuthInfo)
 }
 
 // mountProtectedAPI регистрирует защищённые маршруты на одной группе маршрутов.
@@ -28,9 +30,9 @@ func mountProtectedAPI(r gin.IRoutes, auth, lim gin.HandlerFunc) {
 	r.GET("/media/:token", auth, lim, handleMedia)
 }
 
-// registerProtectedRoutes — Telegram auth, rate limit; дубль без префикса и с /api.
+// registerProtectedRoutes — Telegram или API key, rate limit; дубль без префикса и с /api.
 func registerProtectedRoutes(router *gin.Engine, cfg *Config, rl *rateLimiter) {
-	auth := telegramAuthMiddleware(cfg)
+	auth := combinedAuthMiddleware(cfg)
 	lim := rateLimitMiddleware(rl)
 	mountProtectedAPI(router.Group(""), auth, lim)
 	mountProtectedAPI(router.Group("/api"), auth, lim)

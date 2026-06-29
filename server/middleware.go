@@ -45,7 +45,7 @@ func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
 			c.Writer.Header().Set("Vary", "Origin")
 		}
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, X-Telegram-Init-Data, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, X-Telegram-Init-Data, X-API-Key, Authorization")
 		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
 		if c.Request.Method == http.MethodOptions {
@@ -85,7 +85,7 @@ func telegramAuthMiddleware(cfg *Config) gin.HandlerFunc {
 		if initData == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"error":   "Требуется авторизация Telegram (заголовок X-Telegram-Init-Data). Откройте приложение из бота.",
+				"error":   "Требуется авторизация: Telegram (X-Telegram-Init-Data) или API-ключ (X-API-Key).",
 			})
 			return
 		}

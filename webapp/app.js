@@ -19,8 +19,37 @@
 
         const STORAGE_KEY = 'apple_gardener_session_id';
         const CROP_STORAGE_KEY = 'apple_gardener_crop_id';
+        const API_KEY_STORAGE_KEY = 'apple_gardener_api_key';
         const API_BASE_STORAGE_KEY = 'apple_gardener_api_base';
         const API_BASE_SCHEMA_VERSION = '2';
+
+        var authInfo = null;
+        var webLoginResolver = null;
+
+        function isEnglishUI() {
+            var lang = (navigator.language || '').toLowerCase();
+            return lang.indexOf('en') === 0;
+        }
+
+        function uiText(ru, en) {
+            return isEnglishUI() ? en : ru;
+        }
+
+        function isTelegramClient() {
+            return !!(tg && tg.initData);
+        }
+
+        function getStoredApiKey() {
+            return sessionStorage.getItem(API_KEY_STORAGE_KEY) || '';
+        }
+
+        function setStoredApiKey(key) {
+            if (key) {
+                sessionStorage.setItem(API_KEY_STORAGE_KEY, key);
+            } else {
+                sessionStorage.removeItem(API_KEY_STORAGE_KEY);
+            }
+        }
 
         if (sessionStorage.getItem('apple_gardener_api_base_v') !== API_BASE_SCHEMA_VERSION) {
             sessionStorage.removeItem(API_BASE_STORAGE_KEY);
@@ -56,7 +85,29 @@
             headerDisclaimer: document.getElementById('headerDisclaimer'),
             onboardingTitle: document.getElementById('onboardingTitle'),
             chatDivider: document.getElementById('chatDivider'),
+            webLoginOverlay: document.getElementById('webLoginOverlay'),
+            webLoginTitle: document.getElementById('webLoginTitle'),
+            webLoginHint: document.getElementById('webLoginHint'),
+            webLoginKey: document.getElementById('webLoginKey'),
+            webLoginSubmit: document.getElementById('webLoginSubmit'),
+            webLoginNote: document.getElementById('webLoginNote'),
+            webLoginError: document.getElementById('webLoginError'),
         };
+
+        function applyWebLoginCopy() {
+            if (!el.webLoginTitle) return;
+            el.webLoginTitle.textContent = uiText('Вход', 'Sign in');
+            el.webLoginHint.textContent = uiText(
+                'Введите ключ доступа для работы в браузере.',
+                'Enter your access key to use the assistant in the browser.'
+            );
+            el.webLoginKey.placeholder = uiText('Ключ доступа', 'Access key');
+            el.webLoginSubmit.textContent = uiText('Продолжить', 'Continue');
+            el.webLoginNote.textContent = uiText(
+                'Пользователям Telegram: откройте приложение из бота.',
+                'Telegram users: open the app from the bot.'
+            );
+        }
 
         async function loadBranding() {
             try {
@@ -93,14 +144,131 @@
             return '';
         }
 
-        /** Заголовки для API: initData уходит на Go для проверки подписи ботом. */
+        /** Заголовки для API: Telegram initData или API-ключ для браузера. */
         function withAuthHeaders(extra) {
             var h = Object.assign({}, extra || {});
             var initData = getTelegramInitData();
             if (initData) {
                 h['X-Telegram-Init-Data'] = initData;
+            } else {
+                var apiKey = getStoredApiKey();
+                if (apiKey) {
+                    h['X-API-Key'] = apiKey;
+                }
             }
             return h;
+        }
+
+        async function fetchAuthInfo() {
+            var candidates = buildApiCandidates();
+            for (var i = 0; i < candidates.length; i++) {
+                var base = candidates[i];
+                var baseNorm = base.endsWith('/') ? base : base + '/';
+                var url = baseNorm + 'auth/info';
+                try {
+                    var res = await fetch(url, { method: 'GET' });
+                    var txt = await res.text();
+                    if (!isOurAPIJsonBody(txt)) continue;
+                    var data = JSON.parse(txt);
+                    if (data.success && data.auth) {
+                        return data.auth;
+                    }
+                } catch (e) {
+                    console.warn('fetchAuthInfo', url, e);
+                }
+            }
+            return null;
+        }
+
+        function showWebLoginOverlay() {
+            applyWebLoginCopy();
+            el.webLoginError.hidden = true;
+            el.webLoginKey.value = '';
+            el.webLoginOverlay.hidden = false;
+            el.webLoginKey.focus();
+            return new Promise(function(resolve, reject) {
+                webLoginResolver = { resolve: resolve, reject: reject };
+            });
+        }
+
+        function hideWebLoginOverlay() {
+            el.webLoginOverlay.hidden = true;
+        }
+
+        async function validateApiKey(key) {
+            var prev = getStoredApiKey();
+            setStoredApiKey(key);
+            try {
+                var res = await apiFetch('/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({ crop_id: cropId })
+                });
+                var data = parseApiResponseJson(await res.text());
+                if (res.ok && data.session_id) {
+                    sessionId = data.session_id;
+                    sessionStorage.setItem(STORAGE_KEY, sessionId);
+                    return true;
+                }
+                setStoredApiKey(prev);
+                throw new Error(data.error || uiText('Неверный ключ', 'Invalid access key'));
+            } catch (e) {
+                setStoredApiKey(prev);
+                throw e;
+            }
+        }
+
+        async function ensureWebAuth() {
+            if (isTelegramClient()) return;
+            if (!authInfo) {
+                authInfo = await fetchAuthInfo();
+            }
+            if (authInfo && authInfo.dev_mode) return;
+            if (getStoredApiKey()) return;
+            if (authInfo && authInfo.web_api_key) {
+                await showWebLoginOverlay();
+                return;
+            }
+            if (authInfo && authInfo.telegram) {
+                throw new Error(uiText(
+                    'Откройте приложение из Telegram-бота.',
+                    'Open this app from the Telegram bot.'
+                ));
+            }
+            throw new Error(uiText(
+                'Авторизация не настроена на сервере.',
+                'Server auth is not configured.'
+            ));
+        }
+
+        if (el.webLoginSubmit) {
+            el.webLoginSubmit.addEventListener('click', function() {
+                var key = (el.webLoginKey.value || '').trim();
+                if (!key) {
+                    el.webLoginError.textContent = uiText('Введите ключ', 'Enter a key');
+                    el.webLoginError.hidden = false;
+                    return;
+                }
+                el.webLoginSubmit.disabled = true;
+                validateApiKey(key).then(function() {
+                    hideWebLoginOverlay();
+                    if (webLoginResolver) {
+                        webLoginResolver.resolve();
+                        webLoginResolver = null;
+                    }
+                }).catch(function(e) {
+                    el.webLoginError.textContent = e.message || uiText('Ошибка', 'Error');
+                    el.webLoginError.hidden = false;
+                }).finally(function() {
+                    el.webLoginSubmit.disabled = false;
+                });
+            });
+            el.webLoginKey.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    el.webLoginSubmit.click();
+                }
+            });
         }
 
         function dedupeApiBases(list) {
@@ -471,7 +639,12 @@
             var sid = sessionStorage.getItem(STORAGE_KEY);
             if (sid) {
                 var hr = await apiFetch('/history?session_id=' + encodeURIComponent(sid), { method: 'GET' });
-                if (hr.status === 404) {
+                if (hr.status === 401 && !isTelegramClient() && getStoredApiKey()) {
+                    setStoredApiKey('');
+                    sessionStorage.removeItem(STORAGE_KEY);
+                    await ensureWebAuth();
+                    sid = null;
+                } else if (hr.status === 404) {
                     sessionStorage.removeItem(STORAGE_KEY);
                     sid = null;
                 } else if (hr.ok) {
@@ -616,6 +789,8 @@
         el.inputText.addEventListener('input', autoResize);
 
         loadBranding().then(function() {
+            return ensureWebAuth();
+        }).then(function() {
             return loadCropsCatalog();
         }).then(function() {
             return ensureSession();
@@ -623,5 +798,5 @@
             return loadOnboarding(cropId);
         }).catch(function(e) {
             console.error(e);
-            showToast(e.message || 'Не удалось подключиться');
+            showToast(e.message || uiText('Не удалось подключиться', 'Connection failed'));
         });
