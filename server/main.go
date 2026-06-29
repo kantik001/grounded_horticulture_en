@@ -60,9 +60,12 @@ func main() {
 	router := gin.Default()
 	router.Use(corsMiddleware(config.CORSAllowedOrigins))
 	router.Use(func(c *gin.Context) {
-		if !strings.Contains(c.Request.URL.Path, "/media/") {
-			c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		path := c.Request.URL.Path
+		if strings.Contains(path, "/media/") || strings.HasSuffix(path, "/stream") {
+			c.Next()
+			return
 		}
+		c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		c.Next()
 	})
 

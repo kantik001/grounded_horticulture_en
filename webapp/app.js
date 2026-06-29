@@ -368,6 +368,137 @@
             return lastRes;
         }
 
+        /** Запрос к SSE-эндпоинту (без проверки JSON success в теле). */
+        async function apiStreamFetch(path, init) {
+            var candidates = buildApiCandidates();
+            var lastRes = null;
+            for (var i = 0; i < candidates.length; i++) {
+                var base = candidates[i];
+                var baseNorm = base.endsWith('/') ? base : base + '/';
+                var pathNorm = String(path).replace(/^\//, '');
+                var url = baseNorm + pathNorm;
+                var res;
+                try {
+                    var opts = init ? Object.assign({}, init) : {};
+                    opts.headers = withAuthHeaders(Object.assign({
+                        'Accept': 'text/event-stream'
+                    }, opts.headers || {}));
+                    res = await fetch(url, opts);
+                } catch (e) {
+                    continue;
+                }
+                lastRes = res;
+                var ct = (res.headers.get('content-type') || '').toLowerCase();
+                if (res.ok || ct.indexOf('text/event-stream') !== -1) {
+                    if (i > 0) {
+                        apiBaseUrl = baseNorm;
+                        sessionStorage.setItem(API_BASE_STORAGE_KEY, apiBaseUrl);
+                    }
+                    return res;
+                }
+                var peek = await res.clone().text();
+                if (isOurAPIJsonBody(peek)) {
+                    if (i > 0) {
+                        apiBaseUrl = baseNorm;
+                        sessionStorage.setItem(API_BASE_STORAGE_KEY, apiBaseUrl);
+                    }
+                    return res;
+                }
+            }
+            if (!lastRes) {
+                throw new Error('Нет соединения с API. Запустите docker compose (webapp + server) или Go на порту 8080.');
+            }
+            return lastRes;
+        }
+
+        function readSSEStream(res, handlers) {
+            if (!res.body || !res.body.getReader) {
+                return Promise.reject(new Error('Стриминг не поддерживается браузером'));
+            }
+            var reader = res.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+            function parseBlock(block) {
+                var eventName = 'message';
+                var dataLine = '';
+                block.split('\n').forEach(function(line) {
+                    if (line.indexOf('event:') === 0) eventName = line.slice(6).trim();
+                    else if (line.indexOf('data:') === 0) dataLine = line.slice(5).trim();
+                });
+                if (!dataLine) return;
+                var payload;
+                try { payload = JSON.parse(dataLine); } catch (e) { return; }
+                if (handlers[eventName]) handlers[eventName](payload);
+            }
+            function pump() {
+                return reader.read().then(function(chunk) {
+                    if (chunk.done) {
+                        if (buffer.trim()) parseBlock(buffer);
+                        return;
+                    }
+                    buffer += decoder.decode(chunk.value, { stream: true });
+                    var parts = buffer.split('\n\n');
+                    buffer = parts.pop() || '';
+                    parts.forEach(parseBlock);
+                    return pump();
+                });
+            }
+            return pump();
+        }
+
+        async function consumeMessageStream(res, userText) {
+            clearChatHintIfEmpty();
+            var userRow = buildMessageRow({ role: 'user', content: userText });
+            var asstRow = buildMessageRow({ role: 'assistant', content: '' });
+            el.messagesRoot.appendChild(userRow);
+            el.messagesRoot.appendChild(asstRow);
+            var asstBody = asstRow.querySelector('.body');
+            if (!asstBody) {
+                asstBody = document.createElement('div');
+                asstBody.className = 'body';
+                asstRow.querySelector('.bubble').appendChild(asstBody);
+            }
+            el.typingLine.classList.remove('active');
+            updateOnboardingVisibility();
+            scrollToBottom();
+
+            await readSSEStream(res, {
+                meta: function(data) {
+                    if (data.session_id) {
+                        sessionId = data.session_id;
+                        sessionStorage.setItem(STORAGE_KEY, sessionId);
+                    }
+                    if (data.crop_id) {
+                        cropId = data.crop_id;
+                        sessionStorage.setItem(CROP_STORAGE_KEY, cropId);
+                        el.cropSelect.value = cropId;
+                    }
+                    if (data.user_message) {
+                        var newUserRow = buildMessageRow(data.user_message);
+                        el.messagesRoot.replaceChild(newUserRow, userRow);
+                        userRow = newUserRow;
+                    }
+                },
+                delta: function(data) {
+                    if (data.content) {
+                        asstBody.textContent += data.content;
+                        scrollToBottom();
+                    }
+                },
+                done: function(data) {
+                    if (data.assistant_message) {
+                        var finalRow = buildMessageRow(data.assistant_message);
+                        el.messagesRoot.replaceChild(finalRow, asstRow);
+                    }
+                    updateOnboardingVisibility();
+                    scrollToBottom();
+                },
+                error: function(data) {
+                    showToast(data.error || 'Ошибка стрима');
+                }
+            });
+        }
+
         /**
          * Парсит JSON-объект из тела ответа. Gin при 404 отдаёт текст "404 page not found" —
          * тогда JSON.parse читает число 404 и падает на «position 4» (буква «p» в «page»).
@@ -568,6 +699,77 @@
             }
         }
 
+        function clearChatHintIfEmpty() {
+            var hint = el.messagesRoot.querySelector('.day-divider');
+            if (hint && !el.messagesRoot.querySelector('.row')) {
+                hint.remove();
+            }
+        }
+
+        function buildMessageRow(m) {
+            var row = document.createElement('div');
+            row.className = 'row ' + (m.role === 'user' ? 'user' : 'assistant');
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble';
+
+            if (m.image_data_url || m.image_url) {
+                var img = document.createElement('img');
+                img.className = 'attach-preview';
+                img.alt = 'Фото пользователя';
+                if (m.image_data_url) {
+                    img.src = m.image_data_url;
+                } else {
+                    img.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect fill="#ddd" width="100%" height="100%"/></svg>');
+                    loadAuthedImage(img, m.image_url);
+                }
+                bubble.appendChild(img);
+            }
+            if (m.content && String(m.content).trim()) {
+                var body = document.createElement('div');
+                body.className = 'body';
+                body.textContent = m.content;
+                bubble.appendChild(body);
+            }
+            if (m.role === 'user' && m.class_prediction) {
+                var meta = document.createElement('div');
+                meta.className = 'meta-line';
+                var pct = m.class_confidence > 0 ? Math.round(Number(m.class_confidence) * 100) : null;
+                meta.textContent = formatPredictionName(m.class_prediction) + (pct != null ? ' · ' + pct + '%' : '');
+                bubble.appendChild(meta);
+            }
+
+            if (m.role === 'assistant' && m.id) {
+                var fb = document.createElement('div');
+                fb.className = 'feedback-row';
+                var rated = m.feedback_rating;
+                [1, -1].forEach(function(r) {
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'feedback-btn' + (rated === r ? ' active' : '');
+                    b.setAttribute('data-rating', String(r));
+                    b.setAttribute('data-feedback-for', String(m.id));
+                    b.textContent = r === 1 ? '👍' : '👎';
+                    b.disabled = rated != null;
+                    b.addEventListener('click', function() { sendFeedback(m.id, r); });
+                    fb.appendChild(b);
+                });
+                bubble.appendChild(fb);
+            }
+
+            row.appendChild(bubble);
+            return row;
+        }
+
+        function appendMessages(messages) {
+            if (!messages || !messages.length) return;
+            clearChatHintIfEmpty();
+            messages.forEach(function(m) {
+                el.messagesRoot.appendChild(buildMessageRow(m));
+            });
+            updateOnboardingVisibility();
+            scrollToBottom();
+        }
+
         function renderMessages(messages) {
             el.messagesRoot.innerHTML = '';
             if (!messages || !messages.length) {
@@ -579,57 +781,7 @@
                 return;
             }
             messages.forEach(function(m) {
-                var row = document.createElement('div');
-                row.className = 'row ' + (m.role === 'user' ? 'user' : 'assistant');
-                var bubble = document.createElement('div');
-                bubble.className = 'bubble';
-
-                if (m.image_data_url || m.image_url) {
-                    var img = document.createElement('img');
-                    img.className = 'attach-preview';
-                    img.alt = 'Фото пользователя';
-                    if (m.image_data_url) {
-                        img.src = m.image_data_url;
-                    } else {
-                        img.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect fill="#ddd" width="100%" height="100%"/></svg>');
-                        loadAuthedImage(img, m.image_url);
-                    }
-                    bubble.appendChild(img);
-                }
-                if (m.content && String(m.content).trim()) {
-                    var body = document.createElement('div');
-                    body.className = 'body';
-                    body.textContent = m.content;
-                    bubble.appendChild(body);
-                }
-                if (m.role === 'user' && m.class_prediction) {
-                    var meta = document.createElement('div');
-                    meta.className = 'meta-line';
-                    var pct = m.class_confidence > 0 ? Math.round(Number(m.class_confidence) * 100) : null;
-                    meta.textContent = formatPredictionName(m.class_prediction) + (pct != null ? ' · ' + pct + '%' : '');
-                    bubble.appendChild(meta);
-                }
-
-                if (m.role === 'assistant' && m.id) {
-                    var fb = document.createElement('div');
-                    fb.className = 'feedback-row';
-                    var rated = m.feedback_rating;
-                    [1, -1].forEach(function(r) {
-                        var b = document.createElement('button');
-                        b.type = 'button';
-                        b.className = 'feedback-btn' + (rated === r ? ' active' : '');
-                        b.setAttribute('data-rating', String(r));
-                        b.setAttribute('data-feedback-for', String(m.id));
-                        b.textContent = r === 1 ? '👍' : '👎';
-                        b.disabled = rated != null;
-                        b.addEventListener('click', function() { sendFeedback(m.id, r); });
-                        fb.appendChild(b);
-                    });
-                    bubble.appendChild(fb);
-                }
-
-                row.appendChild(bubble);
-                el.messagesRoot.appendChild(row);
+                el.messagesRoot.appendChild(buildMessageRow(m));
             });
             updateOnboardingVisibility();
             scrollToBottom();
@@ -732,11 +884,43 @@
                     fd.append('image', pendingFile, pendingFile.name || 'photo.jpg');
                     res = await apiFetch('/message', { method: 'POST', body: fd });
                 } else {
-                    res = await apiFetch('/message', {
+                    res = await apiStreamFetch('/message/stream', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json; charset=utf-8' },
                         body: JSON.stringify({ session_id: sessionId, crop_id: cropId, text: text })
                     });
+                    var streamCt = (res.headers.get('content-type') || '').toLowerCase();
+                    if (streamCt.indexOf('text/event-stream') !== -1) {
+                        await consumeMessageStream(res, text);
+                        el.inputText.value = '';
+                        setPendingFile(null);
+                        autoResize();
+                        return;
+                    }
+                    var data = parseApiResponseJson(await res.text());
+                    if (data.session_id) {
+                        sessionId = data.session_id;
+                        sessionStorage.setItem(STORAGE_KEY, sessionId);
+                    }
+                    if (data.crop_id) {
+                        cropId = data.crop_id;
+                        sessionStorage.setItem(CROP_STORAGE_KEY, cropId);
+                        el.cropSelect.value = cropId;
+                    }
+                    if (data.new_messages && data.new_messages.length) {
+                        appendMessages(data.new_messages);
+                    } else if (data.messages) {
+                        renderMessages(data.messages);
+                    }
+                    if (!res.ok) {
+                        showToast(data.error || ('Ошибка ' + res.status));
+                    } else if (data.error) {
+                        showToast(data.error);
+                    }
+                    el.inputText.value = '';
+                    setPendingFile(null);
+                    autoResize();
+                    return;
                 }
                 var data = parseApiResponseJson(await res.text());
                 if (data.session_id) {
@@ -748,7 +932,9 @@
                     sessionStorage.setItem(CROP_STORAGE_KEY, cropId);
                     el.cropSelect.value = cropId;
                 }
-                if (data.messages) {
+                if (data.new_messages && data.new_messages.length) {
+                    appendMessages(data.new_messages);
+                } else if (data.messages) {
                     renderMessages(data.messages);
                 }
                 if (!res.ok) {

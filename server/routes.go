@@ -26,6 +26,7 @@ func mountProtectedAPI(r gin.IRoutes, auth, lim gin.HandlerFunc) {
 	r.POST("/session", auth, lim, handleNewSession)
 	r.GET("/history", auth, lim, handleHistory)
 	r.POST("/message", auth, lim, handleMessage)
+	r.POST("/message/stream", auth, lim, handleMessageStream)
 	r.POST("/feedback", auth, lim, handleFeedback)
 	r.GET("/media/:token", auth, lim, handleMedia)
 }

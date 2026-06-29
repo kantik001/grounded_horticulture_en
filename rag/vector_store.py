@@ -32,7 +32,7 @@ from rag.bm25_store import (
 from rag.chunking import assign_chunk_ids, chunk_id_for, diversify_fragments, split_documents
 from rag.crops_config import list_crops, normalize_crop_id
 from rag.embeddings import get_embeddings
-from rag.hybrid import hybrid_enabled, rerank_enabled, rrf_merge
+from rag.hybrid import hybrid_enabled, rerank_for_category, rrf_merge
 from rag.query_expand import expand_query
 from rag.reranker import RERANK_TOP_N, rerank_documents
 from rag.titles import get_pretty_title
@@ -44,7 +44,7 @@ PERSIST_DIR = os.path.join(_PROJECT_ROOT, "chroma_db")
 _vector_store = None
 
 # Сколько кандидатов взять из Chroma/BM25 перед rerank и дедупликацией по статьям.
-FETCH_K = int(os.environ.get("RAG_FETCH_K", "24"))
+FETCH_K = int(os.environ.get("RAG_FETCH_K", "16"))
 BM25_FETCH_K = int(os.environ.get("RAG_BM25_FETCH_K", str(FETCH_K)))
 
 
@@ -170,8 +170,8 @@ def _collect_candidates(
     return candidates
 
 
-# Гибридный поиск: vector + BM25 (RRF) → reranker → diversify top-k.
-def search(query: str, crop_id: str, k: int = 8):
+# Гибридный поиск: vector + BM25 (RRF) → reranker (по категории) → diversify top-k.
+def search(query: str, crop_id: str, k: int = 8, category: str | None = None):
     crop_id = normalize_crop_id(crop_id)
     store = load_vector_store()
     if store is None:
@@ -197,10 +197,11 @@ def search(query: str, crop_id: str, k: int = 8):
     else:
         merged_ids = vector_ids
 
-    rerank_pool = max(fetch_k, RERANK_TOP_N)
-    candidates = _collect_candidates(merged_ids, doc_map, crop_id, rerank_pool)
+    use_rerank = rerank_for_category(category)
+    candidate_limit = max(fetch_k, RERANK_TOP_N) if use_rerank else fetch_k
+    candidates = _collect_candidates(merged_ids, doc_map, crop_id, candidate_limit)
 
-    if rerank_enabled() and len(candidates) > 1:
+    if use_rerank and len(candidates) > 1:
         candidates = rerank_documents(search_query, candidates)
 
     return diversify_fragments(candidates, limit=k)

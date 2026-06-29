@@ -25,6 +25,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.classifier
+      args:
+        HF_TOKEN: ${HF_TOKEN:-}
+        SKIP_HF_BAKE: ${SKIP_HF_BAKE:-0}
     container_name: union_ai_apple_classifier
     ports:
       - "5000:5000"
@@ -40,8 +43,12 @@ services:
       - PYTHONUTF8=1
       - PYTHONIOENCODING=utf-8
       - HF_TOKEN=${HF_TOKEN:-}
+      - HF_HOME=/app/hf_cache
       - RAG_WARMUP_ENABLED=${RAG_WARMUP_ENABLED:-true}
       - AGRO_GLOSSARY_PATH=/config/agro_glossary.json
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
+      - GUNICORN_THREADS=${GUNICORN_THREADS:-4}
+      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-300}
     volumes:
       - models:/app/models
       - chroma_data:/app/chroma_db
@@ -58,7 +65,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 300s
+      start_period: 120s
 
   server:
     build:

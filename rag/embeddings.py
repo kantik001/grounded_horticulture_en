@@ -2,6 +2,8 @@
 
 E5_MODEL = "intfloat/multilingual-e5-small"
 
+_embeddings = None
+
 
 def _passage(text: str) -> str:
     t = (text or "").strip()
@@ -17,7 +19,17 @@ def _query(text: str) -> str:
     return f"query: {t}"
 
 
+def reset_embeddings() -> None:
+    """Сброс кэша (тесты, смена модели)."""
+    global _embeddings
+    _embeddings = None
+
+
 def get_embeddings():
+    global _embeddings
+    if _embeddings is not None:
+        return _embeddings
+
     from langchain_huggingface import HuggingFaceEmbeddings
 
     class E5Embeddings(HuggingFaceEmbeddings):
@@ -29,4 +41,5 @@ def get_embeddings():
         def embed_query(self, text):
             return super().embed_query(_query(text))
 
-    return E5Embeddings(model_name=E5_MODEL)
+    _embeddings = E5Embeddings(model_name=E5_MODEL)
+    return _embeddings

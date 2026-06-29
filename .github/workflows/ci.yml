@@ -53,21 +53,28 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build server image
-        run: docker build -f Dockerfile.server -t doctor-gardens-server:ci .
+        run: |
+          chmod +x scripts/docker_build.sh
+          scripts/docker_build.sh server -t doctor-gardens-server:ci
 
       - name: Build webapp image
-        run: docker build -f Dockerfile.webapp -t doctor-gardens-webapp:ci .
+        run: scripts/docker_build.sh webapp -t doctor-gardens-webapp:ci
 
       - name: Build classifier image
-        run: docker build -f Dockerfile.classifier -t doctor-gardens-classifier:ci .
+        run: scripts/docker_build.sh classifier --build-arg SKIP_HF_BAKE=1 -t doctor-gardens-classifier:ci
 
       - name: Verify classifier torch and imports
         run: |
-          docker run --rm doctor-gardens-classifier:ci python -c "
+          docker run --rm \
+            -v "${{ github.workspace }}/config:/config:ro" \
+            -v "${{ github.workspace }}/data:/app/data:ro" \
+            -e CROPS_CONFIG_PATH=/config/crops.json \
+            doctor-gardens-classifier:ci python -c "
           import torch, torchvision, transformers, sentence_transformers
           assert torch.__version__.startswith('2.5'), torch.__version__
+          assert not torch.backends.cuda.is_built(), 'expected CPU-only torch build'
           from rag.vector_store import load_all_documents
-          print('torch', torch.__version__, 'docs', len(load_all_documents()))
+          print('torch', torch.__version__, 'cuda_built', torch.backends.cuda.is_built(), 'docs', len(load_all_documents()))
           "
 
   # rag-eval отключён: образ classifier:ci не переносится между job-ами GHA.

@@ -51,9 +51,16 @@ class CropBM25Index:
         tokens = tokenize(query)
         if not tokens:
             return []
-        scores = self.bm25.get_scores(tokens)
-        ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
-        return [self.chunk_ids[idx] for idx in ranked[:k]]
+        n = min(max(k, 0), len(self.chunk_ids))
+        if n == 0:
+            return []
+        top_token_lists = self.bm25.get_top_n(tokens, self.corpus_tokens, n=n)
+        token_id_to_idx = {id(toks): i for i, toks in enumerate(self.corpus_tokens)}
+        return [
+            self.chunk_ids[token_id_to_idx[id(toks)]]
+            for toks in top_token_lists
+            if id(toks) in token_id_to_idx
+        ]
 
 
 def reset_bm25_store() -> None:
