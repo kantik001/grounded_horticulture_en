@@ -14,7 +14,7 @@ type rateLimiter struct {
 	mu       sync.Mutex
 	limit    int
 	window   time.Duration
-	counters map[int64][]time.Time
+	counters map[string][]time.Time
 }
 
 // Создаёт in-memory лимитер запросов на пользователя за окно времени.
@@ -22,30 +22,30 @@ func newRateLimiter(limit int, window time.Duration) *rateLimiter {
 	return &rateLimiter{
 		limit:    limit,
 		window:   window,
-		counters: make(map[int64][]time.Time),
+		counters: make(map[string][]time.Time),
 	}
 }
 
-// Проверяет, не превышен ли лимит для telegram user id.
-func (rl *rateLimiter) allow(userID int64) bool {
+// Проверяет, не превышен ли лимит для ключа (tg:… или api:…).
+func (rl *rateLimiter) allow(key string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
 	now := time.Now()
 	cutoff := now.Add(-rl.window)
-	times := rl.counters[userID]
+	times := rl.counters[key]
 	var kept []time.Time
 	for _, ts := range times {
 		if ts.After(cutoff) {
 			kept = append(kept, ts)
 		}
 	}
-	if len(kept) >= rl.limit {
-		rl.counters[userID] = kept
+	if rl.limit > 0 && len(kept) >= rl.limit {
+		rl.counters[key] = kept
 		return false
 	}
 	kept = append(kept, now)
-	rl.counters[userID] = kept
+	rl.counters[key] = kept
 	return true
 }
 
@@ -56,17 +56,12 @@ func rateLimitMiddleware(rl *rateLimiter) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		rawID, exists := c.Get("telegram_user_id")
-		if !exists {
+		key := rateLimitKey(c)
+		if key == "anon" {
 			c.Next()
 			return
 		}
-		userID, ok := rawID.(int64)
-		if !ok || userID == 0 {
-			c.Next()
-			return
-		}
-		if !rl.allow(userID) {
+		if !rl.allow(key) {
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"success": false,
 				"error":   "Слишком много запросов. Подождите минуту и попробуйте снова.",

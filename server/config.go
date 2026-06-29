@@ -54,7 +54,7 @@ func loadConfig() *Config {
 		PythonRAGURL:     getEnv("CLASSIFIER_RAG_URL", "http://classifier:5000/rag/context"),
 		LLMAPIKey:        getEnv("LLM_API_KEY", ""),
 		LLMBaseURL:       getEnv("LLM_BASE_URL", "https://openrouter.ai/api"),
-		LLMModel:         getEnv("LLM_MODEL", "openai/gpt-oss-120b:free"),
+		LLMModel:         getEnv("LLM_MODEL", "google/gemini-2.5-flash-lite"),
 		ServerPort:       getEnv("SERVER_PORT", "8080"),
 
 		TelegramBotToken:       getEnv("TELEGRAM_BOT_TOKEN", ""),
@@ -97,6 +97,11 @@ func logStartup(cfg *Config) {
 		log.Printf("Telegram auth: enabled")
 	} else {
 		log.Printf("Telegram auth: WARNING — TELEGRAM_BOT_TOKEN not set, protected routes will reject clients")
+	}
+	if n := apiKeyCount(); n > 0 {
+		log.Printf("API key auth: enabled (%d key(s))", n)
+	} else {
+		log.Printf("API key auth: not configured (set API_KEYS or API_KEYS_FILE for browser clients)")
 	}
 	log.Printf("CORS origins: %v", cfg.CORSAllowedOrigins)
 	log.Printf("Rate limit: %d req/min per user", cfg.RateLimitPerMinute)

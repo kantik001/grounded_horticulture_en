@@ -45,6 +45,18 @@
     </div>
 
     <div class="toast" id="toast" role="status"></div>
+
+    <div class="web-login-overlay" id="webLoginOverlay" hidden>
+        <div class="web-login-card" role="dialog" aria-labelledby="webLoginTitle">
+            <h2 id="webLoginTitle">Sign in</h2>
+            <p id="webLoginHint">Enter your access key to use the assistant in the browser.</p>
+            <input type="password" id="webLoginKey" class="web-login-input" autocomplete="off" placeholder="Access key">
+            <button type="button" class="web-login-btn" id="webLoginSubmit">Continue</button>
+            <p class="web-login-note" id="webLoginNote">Telegram users: open the app from the bot.</p>
+            <p class="web-login-error" id="webLoginError" hidden></p>
+        </div>
+    </div>
+
     <script src="app.js" defer></script>
 </body>
 </html>

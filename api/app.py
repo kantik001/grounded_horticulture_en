@@ -18,6 +18,7 @@ from cv.registry import get_classifier_for_crop
 from rag.crops_config import list_crops, normalize_crop_id
 from rag.retrieval import retrieve_rag_context
 from rag import vector_store as vs
+from rag.warmup import warmup_rag
 
 app = Flask(__name__)
 _cors_origins = [
@@ -110,5 +111,6 @@ def admin_reindex():
 
 if __name__ == "__main__":
     port = int(os.environ.get("CLASSIFIER_PORT", 5000))
+    warmup_rag()
     print(f"Запуск Python API на порту {port}")
     app.run(host="0.0.0.0", port=port, debug=False)
