@@ -15,6 +15,7 @@ _tmp/
 # RAG / логи
 chroma_db/
 bm25_db/
+hf_cache/
 logs.json
 uploads/
 data/uploads/

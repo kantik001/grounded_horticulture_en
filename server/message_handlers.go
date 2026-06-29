@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -81,61 +82,71 @@ func handleMessage(c *gin.Context) {
 	handleTextMessage(c, sid, sessionCrop, tgUser.ID, text)
 }
 
-// respondWithMessages отвечает JSON с полной историей сообщений сессии после обработки.
-func respondWithMessages(c *gin.Context, sid, cropID string, telegramID int64, extra gin.H, status int) {
-	msgs, err := chatStore.ListMessages(c.Request.Context(), sid, telegramID)
-	if err != nil {
-		log.Printf("ListMessages after reply: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка базы данных"})
-		return
+// respondWithNewMessages отвечает JSON с новыми сообщениями (без повторной выгрузки всей истории).
+func respondWithNewMessages(c *gin.Context, sid, cropID string, newMsgs []ChatMessage, extra gin.H, status int) {
+	body := gin.H{
+		"success":      true,
+		"session_id":   sid,
+		"crop_id":      cropID,
+		"new_messages": newMsgs,
 	}
-	body := gin.H{"success": true, "session_id": sid, "crop_id": cropID, "messages": msgs}
 	for k, v := range extra {
 		body[k] = v
 	}
 	c.JSON(status, body)
 }
 
-// handleTextMessage: RAG+LLM, сохранение в БД, ответ с историей.
+// handleTextMessage: RAG+LLM, сохранение в БД, ответ с новыми сообщениями.
 func handleTextMessage(c *gin.Context, sid, cropID string, telegramID int64, text string) {
+	started := time.Now()
 	ctx := c.Request.Context()
+
+	historyStart := time.Now()
 	prior, err := chatStore.HistoryForLLM(ctx, sid, telegramID, 0)
+	historyMs := time.Since(historyStart).Milliseconds()
 	if err != nil {
 		log.Printf("HistoryForLLM: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка истории"})
 		return
 	}
-	answer, ok, errMsg, ragSoft := answerWithRAG(text, cropID, prior, sid)
+	answer, ok, errMsg, ragSoft, trace := answerWithRAG(text, cropID, prior, sid)
+	trace.HistoryMs = historyMs
+	trace.SessionID = sid
 
-	if _, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "user", Content: text, Kind: "text"}); err != nil {
+	userMsg, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "user", Content: text, Kind: "text"})
+	if err != nil {
 		log.Printf("AppendMessage user: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сохранения"})
 		return
 	}
 
 	if ragSoft {
-		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errMsg, Kind: "assistant"})
+		asstMsg, _ := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errMsg, Kind: "assistant"})
 		logAnalytics(c, "rag_answer", map[string]any{"crop_id": cropID, "soft_fail": true})
-		respondWithMessages(c, sid, cropID, telegramID, gin.H{"error": errMsg}, http.StatusOK)
+		respondWithNewMessages(c, sid, cropID, []ChatMessage{userMsg, asstMsg}, gin.H{"error": errMsg}, http.StatusOK)
 		return
 	}
 	if !ok {
-		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: "Ошибка: " + errMsg, Kind: "assistant"})
+		asstMsg, _ := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: "Ошибка: " + errMsg, Kind: "assistant"})
 		status := http.StatusInternalServerError
 		if strings.Contains(errMsg, "LLM_API_KEY") {
 			status = http.StatusServiceUnavailable
 		}
-		respondWithMessages(c, sid, cropID, telegramID, gin.H{"success": false, "error": errMsg}, status)
+		respondWithNewMessages(c, sid, cropID, []ChatMessage{userMsg, asstMsg}, gin.H{"success": false, "error": errMsg}, status)
 		return
 	}
 
-	if _, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: answer, Kind: "assistant"}); err != nil {
+	asstMsg, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: answer, Kind: "assistant"})
+	if err != nil {
 		log.Printf("AppendMessage assistant: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сохранения"})
 		return
 	}
-	logAnalytics(c, "rag_answer", map[string]any{"crop_id": cropID, "soft_fail": false})
-	respondWithMessages(c, sid, cropID, telegramID, nil, http.StatusOK)
+	trace.MessageID = asstMsg.ID
+	trace.TotalMs = time.Since(started).Milliseconds()
+	logRAGTrace(trace)
+	logAnalytics(c, "rag_answer", ragTraceAnalyticsPayload(trace, nil))
+	respondWithNewMessages(c, sid, cropID, []ChatMessage{userMsg, asstMsg}, nil, http.StatusOK)
 }
 
 // handleImageMessage: CV, рекомендация LLM, сохранение token и истории.
@@ -159,17 +170,17 @@ func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, ca
 	if clsErr != nil {
 		errText := publicAPIError(clsErr)
 		log.Printf("Messenger classify error: %v", clsErr)
-		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{
+		userMsg, _ := chatStore.AppendMessage(ctx, sid, ChatMessage{
 			Role: "user", Content: caption, Kind: "image", ImageToken: token,
 		})
-		_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errText, Kind: "assistant"})
+		asstMsg, _ := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: errText, Kind: "assistant"})
 		logAnalytics(c, "photo_classified", map[string]any{"crop_id": cropID, "success": false})
-		respondWithMessages(c, sid, cropID, telegramID, gin.H{"error": errText}, http.StatusOK)
+		respondWithNewMessages(c, sid, cropID, []ChatMessage{userMsg, asstMsg}, gin.H{"error": errText}, http.StatusOK)
 		return
 	}
 	classification := result.Classification
 
-	_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{
+	userMsg, _ := chatStore.AppendMessage(ctx, sid, ChatMessage{
 		Role:            "user",
 		Content:         caption,
 		Kind:            "image",
@@ -178,12 +189,12 @@ func handleImageMessage(c *gin.Context, sid, cropID string, telegramID int64, ca
 		ClassConfidence: classification.Confidence,
 	})
 
-	_, _ = chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: result.Recommendation, Kind: "assistant"})
+	asstMsg, _ := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: result.Recommendation, Kind: "assistant"})
 	logAnalytics(c, "photo_classified", map[string]any{
 		"crop_id":    cropID,
 		"success":    true,
 		"prediction": classification.Prediction,
 		"confidence": classification.Confidence,
 	})
-	respondWithMessages(c, sid, cropID, telegramID, nil, http.StatusOK)
+	respondWithNewMessages(c, sid, cropID, []ChatMessage{userMsg, asstMsg}, nil, http.StatusOK)
 }

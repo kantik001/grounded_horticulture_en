@@ -54,3 +54,26 @@ def test_bm25_empty_query():
     chunks = assign_chunk_ids([_make_doc("текст", "apple", "a.txt")])
     index = build_bm25_indexes(chunks)["apple"]
     assert index.search("   ", k=5) == []
+
+
+def test_rerank_for_category_conditional(monkeypatch):
+    from rag.hybrid import rerank_for_category
+
+    monkeypatch.delenv("RAG_RERANK_CATEGORIES", raising=False)
+    monkeypatch.setenv("RAG_RERANK_ENABLED", "true")
+    monkeypatch.setenv("RAG_RERANK_CONDITIONAL", "true")
+    monkeypatch.setenv("RAG_RERANK_ALWAYS", "false")
+
+    assert rerank_for_category("rootstock") is True
+    assert rerank_for_category("disease") is True
+    assert rerank_for_category("general") is False
+    assert rerank_for_category("irrigation") is False
+
+
+def test_rerank_for_category_always(monkeypatch):
+    from rag.hybrid import rerank_for_category
+
+    monkeypatch.setenv("RAG_RERANK_ENABLED", "true")
+    monkeypatch.setenv("RAG_RERANK_ALWAYS", "true")
+
+    assert rerank_for_category("general") is True

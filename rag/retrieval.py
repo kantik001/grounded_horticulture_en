@@ -7,6 +7,7 @@ import os
 from typing import Any, Dict, List
 
 from rag.crops_config import get_crop, normalize_crop_id
+from rag.debug_log import rag_debug
 
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _few_shot_cache = None
@@ -23,7 +24,7 @@ def _load_few_shot() -> dict:
     return _few_shot_cache
 
 
-# Категория вопроса по ключевым словам (влияет на few-shot, не на поиск).
+# Категория вопроса по ключевым словам (few-shot и условный rerank в search).
 def classify_question(question: str) -> str:
     q_lower = question.lower()
     if any(
@@ -153,7 +154,8 @@ def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str
 
     from rag.vector_store import search
 
-    fragments = search(q, crop_id=crop_id, k=8)
+    category = classify_question(q)
+    fragments = search(q, crop_id=crop_id, k=8, category=category)
     if not fragments:
         empty["error"] = (
             f"Не нашёл информации в статьях по культуре «{crop.get('name_ru', crop_id)}»."
@@ -161,7 +163,7 @@ def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str
         return empty
 
     for f in fragments:
-        print(f"[RAG:{crop_id}] источник: {f.metadata.get('filename')}")
+        rag_debug(f"[RAG:{crop_id}] источник: {f.metadata.get('filename')}")
 
     context_parts: List[str] = []
     fr_json: List[Dict[str, str]] = []
@@ -171,7 +173,6 @@ def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str
         fr_json.append({"filename": source_name, "content": frag.page_content})
 
     context = "\n\n---\n\n".join(context_parts)
-    category = classify_question(q)
     few_shot = few_shot_for(crop_id, category)
 
     return {

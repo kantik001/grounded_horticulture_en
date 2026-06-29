@@ -8,7 +8,7 @@ from typing import List, Optional
 from langchain_core.documents import Document
 
 RERANK_MODEL = os.environ.get("RAG_RERANK_MODEL", "BAAI/bge-reranker-base")
-RERANK_TOP_N = int(os.environ.get("RAG_RERANK_TOP_N", "32"))
+RERANK_TOP_N = int(os.environ.get("RAG_RERANK_TOP_N", "16"))
 
 _cross_encoder = None
 _load_failed = False

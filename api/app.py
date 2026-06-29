@@ -111,6 +111,13 @@ def admin_reindex():
 
 if __name__ == "__main__":
     port = int(os.environ.get("CLASSIFIER_PORT", 5000))
+    if os.environ.get("USE_GUNICORN", "").lower() in ("1", "true", "yes"):
+        import subprocess
+
+        conf = os.path.join(os.path.dirname(__file__), "gunicorn.conf.py")
+        print(f"Запуск Python API (gunicorn) на порту {port}")
+        raise SystemExit(subprocess.call(["gunicorn", "-c", conf, "api.app:app"]))
+
     warmup_rag()
-    print(f"Запуск Python API на порту {port}")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    print(f"Запуск Python API (Flask dev) на порту {port}")
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)

@@ -16,6 +16,7 @@ import (
 )
 
 const maxSessionMessages = 80
+const maxLLMHistoryMessages = 24
 
 // ChatStore — персистентное хранилище чата (PostgreSQL + файлы на диске).
 type ChatStore struct {
@@ -211,6 +212,37 @@ func (st *ChatStore) GetOrCreateSession(ctx context.Context, sessionID string, u
 	return sid, cropID, err
 }
 
+// scanChatMessage читает одну строку messages (с опциональным feedback).
+func scanChatMessage(
+	imageToken *string,
+	classPred *string,
+	classConf *float64,
+	fbRating *int16,
+	m *ChatMessage,
+) {
+	if imageToken != nil && *imageToken != "" {
+		m.ImageURL = mediaURL(*imageToken)
+	}
+	if classPred != nil {
+		m.ClassPrediction = *classPred
+	}
+	if classConf != nil {
+		m.ClassConfidence = *classConf
+	}
+	if fbRating != nil {
+		r := int(*fbRating)
+		m.FeedbackRating = &r
+	}
+}
+
+func finalizeStoredMessage(m ChatMessage, id int64) ChatMessage {
+	m.ID = id
+	if m.ImageToken != "" && m.ImageURL == "" {
+		m.ImageURL = mediaURL(m.ImageToken)
+	}
+	return m
+}
+
 // ListMessages возвращает историю сессии для UI.
 func (st *ChatStore) ListMessages(ctx context.Context, sessionID string, telegramID int64) ([]ChatMessage, error) {
 	owned, err := st.sessionOwned(ctx, sessionID, telegramID)
@@ -244,19 +276,7 @@ func (st *ChatStore) ListMessages(ctx context.Context, sessionID string, telegra
 		if err := rows.Scan(&m.ID, &m.Role, &m.Content, &m.Kind, &imageToken, &classPred, &classConf, &fbRating); err != nil {
 			return nil, err
 		}
-		if imageToken != nil && *imageToken != "" {
-			m.ImageURL = mediaURL(*imageToken)
-		}
-		if classPred != nil {
-			m.ClassPrediction = *classPred
-		}
-		if classConf != nil {
-			m.ClassConfidence = *classConf
-		}
-		if fbRating != nil {
-			r := int(*fbRating)
-			m.FeedbackRating = &r
-		}
+		scanChatMessage(imageToken, classPred, classConf, fbRating, &m)
 		out = append(out, m)
 	}
 	return out, rows.Err()
@@ -270,7 +290,7 @@ func mediaURL(token string) string {
 var errSessionNotFound = fmt.Errorf("session not found")
 
 // AppendMessage сохраняет сообщение и обрезает историю до maxSessionMessages.
-func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m ChatMessage) (int64, error) {
+func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m ChatMessage) (ChatMessage, error) {
 	var id int64
 	err := st.pool.QueryRow(ctx, `
 		INSERT INTO messages (session_id, role, content, kind, image_token, class_prediction, class_confidence)
@@ -280,7 +300,7 @@ func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m Chat
 		nullToken(m.ImageToken), nullIfEmpty(m.ClassPrediction), nullConfidence(m.ClassConfidence),
 	).Scan(&id)
 	if err != nil {
-		return 0, err
+		return ChatMessage{}, err
 	}
 	_, err = st.pool.Exec(ctx, `
 		DELETE FROM messages
@@ -292,7 +312,7 @@ func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m Chat
 			LIMIT $2
 		  )`, sessionID, maxSessionMessages,
 	)
-	return id, err
+	return finalizeStoredMessage(m, id), err
 }
 
 // NULL для пустого image_token при INSERT.
@@ -312,23 +332,64 @@ func nullConfidence(v float64) *float64 {
 	return &v
 }
 
-// HistoryForLLM — последние сообщения сессии в формате LLM.
+// HistoryForLLM — последние сообщения сессии в формате LLM (SQL LIMIT, без полной истории).
 func (st *ChatStore) HistoryForLLM(ctx context.Context, sessionID string, telegramID int64, excludeLastN int) ([]Message, error) {
-	msgs, err := st.ListMessages(ctx, sessionID, telegramID)
+	if excludeLastN < 0 {
+		excludeLastN = 0
+	}
+	owned, err := st.sessionOwned(ctx, sessionID, telegramID)
 	if err != nil {
 		return nil, err
 	}
-	n := len(msgs) - excludeLastN
-	if n < 0 {
-		n = 0
+	if !owned {
+		return nil, errSessionNotFound
 	}
+
+	limit := maxLLMHistoryMessages + excludeLastN
+	rows, err := st.pool.Query(ctx, `
+		SELECT m.id, m.role, m.content, m.kind, m.image_token, m.class_prediction, m.class_confidence
+		FROM messages m
+		JOIN chat_sessions cs ON cs.id = m.session_id
+		JOIN users u ON u.id = cs.user_id
+		WHERE m.session_id = $1 AND u.telegram_id = $2
+		ORDER BY m.created_at DESC, m.id DESC
+		LIMIT $3`, sessionID, telegramID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []ChatMessage
+	for rows.Next() {
+		var m ChatMessage
+		var imageToken *string
+		var classPred *string
+		var classConf *float64
+		if err := rows.Scan(&m.ID, &m.Role, &m.Content, &m.Kind, &imageToken, &classPred, &classConf); err != nil {
+			return nil, err
+		}
+		scanChatMessage(imageToken, classPred, classConf, nil, &m)
+		msgs = append(msgs, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
+		msgs[i], msgs[j] = msgs[j], msgs[i]
+	}
+	if excludeLastN > 0 && len(msgs) > excludeLastN {
+		msgs = msgs[:len(msgs)-excludeLastN]
+	}
+
 	var out []Message
-	for _, m := range msgs[:n] {
+	for _, m := range msgs {
 		if msg, ok := m.toLLMMessage(); ok {
 			out = append(out, msg)
 		}
 	}
-	return trimHistoryMessages(out, 24), nil
+	return trimHistoryMessages(out, maxLLMHistoryMessages), nil
 }
 
 // SaveImage сохраняет JPEG/PNG на диск, возвращает token для URL.

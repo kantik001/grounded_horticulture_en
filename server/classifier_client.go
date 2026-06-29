@@ -7,7 +7,6 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"time"
 )
 
 // ClassificationResult — ответ Python /classify.
@@ -50,8 +49,7 @@ func sendToClassifier(imageData []byte, cropID string) (*ClassificationResult, e
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := classifierHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request to classifier: %v", err)
 	}
