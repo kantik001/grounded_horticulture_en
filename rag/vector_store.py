@@ -33,6 +33,7 @@ from rag.chunking import assign_chunk_ids, chunk_id_for, diversify_fragments, sp
 from rag.crops_config import list_crops, normalize_crop_id
 from rag.embeddings import get_embeddings
 from rag.hybrid import hybrid_enabled, rerank_enabled, rrf_merge
+from rag.query_expand import expand_query
 from rag.reranker import RERANK_TOP_N, rerank_documents
 from rag.titles import get_pretty_title
 
@@ -176,9 +177,10 @@ def search(query: str, crop_id: str, k: int = 8):
     if store is None:
         return []
 
+    search_query = expand_query(query)
     fetch_k = max(k * 3, FETCH_K)
     vector_docs = store.similarity_search(
-        query,
+        search_query,
         k=fetch_k,
         filter={"crop_id": crop_id},
     )
@@ -190,7 +192,7 @@ def search(query: str, crop_id: str, k: int = 8):
 
     use_hybrid = hybrid_enabled() and load_bm25_indexes() is not None
     if use_hybrid:
-        bm25_ids = bm25_search(query, crop_id, max(fetch_k, BM25_FETCH_K))
+        bm25_ids = bm25_search(search_query, crop_id, max(fetch_k, BM25_FETCH_K))
         merged_ids = rrf_merge([vector_ids, bm25_ids])
     else:
         merged_ids = vector_ids
@@ -199,6 +201,6 @@ def search(query: str, crop_id: str, k: int = 8):
     candidates = _collect_candidates(merged_ids, doc_map, crop_id, rerank_pool)
 
     if rerank_enabled() and len(candidates) > 1:
-        candidates = rerank_documents(query, candidates)
+        candidates = rerank_documents(search_query, candidates)
 
     return diversify_fragments(candidates, limit=k)

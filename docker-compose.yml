@@ -41,6 +41,7 @@ services:
       - PYTHONIOENCODING=utf-8
       - HF_TOKEN=${HF_TOKEN:-}
       - RAG_WARMUP_ENABLED=${RAG_WARMUP_ENABLED:-true}
+      - AGRO_GLOSSARY_PATH=/config/agro_glossary.json
     volumes:
       - models:/app/models
       - chroma_data:/app/chroma_db
