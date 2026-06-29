@@ -65,7 +65,11 @@ jobs:
 
       - name: Verify classifier torch and imports
         run: |
-          docker run --rm doctor-gardens-classifier:ci python -c "
+          docker run --rm \
+            -v "${{ github.workspace }}/config:/config:ro" \
+            -v "${{ github.workspace }}/data:/app/data:ro" \
+            -e CROPS_CONFIG_PATH=/config/crops.json \
+            doctor-gardens-classifier:ci python -c "
           import torch, torchvision, transformers, sentence_transformers
           assert torch.__version__.startswith('2.5'), torch.__version__
           assert not torch.backends.cuda.is_built(), 'expected CPU-only torch build'
