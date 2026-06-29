@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-06-05T14:29:04.498568+00:00",
-  "total": 108,
-  "ok": 98,
-  "mixed": 10,
+  "generated_at": "2026-06-29T09:29:56.842100+00:00",
+  "total": 104,
+  "ok": 100,
+  "mixed": 4,
   "misc": 0,
   "review": 0,
   "articles": [
@@ -41,24 +41,6 @@
       "verdict": "ok",
       "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
       "suggested_action": "оставить"
-    },
-    {
-      "file": "article103_fitosanitarnyy.txt",
-      "title": "Плодоводство и виноградарство Юга России № 50(02), 2018 г.",
-      "rag_crop": "plum",
-      "scores": {
-        "plum": 1,
-        "cherry": 6,
-        "apricot": 0,
-        "peach": 0,
-        "pear": 0,
-        "tomato": 0,
-        "strawberry": 0
-      },
-      "primary_crop": "cherry",
-      "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 1, другие cherry 6.",
-      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
     },
     {
       "file": "article104_ozdorovlenie_pitomnikov.txt",
@@ -353,8 +335,8 @@
       "title": "article129_tendentsii_rasprostraneniya_bolezney_kostochkovy",
       "rag_crop": "plum",
       "scores": {
-        "plum": 16,
-        "cherry": 25,
+        "plum": 22,
+        "cherry": 27,
         "apricot": 4,
         "peach": 1,
         "pear": 0,
@@ -362,9 +344,9 @@
         "strawberry": 0
       },
       "primary_crop": "cherry",
-      "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 16, другие cherry 25.",
-      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
     },
     {
       "file": "article12_fitaktiv_rooting_heavy_soil.txt",
@@ -437,24 +419,6 @@
       "verdict": "ok",
       "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
       "suggested_action": "оставить"
-    },
-    {
-      "file": "article141_novye_vidy_patogenov_kostochkovyh_kultur.txt",
-      "title": "article141_novye_vidy_patogenov_kostochkovyh_kultur",
-      "rag_crop": "plum",
-      "scores": {
-        "plum": 5,
-        "cherry": 10,
-        "apricot": 0,
-        "peach": 0,
-        "pear": 0,
-        "tomato": 0,
-        "strawberry": 0
-      },
-      "primary_crop": "cherry",
-      "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 5, другие cherry 10.",
-      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
     },
     {
       "file": "article142_elementy_ekologizirovannoy_zaschity_vishni_slivy.txt",
@@ -623,9 +587,9 @@
       "title": "article161_vyraschivanie_kachestvennyh_sazhentsev_kostochko",
       "rag_crop": "plum",
       "scores": {
-        "plum": 9,
-        "cherry": 9,
-        "apricot": 15,
+        "plum": 11,
+        "cherry": 10,
+        "apricot": 16,
         "peach": 8,
         "pear": 0,
         "tomato": 0,
@@ -633,7 +597,7 @@
       },
       "primary_crop": "apricot",
       "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 9, другие apricot 15.",
+      "reason": "Косточковые mixed: слива 11, другие apricot 16.",
       "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
     },
     {
@@ -659,17 +623,17 @@
       "title": "article164_vydelenie_sortov",
       "rag_crop": "plum",
       "scores": {
-        "plum": 16,
-        "cherry": 21,
-        "apricot": 3,
-        "peach": 3,
+        "plum": 19,
+        "cherry": 23,
+        "apricot": 4,
+        "peach": 4,
         "pear": 0,
         "tomato": 0,
         "strawberry": 0
       },
       "primary_crop": "cherry",
       "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 16, другие cherry 21.",
+      "reason": "Косточковые mixed: слива 19, другие cherry 23.",
       "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
     },
     {
@@ -857,17 +821,17 @@
       "title": "article182_genofond_kostochkovyh_plodovyh_rasteniy_osobenno",
       "rag_crop": "plum",
       "scores": {
-        "plum": 23,
-        "cherry": 41,
-        "apricot": 7,
-        "peach": 15,
+        "plum": 26,
+        "cherry": 43,
+        "apricot": 8,
+        "peach": 16,
         "pear": 0,
         "tomato": 0,
         "strawberry": 0
       },
       "primary_crop": "cherry",
       "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 23, другие cherry 41.",
+      "reason": "Косточковые mixed: слива 26, другие cherry 43.",
       "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
     },
     {
@@ -1267,24 +1231,6 @@
       "suggested_action": "оставить"
     },
     {
-      "file": "article42_proizvodstvo_posadochnogo.txt",
-      "title": "Современный этап развития садоводства основывается на новых",
-      "rag_crop": "plum",
-      "scores": {
-        "plum": 6,
-        "cherry": 9,
-        "apricot": 1,
-        "peach": 4,
-        "pear": 0,
-        "tomato": 0,
-        "strawberry": 0
-      },
-      "primary_crop": "cherry",
-      "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 6, другие cherry 9.",
-      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
-    },
-    {
       "file": "article43_printsip_vydeleniya.txt",
       "title": "Плодоводство и виноградарство Юга России № 46(04), 2017 г.",
       "rag_crop": "plum",
@@ -1325,7 +1271,7 @@
       "title": "Плодоводство и виноградарство Юга России № 44(02), 2017 г.",
       "rag_crop": "plum",
       "scores": {
-        "plum": 12,
+        "plum": 18,
         "cherry": 19,
         "apricot": 0,
         "peach": 0,
@@ -1334,9 +1280,9 @@
         "strawberry": 10
       },
       "primary_crop": "cherry",
-      "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 12, другие cherry 19.",
-      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
+      "verdict": "ok",
+      "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
+      "suggested_action": "оставить"
     },
     {
       "file": "article48_otsenka_ustoychivosti_sortov_kostochkovyh_kultur.txt",
@@ -1463,24 +1409,6 @@
       "verdict": "ok",
       "reason": "Доминирует слива или сбалансированный косточковый контекст со сливой.",
       "suggested_action": "оставить"
-    },
-    {
-      "file": "article58_sovershenstvovanie.txt",
-      "title": "СОВЕРШЕНСТВОВАНИЕ ЭЛЕМЕНТОВ ТЕХНОЛОГИИ ПРОИЗВОДСТВА ПЛОДОВ КОСТОЧКОВЫХ КУЛЬТУР В УСЛОВИЯХ ПРОЯВЛЕНИЯ КЛИМАТИЧЕСКИХ СТРЕС",
-      "rag_crop": "plum",
-      "scores": {
-        "plum": 6,
-        "cherry": 9,
-        "apricot": 1,
-        "peach": 4,
-        "pear": 0,
-        "tomato": 0,
-        "strawberry": 0
-      },
-      "primary_crop": "cherry",
-      "verdict": "mixed",
-      "reason": "Косточковые mixed: слива 6, другие cherry 9.",
-      "suggested_action": "оставить с осторожностью или добавить фильтр по теме"
     },
     {
       "file": "article5_nursery_pruning_oda.txt",

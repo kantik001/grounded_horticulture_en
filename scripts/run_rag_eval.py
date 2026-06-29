@@ -2,6 +2,11 @@
 """
 Прогон eval-набора RAG: POST /rag/context и проверка метрик.
 Режим по умолчанию — retrieval (без LLM). Опционально --full через Go /chat (нужен LLM_API_KEY).
+
+Ускорение:
+  --in-process   вызов retrieve_rag_context() без HTTP (лучше внутри Docker classifier)
+  --fast         без cross-encoder rerank (~15× быстрее, smoke-eval)
+  --workers N    параллельные запросы (HTTP или in-process; оптимум ~2 на CPU)
 """
 
 from __future__ import annotations
@@ -10,9 +15,11 @@ import argparse
 import json
 import os
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 import requests
 
@@ -26,6 +33,29 @@ SUITES = {
     "plum": EVAL_DIR / "rag_plum_baseline.jsonl",
     "demo_hr": EVAL_DIR / "rag_demo_hr_baseline.jsonl",
 }
+
+_retrieve_rag_context: Callable[..., Dict[str, Any]] | None = None
+
+
+def _ensure_project_root_on_path() -> None:
+    root = str(_ROOT)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+
+
+def _get_retrieve_rag_context() -> Callable[..., Dict[str, Any]]:
+    global _retrieve_rag_context
+    if _retrieve_rag_context is None:
+        _ensure_project_root_on_path()
+        from rag.retrieval import retrieve_rag_context
+
+        _retrieve_rag_context = retrieve_rag_context
+    return _retrieve_rag_context
+
+
+def apply_fast_mode(enabled: bool) -> None:
+    if enabled:
+        os.environ["RAG_RERANK_ENABLED"] = "false"
 
 
 def context_contains(haystack: str, needle: str) -> bool:
@@ -70,6 +100,12 @@ def fetch_context(rag_url: str, question: str, crop_id: str, timeout: int) -> Di
     return {"http_status": resp.status_code, **body}
 
 
+def fetch_context_local(question: str, crop_id: str) -> Dict[str, Any]:
+    payload = _get_retrieve_rag_context()(question, crop_id=crop_id)
+    status = 200 if payload.get("success") else 422
+    return {"http_status": status, **payload}
+
+
 def check_retrieval(case: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
     ok = ctx.get("success") is True and resp_status_ok(ctx)
     context_text = (ctx.get("context") or "").lower()
@@ -107,39 +143,84 @@ def resp_status_ok(ctx: Dict[str, Any]) -> bool:
     return status == 422 and ctx.get("success") is False
 
 
+def eval_case(
+    index: int,
+    case: Dict[str, Any],
+    *,
+    in_process: bool,
+    rag_url: str,
+    timeout: int,
+) -> Dict[str, Any]:
+    q = case["question"]
+    crop_id = case.get("crop_id", "apple")
+    if in_process:
+        ctx = fetch_context_local(q, crop_id)
+    else:
+        ctx = fetch_context(rag_url, q, crop_id, timeout)
+    check = check_retrieval(case, ctx)
+    return {
+        "index": index,
+        "category": case.get("category"),
+        "question": q,
+        "crop_id": crop_id,
+        "check": check,
+        "rag_error": ctx.get("error"),
+    }
+
+
 def run_suite(
     suite_name: str,
     path: Path,
     rag_url: str,
     timeout: int,
+    *,
+    in_process: bool = False,
+    workers: int = 1,
 ) -> Dict[str, Any]:
     cases = load_cases(path)
-    results = []
-    passed = 0
-    for i, case in enumerate(cases):
-        q = case["question"]
-        crop_id = case.get("crop_id", "apple")
-        ctx = fetch_context(rag_url, q, crop_id, timeout)
-        check = check_retrieval(case, ctx)
-        if check["passed"]:
-            passed += 1
-        results.append(
-            {
-                "index": i,
-                "category": case.get("category"),
-                "question": q,
-                "crop_id": crop_id,
-                "check": check,
-                "rag_error": ctx.get("error"),
+    if not cases:
+        return {
+            "suite": suite_name,
+            "total": 0,
+            "passed": 0,
+            "pass_rate": 0.0,
+            "cases": [],
+        }
+
+    workers = max(1, workers)
+    results: List[Dict[str, Any] | None] = [None] * len(cases)
+
+    if workers == 1:
+        for i, case in enumerate(cases):
+            results[i] = eval_case(
+                i, case, in_process=in_process, rag_url=rag_url, timeout=timeout
+            )
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(
+                    eval_case,
+                    i,
+                    case,
+                    in_process=in_process,
+                    rag_url=rag_url,
+                    timeout=timeout,
+                ): i
+                for i, case in enumerate(cases)
             }
-        )
+            for future in as_completed(futures):
+                item = future.result()
+                results[item["index"]] = item
+
+    assert all(r is not None for r in results)
+    passed = sum(1 for r in results if r["check"]["passed"])
     total = len(cases)
     return {
         "suite": suite_name,
         "total": total,
         "passed": passed,
         "pass_rate": round(passed / total, 3) if total else 0.0,
-        "cases": results,
+        "cases": results,  # type: ignore[arg-type]
     }
 
 
@@ -156,12 +237,37 @@ def main() -> int:
         default=os.environ.get("CLASSIFIER_RAG_URL", "http://localhost:5000/rag/context"),
     )
     parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument(
+        "--in-process",
+        action="store_true",
+        help="Прямой вызов retrieve_rag_context (рекомендуется: docker exec classifier)",
+    )
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Отключить reranker (RAG_RERANK_ENABLED=false); smoke-eval",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Параллельных запросов (оптимум ~2 при HTTP к classifier)",
+    )
     args = parser.parse_args()
 
+    apply_fast_mode(args.fast)
+    if args.in_process:
+        _ensure_project_root_on_path()
+
     suites = list(SUITES.keys()) if args.suite == "all" else [args.suite]
+    started = time.perf_counter()
     report = {
         "mode": "retrieval",
-        "rag_url": args.rag_url,
+        "rag_url": "in-process" if args.in_process else args.rag_url,
+        "in_process": args.in_process,
+        "fast": args.fast,
+        "workers": max(1, args.workers),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "suites": [],
     }
@@ -172,7 +278,14 @@ def main() -> int:
             print(f"Нет файла: {path}", file=sys.stderr)
             exit_code = 1
             continue
-        summary = run_suite(name, path, args.rag_url, args.timeout)
+        summary = run_suite(
+            name,
+            path,
+            args.rag_url,
+            args.timeout,
+            in_process=args.in_process,
+            workers=args.workers,
+        )
         report["suites"].append(summary)
         print(f"[{name}] {summary['passed']}/{summary['total']} passed ({summary['pass_rate']})")
         if summary["passed"] < summary["total"]:
@@ -181,11 +294,18 @@ def main() -> int:
                 if not c["check"]["passed"]:
                     print(f"  FAIL: {c['question'][:60]}… missing={c['check']['missing_in_context']}")
 
+    elapsed = time.perf_counter() - started
+    report["elapsed_s"] = round(elapsed, 2)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    out = RESULTS_DIR / f"{stamp}_{args.suite}.json"
+    suffix = args.suite
+    if args.fast:
+        suffix += "_fast"
+    if args.in_process:
+        suffix += "_local"
+    out = RESULTS_DIR / f"{stamp}_{suffix}.json"
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Отчёт: {out}")
+    print(f"Готово за {elapsed:.1f}s — отчёт: {out}")
     return exit_code
 
 

@@ -36,17 +36,27 @@
 ## Запуск
 
 ```bash
-# Retrieval-only (Python POST /rag/context)
+# Retrieval-only (Python POST /rag/context) — ~4 мин на все 68 вопросов
 python scripts/run_rag_eval.py --suite apple
-python scripts/run_rag_eval.py --suite pear
-python scripts/run_rag_eval.py --suite plum
-python scripts/run_rag_eval.py --suite demo_hr
 python scripts/run_rag_eval.py --suite all
+
+# Быстрый smoke-eval (~20 с): in-process + без rerank (внутри Docker classifier)
+docker compose -p union_ai_apple exec classifier \
+  python scripts/run_rag_eval.py --suite all --in-process --fast
+
+# Умеренное ускорение HTTP-режима (~2×)
+python scripts/run_rag_eval.py --suite all --workers 2
 
 make eval-retrieval
 ```
 
-Требуется доступный `CLASSIFIER_RAG_URL` (по умолчанию `http://localhost:5000/rag/context`).
+| Флаг | Эффект |
+|------|--------|
+| `--in-process` | Без HTTP; нужен доступ к `chroma_db` (Docker classifier или локально) |
+| `--fast` | `RAG_RERANK_ENABLED=false` — ~15× быстрее, 68/68 на текущем наборе |
+| `--workers N` | Параллельные запросы; оптимум **2** при HTTP к одному classifier |
+
+Требуется доступный `CLASSIFIER_RAG_URL` (по умолчанию `http://localhost:5000/rag/context`), кроме `--in-process`.
 
 Результаты: `eval/results/<timestamp>_<suite>.json`.
 
