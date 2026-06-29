@@ -87,6 +87,10 @@ def check_retrieval(case: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]
         if not context_contains(context_text, sub):
             missing.append(sub)
 
+    any_of = case.get("expect_contains_any") or []
+    if any_of and not any(context_contains(context_text, sub) for sub in any_of):
+        missing.append("any_of:" + "|".join(any_of))
+
     return {
         "passed": ok and not missing,
         "retrieval_ok": ctx.get("success"),
