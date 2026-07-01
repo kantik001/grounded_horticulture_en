@@ -37,7 +37,7 @@
    - «Какие признаки парши на листьях?»
    - «Какие подвои подходят для интенсивного сада?»
 2. **Админка:** http://localhost/admin.html — логин `ADMIN_USER` / пароль `ADMIN_PASSWORD` из `.env`.
-3. Сохранить записи в `docs/assets/demo-chat.mp4` и `docs/assets/demo-admin.mp4`.
+3. Сохранить записи в `docs/assets/demo-chat.mp4` и `docs/assets/demo-admin.mp4`, для README — GIF (`demo-chat.gif`, `demo-admin.gif`; GitHub не показывает `<video>` в README).
 4. Вставить в README (секция «Демо»).
 
 Перед записью: дождаться healthy у classifier (~1–2 мин после старта), один тестовый вопрос «вхолостую».
