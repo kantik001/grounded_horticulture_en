@@ -58,7 +58,7 @@
 
 ### 3C — Логи RAG
 - [x] Структурированный лог `[RAG]` в Go (`rag_log.go`): crop_id, session_id, fragments, verify
-- [ ] Связка с **feedback** 👍/👎 в админ-отчёте
+- [x] Связка с **feedback** 👍/👎 в админ-отчёте (`GET /admin/feedback` → поле `rag`)
 - [x] Без полного тела LLM в логах (политика 1C)
 
 ### Платформа (параллельно агро)

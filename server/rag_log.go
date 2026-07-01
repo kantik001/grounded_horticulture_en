@@ -55,6 +55,7 @@ func logRAGTrace(t RAGTrace) {
 		t.VerifyReason,
 		truncateRAGQuestion(t.Question),
 	)
+	recordRAGTraceMetrics(t)
 }
 
 // ragTraceAnalyticsPayload — поля latency для analytics_events (event_type rag_answer).

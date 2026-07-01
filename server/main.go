@@ -59,9 +59,10 @@ func main() {
 
 	router := gin.Default()
 	router.Use(corsMiddleware(config.CORSAllowedOrigins))
+	router.Use(metricsMiddleware())
 	router.Use(func(c *gin.Context) {
 		path := c.Request.URL.Path
-		if strings.Contains(path, "/media/") || strings.HasSuffix(path, "/stream") {
+		if strings.Contains(path, "/media/") || strings.HasSuffix(path, "/stream") || path == "/metrics" {
 			c.Next()
 			return
 		}

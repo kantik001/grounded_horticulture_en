@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [master, main, "feature/**", "fix/**"]
+    branches: [master, main, "feature/**", "fix/**", "feat/**"]
   pull_request:
     branches: [master, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   go-test:
@@ -49,6 +53,7 @@ jobs:
 
   docker-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -77,5 +82,5 @@ jobs:
           print('torch', torch.__version__, 'cuda_built', torch.backends.cuda.is_built(), 'docs', len(load_all_documents()))
           "
 
-  # rag-eval отключён: образ classifier:ci не переносится между job-ами GHA.
-  # Прогон вручную: make docker-reindex-apply && python scripts/run_rag_eval.py --suite all
+  # RAG retrieval eval — только вручную: Actions → RAG Eval → Run workflow
+  # (reindex + embeddings на CPU в PR слишком долгие для каждого push).
