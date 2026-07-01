@@ -33,11 +33,11 @@ P1–P3 — пост-пилотный бэклог, не блокируют за
 
 | # | Статус | Задача | Ветка | Детали |
 |---|--------|--------|-------|--------|
-| 8 | 🔲 | GC устаревших ключей в rate-limiter | `fix/ratelimit-gc` | `server/ratelimit.go`: чистка stale counters (утечка памяти) |
-| 9 | 🔲 | Вернуть rag-eval в CI | `feat/ci-rag-eval` | Объединить build+eval в один job (`.github/workflows/ci.yml`) |
-| 10 | 🔲 | `/metrics` + базовые алерты | `feat/metrics` | Ошибки LLM, латентность retrieval/LLM |
-| 11 | 🔲 | Связка feedback ↔ RAG-логи в админ-отчёте | `feat/feedback-rag-report` | ROADMAP 3C |
-| 12 | 🔲 | Документировать бэкапы volumes | `docs/backups` | `chroma_data`, `bm25_data`, `postgres_data` + расписание |
+| 8 | ✅ | GC устаревших ключей в rate-limiter | `feat/p2-ops-observability` | `gcStale` + удаление пустых ключей; тесты `ratelimit_test.go` |
+| 9 | ✅ | Вернуть rag-eval в CI | `feat/p2-ops-observability` | Job `docker-build-and-rag-eval`: build + reindex + `--suite all --in-process --fast` |
+| 10 | ✅ | `/metrics` + базовые алерты | `feat/p2-ops-observability` | `server/metrics.go`, `docs/knowledge-base/metrics-and-alerts.md` |
+| 11 | ✅ | Связка feedback ↔ RAG-логи в админ-отчёте | `feat/p2-ops-observability` | `GET /admin/feedback` → поле `rag` из `analytics_events` |
+| 12 | ✅ | Документировать бэкапы volumes | `feat/p2-ops-observability` | `docs/BACKUPS.md` |
 
 ## P3 — тесты и устойчивость
 

@@ -8,6 +8,8 @@ import (
 func registerPublicRoutes(router *gin.Engine) {
 	router.GET("/health", handleHealthCheck)
 	router.GET("/api/health", handleHealthCheck)
+	router.GET("/metrics", handleMetrics)
+	router.GET("/api/metrics", handleMetrics)
 	router.GET("/crops", handleListCrops)
 	router.GET("/api/crops", handleListCrops)
 	router.GET("/onboarding", handleOnboarding)

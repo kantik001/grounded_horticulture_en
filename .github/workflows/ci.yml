@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, main, "feature/**", "fix/**"]
+    branches: [master, main, "feature/**", "fix/**", "feat/**"]
   pull_request:
     branches: [master, main]
 
@@ -47,8 +47,9 @@ jobs:
           CROPS_CONFIG_PATH: config/crops.json
         run: pytest tests/ -v --tb=short
 
-  docker-build:
+  docker-build-and-rag-eval:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -77,5 +78,17 @@ jobs:
           print('torch', torch.__version__, 'cuda_built', torch.backends.cuda.is_built(), 'docs', len(load_all_documents()))
           "
 
-  # rag-eval отключён: образ classifier:ci не переносится между job-ами GHA.
-  # Прогон вручную: make docker-reindex-apply && python scripts/run_rag_eval.py --suite all
+      - name: RAG retrieval eval (reindex + in-process fast)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/config:/config:ro" \
+            -v "${{ github.workspace }}/data:/app/data:ro" \
+            -v "${{ github.workspace }}/scripts:/app/scripts:ro" \
+            -v "${{ github.workspace }}/eval:/app/eval:ro" \
+            -e CROPS_CONFIG_PATH=/config/crops.json \
+            -e HF_TOKEN="${HF_TOKEN}" \
+            -e RAG_RERANK_ENABLED=false \
+            doctor-gardens-classifier:ci \
+            bash -lc "python scripts/reindex_rag.py && python scripts/run_rag_eval.py --suite all --in-process --fast --timeout 300 --workers 2"

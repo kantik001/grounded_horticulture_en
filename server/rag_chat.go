@@ -203,6 +203,7 @@ func answerWithRAG(q, cropID string, history []Message, sessionID string) (answe
 	raw, err := callLLMCompletion(input.Messages)
 	llmMs := time.Since(llmStart).Milliseconds()
 	if err != nil {
+		recordLLMError()
 		log.Printf("LLM chat error: %v", err)
 		return "", false, publicAPIError(err), false, trace
 	}

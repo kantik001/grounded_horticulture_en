@@ -99,6 +99,7 @@ func handleMessageStream(c *gin.Context) {
 	})
 	llmMs := time.Since(llmStart).Milliseconds()
 	if err != nil {
+		recordLLMError()
 		log.Printf("LLM stream error: %v", err)
 		_ = writeSSE(c, "error", gin.H{"error": publicAPIError(err)})
 		return
