@@ -74,6 +74,7 @@
             attachmentStrip: document.getElementById('attachmentStrip'),
             attachmentThumb: document.getElementById('attachmentThumb'),
             clearAttachment: document.getElementById('clearAttachment'),
+            photoBetaNotice: document.getElementById('photoBetaNotice'),
             typingLine: document.getElementById('typingLine'),
             toast: document.getElementById('toast'),
             cropSelect: document.getElementById('cropSelect'),
@@ -123,6 +124,7 @@
                 if (el.headerDisclaimer && b.disclaimer) el.headerDisclaimer.textContent = b.disclaimer;
                 if (el.onboardingTitle && b.onboarding_title) el.onboardingTitle.textContent = b.onboarding_title;
                 if (el.chatDivider && b.chat_divider) el.chatDivider.textContent = b.chat_divider;
+                if (el.photoBetaNotice && b.photo_beta_notice) el.photoBetaNotice.textContent = b.photo_beta_notice;
                 if (b.app_title) document.title = b.app_title + ' — чат';
             } catch (e) {
                 console.warn('loadBranding', e);
@@ -843,12 +845,14 @@
             }
             if (!file) {
                 el.attachmentStrip.classList.remove('active');
+                if (el.photoBetaNotice) el.photoBetaNotice.hidden = true;
                 el.fileInput.value = '';
                 return;
             }
             pendingObjectUrl = URL.createObjectURL(file);
             el.attachmentThumb.src = pendingObjectUrl;
             el.attachmentStrip.classList.add('active');
+            if (el.photoBetaNotice && el.photoBetaNotice.textContent) el.photoBetaNotice.hidden = false;
         }
 
         function setSending(on) {
