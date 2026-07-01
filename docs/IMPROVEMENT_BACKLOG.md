@@ -34,7 +34,7 @@ P1–P3 — пост-пилотный бэклог, не блокируют за
 | # | Статус | Задача | Ветка | Детали |
 |---|--------|--------|-------|--------|
 | 8 | ✅ | GC устаревших ключей в rate-limiter | `feat/p2-ops-observability` | `gcStale` + удаление пустых ключей; тесты `ratelimit_test.go` |
-| 9 | ✅ | Вернуть rag-eval в CI | `feat/p2-ops-observability` | Jobs `docker-classifier-rag-eval` (apple, in-process fast) + `docker-build-smoke`; без дубля push+PR на feat |
+| 9 | ✅ | RAG eval в CI | `feat/p2-ops-observability` | PR: быстрый `docker-build` (как раньше). Полный eval — workflow **RAG Eval** (`workflow_dispatch`) |
 | 10 | ✅ | `/metrics` + базовые алерты | `feat/p2-ops-observability` | `server/metrics.go`, `docs/knowledge-base/metrics-and-alerts.md` |
 | 11 | ✅ | Связка feedback ↔ RAG-логи в админ-отчёте | `feat/p2-ops-observability` | `GET /admin/feedback` → поле `rag` из `analytics_events` |
 | 12 | ✅ | Документировать бэкапы volumes | `feat/p2-ops-observability` | `docs/BACKUPS.md` |
