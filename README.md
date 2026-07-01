@@ -291,13 +291,15 @@ python train_classifier.py
 
 ## Демо
 
-<!-- После записи GIF/MP4 положите файлы в docs/assets/ и раскомментируйте: -->
+### Чат (текстовый RAG)
 
-<!-- ![Чат: текстовый RAG](docs/assets/demo-chat.gif) -->
+<video src="docs/assets/demo-chat.mp4" controls width="720"></video>
 
-<!-- ![Админка: статьи и feedback](docs/assets/demo-admin.gif) -->
+### Админка (статьи и обратная связь)
 
-Запись: см. [docs/PUBLIC_REPO.md](docs/PUBLIC_REPO.md) (сценарий для Habr / dev.to).
+<video src="docs/assets/demo-admin.mp4" controls width="720"></video>
+
+Сценарий записи: [docs/PUBLIC_REPO.md](docs/PUBLIC_REPO.md).
 
 ## Лицензия
 
