@@ -29,6 +29,8 @@
 | `test_crops_config.py` | Тесты `rag/crops_config.py` |
 | `test_hybrid_search.py` | BM25, RRF, токенизация (`rag/hybrid.py`, `rag/bm25_store.py`) |
 | `test_rag_retrieval.py` | `classify_question`, `diversify_fragments` |
+| `test_question_categories.py` | `rag/question_categories.py`, override через `QUESTION_CATEGORIES_CONFIG_PATH` |
+| `test_verify_contract.py` | контракт verify vs `tests/fixtures/rag_verify_contract.json` |
 | `test_rag_eval_match.py` | стем-матчинг `expect_contains` в eval |
 | `test_embeddings.py` | e5 префиксы `query:` / `passage:` |
 | `test_vector_titles.py` | заголовки статей из metadata |
@@ -147,7 +149,7 @@ pytest tests/ -v --tb=short
 make test-py
 ```
 
-Ожидание: **33 passed** (verifier, crops, hybrid, retrieval, eval match, embeddings, titles, query_expand, debug_log).
+Ожидание: **45 passed** (verifier, crops, hybrid, retrieval, question_categories, verify_contract, eval match, embeddings, titles, query_expand, debug_log).
 
 ---
 
@@ -173,6 +175,7 @@ make test-py
 | Файл | Что проверяет |
 |------|----------------|
 | `rag_chat_test.go` | числа, verify, дисклеймер, очистка ответа (зеркало Python verifier) |
+| `verify_contract_test.go` | контракт verify vs `tests/fixtures/rag_verify_contract.json` |
 
 ---
 

@@ -25,7 +25,7 @@
 | Слой | Папки / код | Меняется при клоне? |
 |------|-------------|-------------------|
 | **Core** | `server/` (кроме агро-формулировок в комментариях), `api/`, `rag/`, `migrations/`, `scripts/reindex_rag.py`, `scripts/run_rag_eval.py`, `docker-compose.yml`, `tests/`, `eval/` (механизм) | Нет |
-| **Domain pack** | `data/{domain_id}/`, `config/crops.json`, `prompts.json`, `few_shot.json`, `onboarding.json`, `photo_templates.json`, `cv_class_labels.json`, `config/branding.json`, тексты `webapp/` | **Да** |
+| **Domain pack** | `data/{domain_id}/`, `config/crops.json`, `prompts.json`, `few_shot.json`, `question_categories.json`, `onboarding.json`, `photo_templates.json`, `cv_class_labels.json`, `config/branding.json`, тексты `webapp/` | **Да** |
 | **Optional modules** | CV (`cv/`, `cv_enabled`), Telegram Web App | По задаче |
 
 **`crop_id` в API** — идентификатор **домена знаний** (workspace). В новых проектах можно мысленно называть `domain_id`; переименование в коде — позже, с alias.
@@ -66,6 +66,7 @@
 | `config/crops.json` | `apple`, `demo_hr`, … + `cv_enabled` / `rag_enabled` |
 | `config/prompts.json` | Системные промпты по домену |
 | `config/few_shot.json` | Примеры тона ответа |
+| `config/question_categories.json` | Ключевые слова для `classify_question` (few-shot / rerank) |
 | `config/onboarding.json` | Чипы вопросов в UI |
 | `config/photo_templates.json` | Шаблоны без LLM |
 | `config/cv_class_labels.json` | Метки CV (только agro) |
@@ -90,7 +91,7 @@
 1. `git clone` → новое имя репозитория.
 2. Заменить `config/branding.json`, тексты `webapp` (или свой фронт).
 3. Очистить / заменить `data/*`, добавить документы заказчика.
-4. Обновить `crops.json` (домены), `prompts.json`, `few_shot.json`, `onboarding.json`.
+4. Обновить `crops.json` (домены), `prompts.json`, `few_shot.json`, `question_categories.json`, `onboarding.json`.
 5. `cv_enabled: false` если CV не нужен.
 6. `python scripts/reindex_rag.py` (или admin reindex).
 7. Скопировать `eval/rag_*_baseline.jsonl` → свои вопросы; `python scripts/run_rag_eval.py`.

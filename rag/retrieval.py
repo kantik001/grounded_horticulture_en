@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 
 from rag.crops_config import get_crop, normalize_crop_id
 from rag.debug_log import rag_debug
+from rag.question_categories import classify_question
 
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _few_shot_cache = None
@@ -22,98 +23,6 @@ def _load_few_shot() -> dict:
     with open(path, encoding="utf-8") as f:
         _few_shot_cache = json.load(f)
     return _few_shot_cache
-
-
-# Категория вопроса по ключевым словам (few-shot и условный rerank в search).
-def classify_question(question: str) -> str:
-    q_lower = question.lower()
-    if any(
-        kw in q_lower
-        for kw in [
-            "подвой",
-            "подво",
-            "привой",
-            "окулиров",
-            "черенк",
-            "саженц",
-            "питомник",
-            "книп",
-        ]
-    ):
-        return "rootstock"
-    if any(
-        kw in q_lower
-        for kw in [
-            "удобрение",
-            "доза",
-            "грамм",
-            "литр",
-            "подкормк",
-            "азот",
-            "фосфор",
-            "калий",
-            "фертигац",
-            "листов",
-        ]
-    ):
-        return "fertilizer"
-    if any(
-        kw in q_lower
-        for kw in [
-            "болезн",
-            "парша",
-            "пятна",
-            "гниль",
-            "ржавчин",
-            "мучнист",
-            "лечени",
-            "вредител",
-            "плодожорк",
-            "тля",
-            "марссон",
-            "шарк",
-            "фитосанит",
-        ]
-    ):
-        return "disease"
-    if any(
-        kw in q_lower
-        for kw in [
-            "полив",
-            "орошен",
-            "капельн",
-            "засух",
-            "влаго",
-        ]
-    ):
-        return "irrigation"
-    if any(
-        kw in q_lower
-        for kw in [
-            "склон",
-            "рельеф",
-            "террас",
-            "кбр",
-            "предгор",
-            "gis",
-        ]
-    ):
-        return "relief"
-    if any(
-        kw in q_lower
-        for kw in [
-            "сорт",
-            "мелба",
-            "голден",
-            "триумф",
-            "президент",
-            "рентабельность",
-            "либерти",
-            "стенлей",
-        ]
-    ):
-        return "variety"
-    return "general"
 
 
 # Возвращает few-shot пример для культуры и категории вопроса.
