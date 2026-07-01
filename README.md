@@ -3,7 +3,7 @@
 **Grounded RAG** для садоводства: гибридный поиск по научным статьям, Telegram Mini App и веб-клиент с API-ключом.
 
 > **Публичный репозиторий:** в git только демо-данные (`data/demo_hr/`, `data/apple/sample_*.txt`).
-> Полный корпус статей и веса `.pth` — локально. См. [DATA_LICENSE.md](DATA_LICENSE.md), [data/README.md](data/README.md).
+> Полный корпус статей и веса `.pth` — локально. См. [DATA_LICENSE.md](DATA_LICENSE.md), [data/README.md](data/README.md), [docs/PUBLIC_REPO.md](docs/PUBLIC_REPO.md).
 
 Telegram Web App + AI: **фото** → классификация болезней (бета); **текст** → ответы по статьям (RAG). Оркестрация и LLM — **Go**, CV и гибридный retrieval (vector + BM25 + reranker) — **Python**.
 
