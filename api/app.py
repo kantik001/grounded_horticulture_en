@@ -2,6 +2,7 @@
 Python HTTP API: CV (/classify) и RAG retrieval (/rag/context) для Go-сервера.
 """
 
+import hmac
 import os
 import sys
 
@@ -97,7 +98,7 @@ def health_check():
 def admin_reindex():
     expected = os.environ.get("ADMIN_SECRET", "")
     secret = request.headers.get("X-Admin-Secret", "")
-    if not expected or secret != expected:
+    if not expected or not hmac.compare_digest(secret, expected):
         return jsonify({"success": False, "error": "forbidden"}), 403
     try:
         vs.reset_vector_store()

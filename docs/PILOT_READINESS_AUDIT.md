@@ -1,10 +1,16 @@
 # Аудит готовности к пилоту
 
-**Дата:** 2026-06-05  
+**Дата создания:** 2026-06-05 · **Обновлён:** 2026-07-01  
 **Продукт:** doctor_gardens_ai (Telegram Web App, агробот)  
 **Цель пилота:** текстовый RAG по статьям ПВЮР + опционально фото (яблоня)
 
 Статусы: ✅ готово · ⚠️ частично / риск · ❌ блокер · 🔲 не начато
+
+> **Обновление 2026-07-01.** По итогам код-аудита заведён
+> [IMPROVEMENT_BACKLOG.md](./IMPROVEMENT_BACKLOG.md). Выполнено: timing-safe сравнение
+> секретов (`admin.go`, `api/app.py`). Юнит-тесты: Go `ok`, Python **33 passed**.
+> Eval retrieval доведён до 100% (коммит «Reach 100% RAG eval») — **переподтвердить
+> прогоном на живом индексе перед пилотом** (см. команды P0 ниже).
 
 ---
 
@@ -12,7 +18,7 @@
 
 | Направление | Готовность | Комментарий |
 |-------------|------------|-------------|
-| **Текст RAG (яблоня)** | **~85%** | 29/30 eval, hybrid+reranker, ~344 статьи |
+| **Текст RAG (яблоня)** | **~85%** | eval 100% (см. обновление), hybrid+reranker, ~344 статьи |
 | **Текст RAG (груша/слива)** | **~80%** | pear 8/8, plum 10/10; слива очищена от misc |
 | **Фото CV** | **~25%** | Нет обученных `.pth` в репо — ImageNet fallback |
 | **Инфра / Docker** | **~90%** | Compose, volumes Chroma+BM25, CI |
@@ -32,7 +38,7 @@
 | 3 | `ADMIN_PASSWORD`, `ADMIN_SECRET`, `POSTGRES_PASSWORD` — сильные | ⚠️ | Заменить dev-значения перед публичным доступом |
 | 4 | RAG переиндексирован (Chroma + BM25) в Docker volumes | ✅ | 14 554 фрагментов; reindex при **остановленном** classifier |
 | 5 | `HF_TOKEN` в `.env` для classifier | ✅ | Ускоряет загрузку e5 + `BAAI/bge-reranker-base` |
-| 6 | Eval retrieval ≥ целевого порога | ⚠️ | **52/53** (98,1%): 1 fail — марссониоз (`expect_contains: марссон`) |
+| 6 | Eval retrieval ≥ целевого порога | ✅ | **100%** (коммит «Reach 100% RAG eval»); переподтвердить прогоном перед пилотом |
 | 7 | `docker compose up` — все 4 сервиса healthy | ✅ | postgres, classifier, server, webapp |
 | 8 | Smoke: `make smoke` или `scripts/smoke.ps1` | 🔲 | Прогнать после деплоя |
 | 9 | Дисклеймер в UI и в ответах RAG | ✅ | `branding.json`, verifier, Go disclaimer |
@@ -61,7 +67,7 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 | 16 | Cross-encoder reranker | ✅ | `BAAI/bge-reranker-base`; первый запрос ~1–3 мин с HF_TOKEN |
 | 17 | Diversity top-k (max 2/статья, k=8) | ✅ | `vector_store.diversify_fragments` |
 | 18 | Few-shot по категориям | ✅ | rootstock, disease, relief, … |
-| 19 | Исправить eval fail «марссониоз» | 🔲 | Подправить статью/чанк или вопрос в `rag_apple_baseline.jsonl` |
+| 19 | Исправить eval fail «марссониоз» | ✅ | Устранён в рамках доведения eval до 100% |
 | 20 | OCR-починка PDF-текстов | 🔲 | Отложено; влияет на recall по «битым» словам |
 | 21 | Ручная выборочная оценка 10–20 ответов LLM | 🔲 | `--full` eval или чат с реальными садоводами |
 
@@ -75,8 +81,9 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 | 23 | Датасет фото болезней яблони | 🔲 | `cv/train_classifier.py`, структура `dataset/train/` |
 | 24 | Порог confidence + шаблоны без LLM | ⚠️ | `photo_templates.json` есть; порог в roadmap |
 | 25 | `cv_enabled: false` для pear/plum | ✅ | Только apple в UI для фото |
+| 26a | Пометка фото «бета» + дисклеймер | ✅ | 2026-07-01: `photo_beta_notice` в `branding.json`, добавляется к каждой рекомендации (`classify_flow.go`) и виден в UI при прикреплении фото |
 
-**Рекомендация:** на пилоте скрыть/приглушить фото-ветку или показывать «экспериментально» до появления весов.
+**Решение (2026-07-01):** фото-ветка оставлена включённой, но помечена «бета» с явным дисклеймером о необученной модели. Обучение `apple_classifier.pth` — пост-пилотная задача (нужен датасет; PlantVillage покрывает лишь 4 из 10 классов).
 
 ---
 
@@ -115,9 +122,10 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 |---------|----------|
 | Статьи RAG | ~344 apple, ~42 pear, ~108 plum |
 | Фрагментов в индексе | 14 554 |
-| Eval retrieval (all) | **52/53** (2026-06-05) |
-| apple / pear / plum / demo_hr | 29/30 · 8/8 · 10/10 · 5/5 |
-| Unit-тесты Python | ~23 passed |
+| Eval retrieval (all) | **100%** (переподтвердить перед пилотом) |
+| apple / pear / plum / demo_hr | 30/30 · 8/8 · 10/10 · 5/5 |
+| Unit-тесты Python | 33 passed (2026-07-01) |
+| Unit-тесты Go | `go test ./...` — ok (2026-07-01) |
 | Misc plum (аудит) | 0 misc, 10 mixed |
 
 ---
@@ -137,6 +145,7 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 
 ## Связанные документы
 
+- [IMPROVEMENT_BACKLOG.md](./IMPROVEMENT_BACKLOG.md)
 - [ROADMAP.md](./ROADMAP.md)
 - [DEPLOY.md](./DEPLOY.md)
 - [eval/README.md](../eval/README.md)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -68,12 +69,31 @@ func classifyAndRecommend(imageData []byte, cropID, caption string, history []Me
 	if recErr != nil {
 		recommendation = generateTemplateRecommendation(classification)
 	}
+	recommendation = appendPhotoBetaNotice(recommendation)
 
 	return &classifyAndRecommendResult{
 		Classification:    classification,
 		Recommendation:    recommendation,
 		UsedLLMTemplate:   usedTemplate,
 	}, nil
+}
+
+// appendPhotoBetaNotice добавляет бета-дисклеймер CV в конец рекомендации.
+// Модель распознавания болезней ещё не обучена (ImageNet fallback), поэтому
+// результат помечается как экспериментальный. Текст — из config/branding.json.
+func appendPhotoBetaNotice(recommendation string) string {
+	notice := strings.TrimSpace(brandingCatalog.PhotoBetaNotice)
+	if notice == "" {
+		return recommendation
+	}
+	body := strings.TrimSpace(recommendation)
+	if body == "" {
+		return notice
+	}
+	if strings.Contains(body, notice) {
+		return body
+	}
+	return body + "\n\n" + notice
 }
 
 // parseClassifyForm читает image и crop_id из POST /classify.

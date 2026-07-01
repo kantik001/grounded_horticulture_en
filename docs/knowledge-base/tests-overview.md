@@ -147,7 +147,7 @@ pytest tests/ -v --tb=short
 make test-py
 ```
 
-Ожидание: **~23 passed** (verifier, crops, hybrid, retrieval, eval match, embeddings, titles).
+Ожидание: **33 passed** (verifier, crops, hybrid, retrieval, eval match, embeddings, titles, query_expand, debug_log).
 
 ---
 

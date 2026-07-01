@@ -18,6 +18,7 @@ type BrandingConfig struct {
 	OnboardingTitle  string `json:"onboarding_title"`
 	ChatDivider      string `json:"chat_divider"`
 	Disclaimer       string `json:"disclaimer"`
+	PhotoBetaNotice  string `json:"photo_beta_notice"`
 }
 
 var brandingCatalog BrandingConfig

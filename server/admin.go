@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"io"
 	"log"
@@ -27,7 +28,9 @@ func adminBasicAuth(cfg *Config) gin.HandlerFunc {
 			return
 		}
 		user, pass, ok := c.Request.BasicAuth()
-		if !ok || user != cfg.AdminUser || pass != cfg.AdminPassword {
+		userOK := subtle.ConstantTimeCompare([]byte(user), []byte(cfg.AdminUser)) == 1
+		passOK := subtle.ConstantTimeCompare([]byte(pass), []byte(cfg.AdminPassword)) == 1
+		if !ok || !userOK || !passOK {
 			c.Header("WWW-Authenticate", `Basic realm="Garden Admin"`)
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return

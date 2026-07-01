@@ -158,6 +158,17 @@
 
         .attachment-strip.active { display: flex; }
 
+        .photo-beta-notice {
+            margin: 0 4px 6px;
+            padding: 6px 8px;
+            font-size: 12px;
+            line-height: 1.35;
+            color: #7a5b00;
+            background: #fff6d9;
+            border: 1px solid #f0d98a;
+            border-radius: 8px;
+        }
+
         .attachment-strip img {
             width: 48px;
             height: 48px;
