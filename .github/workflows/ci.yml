@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [master, main]
 
+# Тяжёлый rag-eval только на PR или push в master/main (не дублировать push+PR на feat-ветке).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   go-test:
     runs-on: ubuntu-latest
@@ -47,38 +52,34 @@ jobs:
           CROPS_CONFIG_PATH: config/crops.json
         run: pytest tests/ -v --tb=short
 
-  docker-build-and-rag-eval:
+  # Лёгкая проверка Dockerfile server/webapp (без RAG).
+  docker-build-smoke:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build server image
+      - name: Build server and webapp images
         run: |
           chmod +x scripts/docker_build.sh
           scripts/docker_build.sh server -t doctor-gardens-server:ci
+          scripts/docker_build.sh webapp -t doctor-gardens-webapp:ci
 
-      - name: Build webapp image
-        run: scripts/docker_build.sh webapp -t doctor-gardens-webapp:ci
+  # Classifier + reindex + eval (apple only). Полный --suite all: вручную или на release.
+  docker-classifier-rag-eval:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Build classifier image
-        run: scripts/docker_build.sh classifier --build-arg SKIP_HF_BAKE=1 -t doctor-gardens-classifier:ci
-
-      - name: Verify classifier torch and imports
         run: |
-          docker run --rm \
-            -v "${{ github.workspace }}/config:/config:ro" \
-            -v "${{ github.workspace }}/data:/app/data:ro" \
-            -e CROPS_CONFIG_PATH=/config/crops.json \
-            doctor-gardens-classifier:ci python -c "
-          import torch, torchvision, transformers, sentence_transformers
-          assert torch.__version__.startswith('2.5'), torch.__version__
-          assert not torch.backends.cuda.is_built(), 'expected CPU-only torch build'
-          from rag.vector_store import load_all_documents
-          print('torch', torch.__version__, 'cuda_built', torch.backends.cuda.is_built(), 'docs', len(load_all_documents()))
-          "
+          chmod +x scripts/docker_build.sh
+          scripts/docker_build.sh classifier --build-arg SKIP_HF_BAKE=1 -t doctor-gardens-classifier:ci
 
-      - name: RAG retrieval eval (reindex + in-process fast)
+      - name: Verify, reindex, and RAG eval (apple, in-process fast)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -91,4 +92,15 @@ jobs:
             -e HF_TOKEN="${HF_TOKEN}" \
             -e RAG_RERANK_ENABLED=false \
             doctor-gardens-classifier:ci \
-            bash -lc "python scripts/reindex_rag.py && python scripts/run_rag_eval.py --suite all --in-process --fast --timeout 300 --workers 2"
+            bash -lc '
+          set -e
+          python -c "
+          import torch, torchvision, transformers, sentence_transformers
+          assert torch.__version__.startswith(\"2.5\"), torch.__version__
+          assert not torch.backends.cuda.is_built()
+          from rag.vector_store import load_all_documents
+          print(\"docs\", len(load_all_documents()))
+          "
+          python scripts/reindex_rag.py
+          python scripts/run_rag_eval.py --suite apple --in-process --fast --timeout 180 --workers 2
+          '
