@@ -79,7 +79,9 @@
 | Логика чисел | та же идея | `verifyRAGAnswer`, `extractNumbersFromText` |
 | Дисклеймер | константа для strip | `appendRAGDisclaimer` |
 
-Держите логику **синхронной** при изменениях (или вынесите в один сервис позже).
+Держите логику **синхронной** при изменениях: общий контракт `tests/fixtures/rag_verify_contract.json`, тесты `server/verify_contract_test.go` и `tests/test_verify_contract.py`.
+
+**Ограничения эвристики** (что не ловится): [rag-verify-limits.md](./rag-verify-limits.md).
 
 ---
 

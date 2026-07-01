@@ -16,18 +16,18 @@ P1–P3 — пост-пилотный бэклог, не блокируют за
 
 | # | Статус | Задача | Ветка | Файлы | Критерий готовности |
 |---|--------|--------|-------|-------|---------------------|
-| 1 | 🔄 | Timing-safe сравнение секретов | `feat/post-audit-p0` | `server/admin.go`, `api/app.py` | `subtle.ConstantTimeCompare`/`hmac.Equal` (Go), `hmac.compare_digest` (Py); тесты зелёные |
-| 2 | 🔄 | Актуализировать аудит готовности | `feat/post-audit-p0` | `docs/PILOT_READINESS_AUDIT.md` | Метрики/статусы соответствуют текущему состоянию репозитория |
+| 1 | ✅ | Timing-safe сравнение секретов | `feat/post-audit-p0` | `server/admin.go`, `api/app.py` | `subtle.ConstantTimeCompare`/`hmac.Equal` (Go), `hmac.compare_digest` (Py); тесты зелёные |
+| 2 | ✅ | Актуализировать аудит готовности | `feat/post-audit-p0` | `docs/PILOT_READINESS_AUDIT.md` | Метрики/статусы соответствуют текущему состоянию репозитория |
 | 3 | ✅ | Решение по фото-ветке (CV): помечено «бета» | `feat/post-audit-p0` | `config/branding.json`, `server/branding.go`, `server/classify_flow.go`, `webapp/*` | Дисклеймер добавляется к каждой рекомендации по фото + виден в UI при прикреплении. Обучение модели — пост-пилотная задача (нет датасета) |
 
 ## P1 — качество и чистота платформы
 
 | # | Статус | Задача | Ветка | Детали |
 |---|--------|--------|-------|--------|
-| 4 | 🔲 | Вынести доменные ключевые слова из ядра | `refactor/question-categories-to-config` | `classify_question` в `rag/retrieval.py` → категории/keywords в `config/` (domain pack) |
-| 5 | 🔲 | Контрактный тест verify (Go ↔ Python) | `test/verify-contract` | Общий JSON-набор кейсов сверяет `rag_verify.go` и `rag/verifier.py` |
-| 6 | 🔲 | Документировать ограничения верификации | `docs/verify-limits` | Явно: проверка только наличия числа во фрагментах, не привязки к контексту |
-| 7 | 🔲 | OCR-починка PDF-текстов | `fix/ocr-corpus` | Поднять recall по «битым» словам (P1 из ROADMAP) |
+| 4 | ✅ | Вынести доменные ключевые слова из ядра | `feat/p1-platform-quality` | `config/question_categories.json`, `rag/question_categories.py` | `classify_question` читает keywords из domain pack |
+| 5 | ✅ | Контрактный тест verify (Go ↔ Python) | `feat/p1-platform-quality` | `tests/fixtures/rag_verify_contract.json`, `verify_contract_test.go`, `test_verify_contract.py` | 6 общих кейсов, оба прогона зелёные |
+| 6 | ✅ | Документировать ограничения верификации | `feat/p1-platform-quality` | `docs/knowledge-base/rag-verify-limits.md` | Ограничения эвристики и расхождения Go/Python |
+| 7 | 🔲 | OCR-починка PDF-текстов | `fix/ocr-corpus` | Отложено: нет пайплайна/датасета OCR в репо; влияет на recall по «битым» словам |
 
 ## P2 — эксплуатация и наблюдаемость
 
