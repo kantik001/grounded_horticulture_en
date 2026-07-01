@@ -35,7 +35,8 @@ flowchart LR
 - Имя файла: **латиница**, `article_n.txt` (правила admin — [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)).
 - Опционально: красивое название в [config/article_titles.json](./config-overview.md).
 
-В репозитории (оценка): **~344** apple, **~42** pear, **~108** plum в `data/{crop}/` (журнал ПВЮР). В `data/plum/` удалены miscategorized статьи (вишня, клубника и т.д.) — см. `docs/knowledge-base/plum_miscategorized_audit.md`.
+В **публичном** git: `data/demo_hr/`, `data/apple/sample_*.txt` и README в каталогах культур.  
+Полный корпус (~344 apple, ~42 pear, ~108 plum) — **локально**, не в открытом репозитории ([DATA_LICENSE.md](../../DATA_LICENSE.md), [data/README.md](../../data/README.md)).
 
 ### Шаг 2 — положить в репозиторий или upload
 

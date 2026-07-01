@@ -60,12 +60,14 @@ make eval-retrieval
 
 Результаты: `eval/results/<timestamp>_<suite>.json`.
 
-Portfolio summary (EN): [`docs/AGRO_CASE_STUDY_EN.md`](../docs/AGRO_CASE_STUDY_EN.md).
+Portfolio: [AGRO_CASE_STUDY_EN.md](../docs/AGRO_CASE_STUDY_EN.md) (EN), [AGRO_CASE_STUDY_RU.md](../docs/AGRO_CASE_STUDY_RU.md) (RU).
+
+**GitHub CI:** на каждый PR — unit-тесты; полный eval — Actions → **RAG Eval** (`workflow_dispatch`). См. [github-ci.yml.md](../docs/knowledge-base/github-ci.yml.md).
 
 ## Когда гонять
 
 - После `reindex_rag.py` / admin reindex (пересобираются Chroma **и** BM25). В Docker: `make docker-reindex-apply` или reindex + `docker compose restart classifier` (см. [data-pipeline.md](../docs/knowledge-base/data-pipeline.md)).
 - После правок `data/`, `prompts.json`, `few_shot.json`.
-- Перед пилотом и перед релизом.
+- Перед пилотом, **демо для трудоустройства** и перед релизом.
 
 См. [../docs/knowledge-base/quality-eval-and-rag-logs.md](../docs/knowledge-base/quality-eval-and-rag-logs.md).

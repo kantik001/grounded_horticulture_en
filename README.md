@@ -2,15 +2,20 @@
 
 **Grounded RAG** для садоводства: гибридный поиск по научным статьям, Telegram Mini App и веб-клиент с API-ключом.
 
-Telegram Web App + AI: **фото** → классификация болезней; **текст** → ответы по статьям (RAG). Оркестрация и LLM — **Go**, CV и гибридный retrieval (vector + BM25 + reranker) — **Python**.
+> **Публичный репозиторий:** в git только демо-данные (`data/demo_hr/`, `data/apple/sample_*.txt`).
+> Полный корпус статей и веса `.pth` — локально. См. [DATA_LICENSE.md](DATA_LICENSE.md), [data/README.md](data/README.md).
+
+Telegram Web App + AI: **фото** → классификация болезней (бета); **текст** → ответы по статьям (RAG). Оркестрация и LLM — **Go**, CV и гибридный retrieval (vector + BM25 + reranker) — **Python**.
 
 Полный план развития: [`docs/ROADMAP.md`](docs/ROADMAP.md).  
 **Универсальная платформа (ядро vs domain pack):** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DEPLOY.md`](docs/DEPLOY.md).  
+**Портфолио / case study:** [`docs/AGRO_CASE_STUDY_RU.md`](docs/AGRO_CASE_STUDY_RU.md) (RU), [`docs/AGRO_CASE_STUDY_EN.md`](docs/AGRO_CASE_STUDY_EN.md) (EN).  
+**Готовность к пилоту:** [`docs/PILOT_READINESS_AUDIT.md`](docs/PILOT_READINESS_AUDIT.md).  
 База знаний по коду: [`docs/knowledge-base/README.md`](docs/knowledge-base/README.md).
 
 ## Описание
 
-- Распознавание яблока/листа (**MobileNetV2** в Python) и рекомендации по фото (**Go** → LLM или шаблоны).
+- Распознавание яблока/листа (**MobileNetV2** в Python) и рекомендации по фото (**Go** → LLM или шаблоны). **CV в бета-режиме:** без обученного `.pth` используется ImageNet backbone — см. `photo_beta_notice` в `config/branding.json`.
 - Текстовые вопросы по статьям из **`data/`**: Python **только retrieval** (`/rag/context`), ответ собирает **Go** + LLM + верификация.
 - **Telegram auth**: Web App передаёт `initData`, Go проверяет подпись бота (см. `server/auth_telegram.go`).
 - **Browser / API auth**: заголовок `X-API-Key` (ключи в `API_KEYS` или `API_KEYS_FILE`) — для веб-клиентов без Telegram и внешних интеграций.
@@ -37,9 +42,9 @@ grounded-horticulture/
 ├── api/              # Flask: /classify, /rag/context, /health
 ├── cv/               # PyTorch MobileNetV2, registry, обучение
 ├── rag/              # Chroma + BM25 hybrid, reranker, retrieval
-├── data/             # .txt статьи для RAG (~344 apple, ~42 pear, ~108 plum)
+├── data/             # .txt статьи для RAG (в публичном git: demo_hr + sample_*.txt; полный корпус — локально)
 ├── server/           # Go: /message, /classify, RAG+LLM, сессии
-├── config/           # crops, prompts, branding, onboarding, few_shot, photo_templates, cv_class_labels
+├── config/           # crops, prompts, branding, onboarding, few_shot, question_categories, photo_templates, cv_class_labels
 ├── webapp/           # index.html, app.js, app.css, admin.html, nginx
 ├── eval/             # rag_*_baseline.jsonl, run_rag_eval.py
 └── docker-compose.yml
@@ -60,9 +65,9 @@ grounded-horticulture/
 - **Telegram Web App** - кроссплатформенное приложение
 - **HTML/CSS/JavaScript** - нативный веб-интерфейс
 
-## Классы для распознавания
+## Классы для распознавания (CV, яблоня)
 
-Модель обучена распознавать следующие категории:
+**Пайплайн реализован; production-весов в репозитории нет** — для демо используйте текстовый RAG. После обучения (`cv/train_classifier.py`) модель распознаёт:
 1. `healthy_apple` - Здоровое яблоко
 2. `apple_scab` - Парша яблони
 3. `black_rot` - Чёрная гниль
@@ -84,7 +89,8 @@ grounded-horticulture/
 
 **Конфиг:** в Docker каталог `./config` смонтирован в `/config`; перезагрузка Go — `kill -HUP` или `CONFIG_RELOAD_INTERVAL_SEC`.
 
-**Безопасность:** все API, кроме `GET /health`, требуют заголовок `X-Telegram-Init-Data` (кроме режима `TELEGRAM_AUTH_DISABLED=true` для локальной разработки).
+**Безопасность:** защищённые API требуют `X-Telegram-Init-Data` или `X-API-Key` (см. `.env.example`). Для локальной разработки: `TELEGRAM_AUTH_DISABLED=true` (только dev).  
+**Метрики:** `GET /metrics` (Prometheus, без auth — ограничьте сеть на проде).
 
 ## Установка и запуск
 
@@ -122,11 +128,8 @@ python api/app.py
 
 Сервис запустится на порту 5000.
 
-**Важно:** Если файл модели не найден, сервис запустится с базовыми весами ImageNet. 
-Для загрузки собственных весов:
-1. Обучите модель через `cv/train_classifier.py`
-2. Поместите файл модели в папку `models/`
-3. Укажите путь в переменной `MODEL_PATH`
+**Важно:** Собственные веса болезней — через `cv/train_classifier.py` → `models/apple_classifier.pth`.
+Без `.pth` используется **ImageNet backbone** (torchvision скачивает веса при первом запуске).
 
 #### 4. Установка зависимостей Go
 

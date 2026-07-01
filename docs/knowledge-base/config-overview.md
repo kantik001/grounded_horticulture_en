@@ -15,7 +15,9 @@
 | `cv_class_labels.json` | Python CV | Метки классов по `crop_id` (порядок = индекс при обучении) |
 | `few_shot.json` | Python `retrieval.py` | Примеры вопрос-ответ для промпта LLM |
 | `onboarding.json` | Go | Чипы «примеров вопросов» в Web App |
-| `branding.json` | Go | Заголовок, дисклеймер, подписи UI (`GET /branding`) |
+| `question_categories.json` | Python `question_categories.py` | Ключевые слова для `classify_question` (few-shot) |
+| `agro_glossary.json` | Python `query_expand.py` | Синонимы для query expansion (опционально) |
+| `branding.json` | Go | Заголовок, дисклеймер, `photo_beta_notice`, подписи UI |
 | `article_titles.json` | Python `vector_store.py` | Красивые названия статей в metadata (опционально) |
 
 Подробнее по коду: [rag-crops_config.md](./rag-crops_config.md), [server-admin-and-ux-api.md](./server-admin-and-ux-api.md).
@@ -29,8 +31,8 @@
   "default_crop": "apple",
   "crops": {
     "apple": { "name_ru": "Яблоня", "emoji": "🍎", "cv_enabled": true, "rag_enabled": true },
-    "pear": { "cv_enabled": false, "rag_enabled": false },
-    "plum": { "cv_enabled": false, "rag_enabled": false },
+    "pear": { "name_ru": "Груша", "emoji": "🍐", "cv_enabled": false, "rag_enabled": true },
+    "plum": { "name_ru": "Слива", "emoji": "🍑", "cv_enabled": false, "rag_enabled": true },
     "demo_hr": { "cv_enabled": false, "rag_enabled": true, "ui_hidden": true }
   }
 }
@@ -96,7 +98,9 @@ Env: `PHOTO_TEMPLATES_PATH` (по умолчанию `config/photo_templates.jso
 
 ## `branding.json`
 
-Тексты Web App (domain pack): `app_title`, `header_emoji`, `header_subtitle`, `crop_label`, `onboarding_title`, `chat_divider`, `disclaimer`.
+Тексты Web App (domain pack): `app_title`, `header_emoji`, `header_subtitle`, `crop_label`, `onboarding_title`, `chat_divider`, `disclaimer`, **`photo_beta_notice`**.
+
+- `photo_beta_notice` — предупреждение о бета-режиме CV; показывается в UI при прикреплении фото и добавляется к рекомендации в Go (`classify_flow.go`).
 
 - Загрузка: `loadBrandingConfig()` в `main.go` (`branding.go`).
 - API: `GET /branding`, `GET /api/branding` (публично).
@@ -108,11 +112,21 @@ Env: `BRANDING_CONFIG_PATH` (Docker: `/config/branding.json`).
 
 ---
 
+## `question_categories.json`
+
+Ключевые слова по категориям (`rootstock`, `disease`, `fertilizer`, …) для `classify_question()` в Python.
+
+- Файл: `config/question_categories.json` (domain pack).
+- Env: `QUESTION_CATEGORIES_CONFIG_PATH`.
+- См. [rag-retrieval.md](./rag-retrieval.md), `tests/test_question_categories.py`.
+
+---
+
 ## `few_shot.json`
 
 Структура: `crop_id` → категория → строка с примером.
 
-Категории задаёт `classify_question()` в [rag-retrieval.md](./rag-retrieval.md): `fertilizer`, `disease`, `variety`, `general`.
+Категории задаёт `classify_question()` в [rag-retrieval.md](./rag-retrieval.md) по ключевым словам из **`config/question_categories.json`**.
 
 Пример для яблони (`disease`): типичный тон ответа с цифрами из статей.
 

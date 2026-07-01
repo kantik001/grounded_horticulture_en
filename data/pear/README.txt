@@ -1,10 +1,7 @@
-# Сессия 3 — мультикультура
+# Груша (`data/pear/`)
 
-Статьи для груши и сливы добавляйте в `data/pear/`, `data/plum/` и включайте
-`rag_enabled: true` в `config/crops.json`, затем:
+Статьи для RAG кладите сюда как `*.txt` (локально, не в публичный git по умолчанию).
 
-```bash
-FORCE_RAG_REINDEX=true docker compose up --build classifier
-# или
-python scripts/reindex_rag.py
-```
+Включите `rag_enabled: true` для `pear` в `config/crops.json`, затем reindex.
+
+См. [data/README.md](../README.md).

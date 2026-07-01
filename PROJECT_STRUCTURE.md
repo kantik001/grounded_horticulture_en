@@ -16,4 +16,5 @@
 - Tests: [tests-overview](docs/knowledge-base/tests-overview.md)
 - Webapp: [webapp-overview](docs/knowledge-base/webapp-overview.md)
 - Server: [server-overview](docs/knowledge-base/server-overview.md) (+ auth, chat, rag_chat, admin)
-- Config / Docker / Data / Quality plan: [config-overview](docs/knowledge-base/config-overview.md), [docker-overview](docs/knowledge-base/docker-overview.md), [data-pipeline](docs/knowledge-base/data-pipeline.md), [quality-eval-and-rag-logs](docs/knowledge-base/quality-eval-and-rag-logs.md)
+- Config / Docker / Data / Quality: [config-overview](docs/knowledge-base/config-overview.md), [docker-overview](docs/knowledge-base/docker-overview.md), [data-pipeline](docs/knowledge-base/data-pipeline.md), [quality-eval-and-rag-logs](docs/knowledge-base/quality-eval-and-rag-logs.md), [metrics-and-alerts](docs/knowledge-base/metrics-and-alerts.md)
+- Пилот / портфолио: [PILOT_READINESS_AUDIT](docs/PILOT_READINESS_AUDIT.md), [AGRO_CASE_STUDY_RU](docs/AGRO_CASE_STUDY_RU.md), [BACKUPS](docs/BACKUPS.md)

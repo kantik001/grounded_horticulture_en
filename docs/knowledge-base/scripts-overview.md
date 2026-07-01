@@ -6,10 +6,12 @@
 | Файл | Платформа | Задача |
 |------|-----------|--------|
 | `reindex_rag.py` | Python | Пересобрать Chroma + BM25 из `data/` |
-| `audit_plum_miscategorized.py` | Python | Аудит чужих культур в `data/plum/` |
 | `run_rag_eval.py` | Python | Прогон `eval/*.jsonl` (retrieval), отчёт в `eval/results/` |
+| `docker_build.sh` | Linux / CI | Сборка Docker-образов |
 | `smoke.sh` | Linux / macOS / Git Bash | Быстрая проверка API Go |
 | `smoke.ps1` | Windows PowerShell | То же для Windows |
+
+> Скрипты загрузки статей из журнала (`journal_ingest.py` и др.) есть на ветке `master`, но **не входят** в публичную ветку `public-portfolio`.
 
 ---
 
@@ -84,20 +86,28 @@ python scripts/reindex_rag.py
 
 ### Наборы
 
-| `--suite` | Файл |
-|-----------|------|
-| `apple` | `eval/rag_apple_baseline.jsonl` (30 Q) |
-| `demo_hr` | `eval/rag_demo_hr_baseline.jsonl` (5 Q) |
-| `all` | оба |
+| `--suite` | Файл | Вопросов |
+|-----------|------|----------|
+| `apple` | `eval/rag_apple_baseline.jsonl` | 45 |
+| `pear` | `eval/rag_pear_baseline.jsonl` | 8 |
+| `plum` | `eval/rag_plum_baseline.jsonl` | 10 |
+| `demo_hr` | `eval/rag_demo_hr_baseline.jsonl` | 5 |
+| `all` | все выше | **68** |
 
 ### Запуск
 
 ```bash
 # classifier должен слушать :5000
 set CLASSIFIER_RAG_URL=http://localhost:5000/rag/context
-python scripts/run_rag_eval.py --suite apple
+python scripts/run_rag_eval.py --suite all
+
+# Быстро in-process (в Docker classifier)
+python scripts/run_rag_eval.py --suite all --in-process --fast
+
 make eval-retrieval
 ```
+
+**CI:** полный прогон — GitHub Actions → workflow **RAG Eval** (ручной). См. [github-ci.yml.md](./github-ci.yml.md).
 
 Отчёт: `eval/results/`. Подробнее: [eval/README.md](../../eval/README.md), [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md).
 

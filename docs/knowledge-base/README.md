@@ -13,7 +13,7 @@
 | [cv-apple_classifier.md](./cv-apple_classifier.md) | PyTorch MobileNetV2: классы болезней, inference, веса `.pth` |
 | [cv-registry.md](./cv-registry.md) | Фабрика и кэш моделей по `crop_id`, `MODEL_PATH`, `cv_enabled` |
 | [cv-train_classifier.md](./cv-train_classifier.md) | Обучение модели, датасет, сохранение `apple_classifier.pth` |
-| [github-ci.yml.md](./github-ci.yml.md) | GitHub Actions CI: зачем, три job, когда запускается (без DevOps-жаргона) |
+| [github-ci.yml.md](./github-ci.yml.md) | GitHub Actions: CI (3 job) + ручной **RAG Eval** |
 | [migrations-overview.md](./migrations-overview.md) | SQL-миграции 001–003: синтаксис, связи таблиц, как накатываются при старте |
 
 ### RAG (`rag/`, без `__init__.py`)
@@ -25,6 +25,7 @@
 | [rag-hybrid-search.md](./rag-hybrid-search.md) | BM25 hybrid, RRF, cross-encoder reranker, env |
 | [rag-retrieval.md](./rag-retrieval.md) | Поиск, context, few-shot, `POST /rag/context` |
 | [rag-verifier.md](./rag-verifier.md) | Проверка чисел в ответе, дисклеймер (дубль логики на Go) |
+| [rag-verify-limits.md](./rag-verify-limits.md) | Ограничения эвристики verify, расхождения Go/Python |
 
 **Порядок чтения RAG:** `crops_config` → `vector_store` → `hybrid-search` → `retrieval` → `verifier` → `server/rag_chat.go`
 
@@ -65,14 +66,15 @@
 | [config-overview.md](./config-overview.md) | `config/*.json`: crops, prompts, branding, `photo_templates`, few-shot, onboarding |
 | [docker-overview.md](./docker-overview.md) | docker-compose, 4 сервиса, volumes, порты, `.env` |
 | [data-pipeline.md](./data-pipeline.md) | Загрузка статей `.txt`, reindex, обучение `.pth` |
-| [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md) | Eval-наборы, `run_rag_eval.py`, логи `[RAG]` |
+| [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md) | Eval-наборы (68 Q), `run_rag_eval.py`, логи `[RAG]`, feedback |
+| [metrics-and-alerts.md](./metrics-and-alerts.md) | `GET /metrics`, PromQL, алерты, feedback+RAG |
 
 ## Как пользоваться
 
 1. Не знаете, где искать код → **PROJECT_STRUCTURE.md**.
 2. Разбираете конкретный файл → откройте соответствующий `*.md` в этой папке (по мере наполнения).
 3. План развития продукта → [`../ROADMAP.md`](../ROADMAP.md).
-4. Итоги учебных сессий → `../LEARNING_SESSION_*.md`.
+4. Готовность к пилоту / демо → [`../PILOT_READINESS_AUDIT.md`](../PILOT_READINESS_AUDIT.md), [`../AGRO_CASE_STUDY_RU.md`](../AGRO_CASE_STUDY_RU.md), [`../DATA_LICENSE.md`](../DATA_LICENSE.md).
 
 ## Добавление новых статей
 

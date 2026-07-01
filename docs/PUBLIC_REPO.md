@@ -1,0 +1,36 @@
+# Ветка `public-portfolio`
+
+Подготовка репозитория к **публичному** GitHub (портфолио / трудоустройство).
+
+## Что убрано из git (остаётся на `master` / локально)
+
+| Категория | Файлы |
+|-----------|--------|
+| Журнальный корпус | `data/apple/*.txt`, `data/pear/*.txt`, `data/plum/*.txt` (кроме `sample_*.txt`, `README.txt`) |
+| Архив | `data/_archive/` |
+| Веса CV | `models/*.pth` (torchvision качает ImageNet сам) |
+| Ingest PDF | `scripts/journal_*.py`, `restore_*.py`, `enrich_manual_articles.py` |
+| Внутренние заметки | `docs/LEARNING_SESSION_*.md` |
+| Аудит сливы | `eval/plum_miscategorized_audit.json`, `plum_miscategorized_audit.md` |
+
+Файлы корпуса **остаются на диске** (если были) — только сняты с индекса git и добавлены в `.gitignore`.
+
+## Что в публичном репо
+
+- Весь код платформы (Go, Python RAG, webapp, eval JSONL, тесты, CI)
+- `data/demo_hr/` — sandbox HR
+- `data/apple/sample_*.txt` — демо для быстрого старта
+- [DATA_LICENSE.md](DATA_LICENSE.md), [data/README.md](data/README.md)
+
+## Публикация
+
+```bash
+git push -u origin public-portfolio
+# на GitHub: сделать default branch или открыть PR в main
+```
+
+Перед push: убедитесь, что `.env` никогда не коммитился (`git log -- .env`).
+
+## Вернуть полный корпус в git
+
+Работайте на ветке `master` — там полный `data/` и ingest-скрипты.

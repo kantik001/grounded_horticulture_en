@@ -46,7 +46,9 @@ _CONFIG: Optional[Dict[str, Any]] = None
   "default_crop": "apple",
   "crops": {
     "apple": { "name_ru": "Яблоня", "cv_enabled": true, "rag_enabled": true },
-    "pear": { "cv_enabled": false, "rag_enabled": false }
+    "pear": { "cv_enabled": false, "rag_enabled": true },
+    "plum": { "cv_enabled": false, "rag_enabled": true },
+    "demo_hr": { "cv_enabled": false, "rag_enabled": true, "ui_hidden": true }
   }
 }
 ```

@@ -1,6 +1,7 @@
 # Agro Case Study — Grounded RAG Horticulture Assistant
 
-**Project:** [grounded-horticulture](https://github.com/kantik001/grounded-horticulture) (private)  
+**Project:** grounded-horticulture (doctor_gardens_ai)  
+**Repository:** публичное портфолио — код + демо-данные; полный журнальный корпус не в git.
 **Domain:** Apple, pear, plum — scientific articles from *Plodovodstvo i vinogradarstvo Yuga Rossii*  
 **Stack:** Go orchestration · Python hybrid RAG · Telegram Mini App · browser client (API key)
 
@@ -34,6 +35,8 @@ A production-style assistant with:
 
 Automated suite: `python scripts/run_rag_eval.py --suite all`
 
+**CI:** unit tests on every PR; full eval via manual GitHub workflow **RAG Eval** (see `docs/knowledge-base/github-ci.yml.md`).
+
 | Suite | Questions | Target |
 |-------|----------:|--------|
 | apple | 45 | 100% retrieval pass |
@@ -66,7 +69,7 @@ Browser / Telegram → Go (auth, sessions, LLM, verify)
 - **Domain RAG at scale** — not a 5-PDF demo; real journal corpus  
 - **Measurable quality** — JSONL eval suites + pass-rate tracking  
 - **Production patterns** — Docker, Postgres sessions, rate limits, hybrid search  
-- **Platform story** — vertical pack aligned with [grounded-llm](https://github.com/kantik001/grounded-llm) (private platform repo)
+- **Platform story** — vertical pack with sandbox `demo_hr` (clone for other domains)
 
 ## Run locally
 

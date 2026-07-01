@@ -8,6 +8,23 @@
 .env.local
 *.env.*
 !.env.example
+config/api_keys.json
+
+# CV weights (download via torchvision or train locally; see README)
+models/*.pth
+!models/.gitkeep
+
+# Journal corpus — local only on public repo (see data/README.md)
+data/apple/*.txt
+data/pear/*.txt
+data/plum/*.txt
+!data/apple/README.txt
+!data/pear/README.txt
+!data/plum/README.txt
+!data/apple/sample_*.txt
+!data/pear/sample_*.txt
+!data/plum/sample_*.txt
+data/_archive/
 
 # Локальные PDF/каталоги журнала (не коммитить)
 _tmp/

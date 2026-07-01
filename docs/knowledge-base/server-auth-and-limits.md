@@ -9,10 +9,11 @@
 
 | Тип | Кто | Как |
 |-----|-----|-----|
-| **Пользователь** | Telegram Web App | `X-Telegram-Init-Data` → HMAC-проверка |
+| **Пользователь (Telegram)** | Telegram Web App | `X-Telegram-Init-Data` → HMAC-проверка |
+| **Пользователь (браузер)** | Web App без Telegram | `X-API-Key` (ключи в `API_KEYS` / `API_KEYS_FILE`) |
 | **Админ** | Браузер `/admin.html` | HTTP Basic `ADMIN_USER` / `ADMIN_PASSWORD` |
 
-Эта статья — про **Telegram + CORS + rate limit**.
+Эта статья — про **Telegram / API key**, **CORS**, **rate limit**, **метрики**.
 
 ---
 
@@ -45,7 +46,7 @@
 - Читает `CORS_ALLOWED_ORIGINS` (через запятую).
 - Если Origin в списке — отражает в `Access-Control-Allow-Origin`.
 - Разрешает методы GET, POST, OPTIONS.
-- Заголовки: `Content-Type`, `X-Telegram-Init-Data`, `Authorization`.
+- Заголовки: `Content-Type`, `X-Telegram-Init-Data`, `X-API-Key`, `Authorization`.
 - **OPTIONS** → 204 без тела.
 
 Зачем: webapp на `http://localhost` стучится в API на том же origin через nginx.
@@ -80,16 +81,17 @@ Handlers читают через `ctxTelegramUser(c)` в `chat_session.go`.
 - `/classify`, `/chat`, `/session`, `/history`, `/message`, `/feedback`, `/media/:token`
 - Дубли на `/api/...`
 
-**Не защищены:** `/health`, `/crops`, `/onboarding`, админка (другая auth).
+**Не защищены:** `/health`, `/crops`, `/onboarding`, `/branding`, `/metrics`, админка (другая auth).
 
 ---
 
 ## `ratelimit.go` — лимит запросов
 
-### In-memory по `telegram_user_id`
+### In-memory по `telegram_user_id` (или API key user)
 
 - `RATE_LIMIT_REQUESTS_PER_MINUTE` (default 30).
 - Окно 1 минута, скользящий список timestamp'ов.
+- `gcStale()` — периодическая очистка пустых ключей (не рост map при долгой работе).
 - `0` или отрицательный → лимит выключен.
 
 При превышении: **429** «Слишком много запросов…».
@@ -97,6 +99,14 @@ Handlers читают через `ctxTelegramUser(c)` в `chat_session.go`.
 ### Ограничение
 
 Один процесс Go — при нескольких репликах счётчики не общие (в коде комментарий про будущий Redis).
+
+---
+
+## `metrics.go` — Prometheus
+
+- `GET /metrics`, `GET /api/metrics` — **без auth** (на проде — только internal network).
+- Счётчики: HTTP 2xx/4xx/5xx, LLM errors, RAG requests, verify pass/fail, latency sums.
+- См. [metrics-and-alerts.md](./metrics-and-alerts.md).
 
 ---
 

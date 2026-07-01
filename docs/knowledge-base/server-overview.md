@@ -40,6 +40,8 @@
 | `postgres_store.go` | SQL, миграции, фото на диске |
 | `analytics_store.go` | feedback, события |
 | `auth_telegram.go`, `middleware.go`, `ratelimit.go` | auth и лимиты |
+| `metrics.go` | Prometheus `/metrics` |
+| `feedback_report.go` | обогащение feedback данными RAG |
 | `crops.go`, `onboarding.go`, `branding.go`, `admin.go`, `feedback.go` | конфиги и UX API |
 | `rag_log.go` | структурированные логи `[RAG]` (без тела LLM) |
 | `health.go` | `handleHealthCheck` |

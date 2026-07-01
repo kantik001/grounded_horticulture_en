@@ -32,6 +32,7 @@
 | GET | `handleAdminListArticles` | список `.txt` в `data/{crop_id}/` |
 | POST | `handleAdminUpload` | сохранить файл |
 | POST | `handleAdminReindex` | `triggerRAGReindex` → Python |
+| GET | `handleAdminFeedback` | оценки 👍/👎 с вопросом, ответом и полем **`rag`** |
 
 ### Upload
 
@@ -109,6 +110,13 @@ JSON:
 
 Таблица: `message_feedback` — [migrations-overview.md](./migrations-overview.md).
 
+### `GET /admin/feedback` (Basic auth)
+
+Query: `rating` (1 или -1), `limit` (default 50).
+
+Ответ: список оценок с `question`, `answer`, `rating`, и опционально **`rag`** — метаданные из `analytics_events` (`rag_answer`): category, fragments, verify_pass, latency.  
+См. [metrics-and-alerts.md](./metrics-and-alerts.md), `server/feedback_report.go`.
+
 ---
 
 ## `analytics_store.go` — события
@@ -122,7 +130,7 @@ INSERT в `analytics_events` (`event_type`, `payload` JSONB).
 - `feedback.go`
 - `logAnalytics` в `message_handlers.go` (`rag_answer`, `photo_classified`)
 
-Примеры SQL-аналитики в `LEARNING_SESSION_5.md`.
+Примеры SQL-аналитики — таблицы `analytics_events`, `message_feedback` (см. [migrations-overview.md](./migrations-overview.md)).
 
 ---
 

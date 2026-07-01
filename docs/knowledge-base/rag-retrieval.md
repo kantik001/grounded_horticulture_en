@@ -63,17 +63,10 @@
 
 ## Классификация вопроса: `classify_question`
 
-**Rule-based** (ключевые слова), не ML. Влияет только на **few-shot**, не на поиск.
+**Rule-based** (ключевые слова из **`config/question_categories.json`**), не ML. Влияет только на **few-shot**, не на поиск.
 
-| Категория | Примеры слов в вопросе |
-|-----------|-------------------------|
-| `rootstock` | подвой, привой, черенк, саженц, питомник… |
-| `fertilizer` | удобрение, доза, азот, подкормк, фертигац… |
-| `disease` | болезн, парша, плодожорк, марссон, шарк… |
-| `irrigation` | полив, капельн, засух, влаго… |
-| `relief` | склон, террас, кбр, gis, рельеф… |
-| `variety` | сорт, рентабельность, либерти, голден… |
-| `general` | всё остальное |
+Категории по умолчанию: `rootstock`, `fertilizer`, `disease`, `irrigation`, `relief`, `variety`, `general`.  
+Переопределение: env `QUESTION_CATEGORIES_CONFIG_PATH`. См. `rag/question_categories.py`.
 
 ---
 

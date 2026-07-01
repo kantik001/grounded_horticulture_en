@@ -174,11 +174,18 @@ make test-py
 
 | Файл | Что проверяет |
 |------|----------------|
-| `rag_chat_test.go` | числа, verify, дисклеймер, очистка ответа (зеркало Python verifier) |
+| `rag_chat_test.go` | числа, verify, дисклеймер, очистка ответа |
 | `verify_contract_test.go` | контракт verify vs `tests/fixtures/rag_verify_contract.json` |
+| `crops_test.go` | `normalizeCropID`, каталог культур |
+| `admin_test.go` | `safeFilename`, админ-хелперы |
+| `auth_telegram_test.go`, `auth_combined_test.go` | Telegram initData, API key |
+| `api_keys_test.go` | заголовок `X-API-Key` |
+| `ratelimit_test.go` | лимит запросов, `gcStale` |
+| `feedback_report_test.go` | `GET /admin/feedback` + поле `rag` |
+| `rag_log_test.go`, `llm_test.go` | вспомогательная логика |
 
 ---
 
 ## Краткий итог
 
-`tests/` — быстрые unit-тесты RAG-логики и конфига. Hybrid BM25 проверяется без Chroma; полный retrieval — через **eval** и Docker CI job `rag-eval`.
+`tests/` — быстрые unit-тесты RAG-логики и конфига. Hybrid BM25 — без Chroma; полный retrieval — через **`scripts/run_rag_eval.py`** локально или workflow **RAG Eval** в GitHub Actions.

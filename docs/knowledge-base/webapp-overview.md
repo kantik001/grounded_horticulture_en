@@ -12,7 +12,7 @@
 
 Сборка: `Dockerfile.webapp` копирует `index.html`, `app.css`, `app.js`, `admin.html` в образ.
 
-Тексты шапки и дисклеймера подгружаются из **`GET /api/branding`** (`config/branding.json`) — при клоне платформы правят JSON, не обязательно HTML.
+Тексты шапки и дисклеймера подгружаются из **`GET /api/branding`** (`config/branding.json`) — при клоне платформы правят JSON, не обязательно HTML. Поле **`photo_beta_notice`** показывается при прикреплении фото (CV в бета-режиме).
 
 ---
 

@@ -79,11 +79,7 @@
 - `ARCHITECTURE.md` — **ядро платформы vs domain pack**, чеклист клонирования.
 - `DEPLOY.md` — развёртывание, reindex, eval, новый заказчик.
 - `knowledge-base/` — база знаний по коду (эта папка).
-- `LEARNING_SESSION_1.md` — итоги и выводы сессии 1.
-- `LEARNING_SESSION_2.md` — итоги и выводы сессии 2.
-- `LEARNING_SESSION_3.md` — итоги и выводы сессии 3.
-- `LEARNING_SESSION_5.md` — итоги и выводы сессии 5.
-- `LEARNING_SESSION_6.md` — итоги и выводы сессии 6.
+- `LEARNING_SESSION_*.md` — удалены из публичной ветки (личные заметки); см. git history на `master`.
 
 ## `migrations/` (SQL-миграции БД)
 
@@ -117,11 +113,11 @@
 
 → [eval/README.md](../../eval/README.md)
 
-- `rag_apple_baseline.jsonl` — 30 вопросов по яблоне.
+- `rag_apple_baseline.jsonl` — **45** вопросов по яблоне.
 - `rag_pear_baseline.jsonl` — 8 вопросов по груше.
 - `rag_plum_baseline.jsonl` — 10 вопросов по сливе.
 - `rag_demo_hr_baseline.jsonl` — 5 вопросов sandbox HR.
-- `plum_miscategorized_audit.json` — отчёт аудита `data/plum/`.
+- `plum_miscategorized_audit.json` — внутренний аудит (не в публичной ветке).
 - `results/` — отчёты прогонов.
 
 ## `server/` (backend API)

@@ -79,6 +79,8 @@ make eval-retrieval
 
 Гонять после: reindex (Chroma+BM25), смены `data/`, `prompts.json`, `few_shot.json`, настроек `RAG_*`.
 
+**GitHub:** Actions → **RAG Eval** (ручной workflow) — см. [knowledge-base/github-ci.yml.md](./knowledge-base/github-ci.yml.md).
+
 **Бэкапы volumes:** [BACKUPS.md](./BACKUPS.md). **Метрики / алерты:** [knowledge-base/metrics-and-alerts.md](./knowledge-base/metrics-and-alerts.md).
 
 ---

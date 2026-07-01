@@ -1,16 +1,15 @@
 # Аудит готовности к пилоту
 
-**Дата создания:** 2026-06-05 · **Обновлён:** 2026-07-01  
+**Дата создания:** 2026-06-05 · **Обновлён:** 2026-07-01 (финальная синхронизация документации)  
 **Продукт:** doctor_gardens_ai (Telegram Web App, агробот)  
-**Цель пилота:** текстовый RAG по статьям ПВЮР + опционально фото (яблоня)
+**Цель пилота:** текстовый RAG по статьям ПВЮР + опционально фото (яблоня, бета)
 
 Статусы: ✅ готово · ⚠️ частично / риск · ❌ блокер · 🔲 не начато
 
-> **Обновление 2026-07-01.** По итогам код-аудита заведён
-> [IMPROVEMENT_BACKLOG.md](./IMPROVEMENT_BACKLOG.md). Выполнено: timing-safe сравнение
-> секретов (`admin.go`, `api/app.py`). Юнит-тесты: Go `ok`, Python **33 passed**.
-> Eval retrieval доведён до 100% (коммит «Reach 100% RAG eval») — **переподтвердить
-> прогоном на живом индексе перед пилотом** (см. команды P0 ниже).
+> **Обновление 2026-07-01.** Закрыты P0–P2 из [IMPROVEMENT_BACKLOG.md](./IMPROVEMENT_BACKLOG.md):
+> timing-safe секреты, фото «бета», категории в `config/`, контракт verify, `/metrics`, feedback↔RAG,
+> бэкапы, GC rate-limiter. Юнит-тесты: Go `ok`, Python **45 passed**.
+> Eval retrieval — **100%** (68 вопросов); **переподтвердить** прогоном перед пилотом/демо (см. P0).
 
 ---
 
@@ -18,31 +17,33 @@
 
 | Направление | Готовность | Комментарий |
 |-------------|------------|-------------|
-| **Текст RAG (яблоня)** | **~85%** | eval 100% (см. обновление), hybrid+reranker, ~344 статьи |
-| **Текст RAG (груша/слива)** | **~80%** | pear 8/8, plum 10/10; слива очищена от misc |
-| **Фото CV** | **~25%** | Нет обученных `.pth` в репо — ImageNet fallback |
-| **Инфра / Docker** | **~90%** | Compose, volumes Chroma+BM25, CI |
+| **Текст RAG (яблоня)** | **~90%** | eval 45/45, hybrid+reranker, ~344 статьи |
+| **Текст RAG (груша/слива)** | **~85%** | pear 8/8, plum 10/10; слива очищена от misc |
+| **Фото CV** | **~25%** | Нет обученных `.pth` в репо — ImageNet fallback + UI «бета» |
+| **Инфра / Docker** | **~90%** | Compose, volumes Chroma+BM25, CI (быстрый PR) |
 | **Безопасность прод** | **~60%** | Нужны prod-секреты, `TELEGRAM_AUTH_DISABLED=false` |
-| **Монетизация / аналитика** | **~40%** | Feedback есть, отчёты по RAG-логам — в плане |
+| **Наблюдаемость / аналитика** | **~75%** | `/metrics`, feedback+RAG в админке, `[RAG]` логи |
+| **Демо для трудоустройства** | **~85%** | Текстовый RAG + case study; см. [AGRO_CASE_STUDY_RU.md](./AGRO_CASE_STUDY_RU.md) |
 
-**Вердикт:** пилот **текстового чата по яблоне (и груше/сливе)** можно запускать после чеклиста P0 ниже. Пилот **«фото → болезнь»** без обучения CV — только с явным дисклеймером о низкой точности.
+**Вердикт:** пилот **текстового чата** (яблоня / груша / слива) и **портфолио-демо** — после чеклиста P0. Пилот **«фото → болезнь»** — только с дисклеймером «бета», не как основной сценарий.
 
 ---
 
-## P0 — обязательно перед пилотом
+## P0 — обязательно перед пилотом / живым демо
 
 | # | Пункт | Статус | Действие |
 |---|--------|--------|----------|
-| 1 | `LLM_API_KEY` задан и стабильная модель | ⚠️ | В `.env` free-модель OpenRouter; для пилота лучше платная/стабильная RU-модель |
-| 2 | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_AUTH_DISABLED=false` | ❌ | В dev сейчас `true`; на проде обязательно выключить |
-| 3 | `ADMIN_PASSWORD`, `ADMIN_SECRET`, `POSTGRES_PASSWORD` — сильные | ⚠️ | Заменить dev-значения перед публичным доступом |
+| 1 | `LLM_API_KEY` задан и стабильная модель | ⚠️ | Для пилота/демо — платная/стабильная RU-модель |
+| 2 | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_AUTH_DISABLED=false` | ❌ | В dev часто `true`; на проде обязательно выключить |
+| 3 | `ADMIN_PASSWORD`, `ADMIN_SECRET`, `POSTGRES_PASSWORD` — сильные | ⚠️ | Заменить dev-значения перед публичным URL |
 | 4 | RAG переиндексирован (Chroma + BM25) в Docker volumes | ✅ | 14 554 фрагментов; reindex при **остановленном** classifier |
 | 5 | `HF_TOKEN` в `.env` для classifier | ✅ | Ускоряет загрузку e5 + `BAAI/bge-reranker-base` |
-| 6 | Eval retrieval ≥ целевого порога | ✅ | **100%** (коммит «Reach 100% RAG eval»); переподтвердить прогоном перед пилотом |
+| 6 | Eval retrieval ≥ целевого порога | ✅ | **68/68 (100%)**; переподтвердить перед показом |
 | 7 | `docker compose up` — все 4 сервиса healthy | ✅ | postgres, classifier, server, webapp |
 | 8 | Smoke: `make smoke` или `scripts/smoke.ps1` | 🔲 | Прогнать после деплоя |
 | 9 | Дисклеймер в UI и в ответах RAG | ✅ | `branding.json`, verifier, Go disclaimer |
 | 10 | CORS / домен Telegram Web App | ⚠️ | Добавить prod URL в `CORS_ALLOWED_ORIGINS` |
+| 11 | Прогреть classifier перед демо | 🔲 | Первый RAG-запрос ~1–3 мин (загрузка моделей) |
 
 ### Команды P0 (после смены `data/` или RAG-кода)
 
@@ -52,6 +53,8 @@ docker compose -p union_ai_apple run --rm -e FORCE_RAG_REINDEX=true classifier p
 docker compose -p union_ai_apple start classifier
 python scripts/run_rag_eval.py --suite all --timeout 300
 ```
+
+**В CI:** полный eval — вручную: GitHub Actions → workflow **RAG Eval** (не на каждый PR).
 
 ---
 
@@ -67,9 +70,10 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 | 16 | Cross-encoder reranker | ✅ | `BAAI/bge-reranker-base`; первый запрос ~1–3 мин с HF_TOKEN |
 | 17 | Diversity top-k (max 2/статья, k=8) | ✅ | `vector_store.diversify_fragments` |
 | 18 | Few-shot по категориям | ✅ | rootstock, disease, relief, … |
-| 19 | Исправить eval fail «марссониоз» | ✅ | Устранён в рамках доведения eval до 100% |
-| 20 | OCR-починка PDF-текстов | 🔲 | Отложено; влияет на recall по «битым» словам |
-| 21 | Ручная выборочная оценка 10–20 ответов LLM | 🔲 | `--full` eval или чат с реальными садоводами |
+| 19 | Категории вопросов в domain pack | ✅ | `config/question_categories.json` |
+| 20 | Контракт verify Go ↔ Python | ✅ | `tests/fixtures/rag_verify_contract.json` |
+| 21 | OCR-починка PDF-текстов | 🔲 | Отложено; влияет на recall по «битым» словам |
+| 22 | Ручная выборочная оценка 10–20 ответов LLM | 🔲 | `--full` eval или чат с реальными садоводами |
 
 ---
 
@@ -77,13 +81,13 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 
 | # | Пункт | Статус | Детали |
 |---|--------|--------|--------|
-| 22 | `apple_classifier.pth` обучен на болезнях | ❌ | В репо нет `.pth`; CV = ImageNet backbone |
-| 23 | Датасет фото болезней яблони | 🔲 | `cv/train_classifier.py`, структура `dataset/train/` |
-| 24 | Порог confidence + шаблоны без LLM | ⚠️ | `photo_templates.json` есть; порог в roadmap |
-| 25 | `cv_enabled: false` для pear/plum | ✅ | Только apple в UI для фото |
-| 26a | Пометка фото «бета» + дисклеймер | ✅ | 2026-07-01: `photo_beta_notice` в `branding.json`, добавляется к каждой рекомендации (`classify_flow.go`) и виден в UI при прикреплении фото |
+| 23 | `apple_classifier.pth` обучен на болезнях | ❌ | В репо нет `.pth`; CV = ImageNet backbone |
+| 24 | Датасет фото болезней яблони | 🔲 | `cv/train_classifier.py`, структура `dataset/train/` |
+| 25 | Порог confidence + шаблоны без LLM | ⚠️ | `photo_templates.json` есть; порог в roadmap |
+| 26 | `cv_enabled: false` для pear/plum | ✅ | Только apple в UI для фото |
+| 27 | Пометка фото «бета» + дисклеймер | ✅ | `photo_beta_notice` в `branding.json`, `classify_flow.go`, UI |
 
-**Решение (2026-07-01):** фото-ветка оставлена включённой, но помечена «бета» с явным дисклеймером о необученной модели. Обучение `apple_classifier.pth` — пост-пилотная задача (нужен датасет; PlantVillage покрывает лишь 4 из 10 классов).
+**Решение (2026-07-01):** фото-ветка включена с явным дисклеймером. Обучение `apple_classifier.pth` — пост-пилот (нужен датасет).
 
 ---
 
@@ -91,15 +95,17 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 
 | # | Пункт | Статус | Детали |
 |---|--------|--------|--------|
-| 26 | PostgreSQL сессии и история | ✅ | migrations 001–003 |
-| 27 | Rate limit | ✅ | in-memory, 30 req/min |
-| 28 | Admin: upload `.txt` + reindex | ✅ | `admin.html`, `/admin/reindex` |
-| 29 | Feedback 👍/👎 в БД | ✅ | analytics в Postgres |
-| 30 | RAG structured logs `[RAG]` | ✅ | `server/rag_log.go` |
-| 31 | Связка feedback ↔ RAG logs в отчёте | 🔲 | ROADMAP 3C |
-| 32 | CI: pytest + go test + rag-eval | ✅ | `.github/workflows/ci.yml` |
-| 33 | Backup volumes (`chroma_data`, `bm25_data`, `postgres_data`) | 🔲 | Документировать расписание |
-| 34 | Мониторинг / алерты | 🔲 | Только healthchecks в compose |
+| 28 | PostgreSQL сессии и история | ✅ | migrations 001–003 |
+| 29 | Rate limit + GC устаревших ключей | ✅ | in-memory, 30 req/min; `gcStale` в `ratelimit.go` |
+| 30 | Admin: upload `.txt` + reindex | ✅ | `admin.html`, `/admin/reindex` |
+| 31 | Feedback 👍/👎 в БД | ✅ | analytics в Postgres |
+| 32 | RAG structured logs `[RAG]` | ✅ | `server/rag_log.go` |
+| 33 | Связка feedback ↔ RAG в админ-отчёте | ✅ | `GET /admin/feedback` → поле `rag` |
+| 34 | CI: pytest + go test + docker-build | ✅ | `.github/workflows/ci.yml` (~10–15 мин) |
+| 35 | RAG eval в CI | ✅ | **Ручной** workflow `.github/workflows/rag-eval.yml` |
+| 36 | Backup volumes | ✅ | [BACKUPS.md](./BACKUPS.md) |
+| 37 | Мониторинг `/metrics` + алерты | ✅ | `server/metrics.go`, [metrics-and-alerts.md](./knowledge-base/metrics-and-alerts.md) |
+| 38 | HTTP-тесты хендлеров, testcontainers | 🔲 | P3 в IMPROVEMENT_BACKLOG |
 
 ---
 
@@ -107,12 +113,13 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 
 | # | Пункт | Статус | Детали |
 |---|--------|--------|--------|
-| 35 | Онбординг-чипы вопросов | ✅ | `config/onboarding.json` |
-| 36 | Выбор культуры в UI | ✅ | apple / pear / plum |
-| 37 | `demo_hr` скрыт (`ui_hidden`) | ✅ | Sandbox платформы |
-| 38 | README / DEPLOY / knowledge-base актуальны | ✅ | Обновлено 2026-06-05 |
-| 39 | Пилотная группа 5–10 пользователей | 🔲 | Организационно |
-| 40 | Сбор обратной связи раз в неделю | 🔲 | Процесс |
+| 39 | Онбординг-чипы вопросов | ✅ | `config/onboarding.json` |
+| 40 | Выбор культуры в UI | ✅ | apple / pear / plum |
+| 41 | `demo_hr` скрыт (`ui_hidden`) | ✅ | Sandbox платформы |
+| 42 | README / DEPLOY / knowledge-base актуальны | ✅ | Обновлено 2026-07-01 |
+| 43 | Case study для портфолио | ✅ | [AGRO_CASE_STUDY_EN.md](./AGRO_CASE_STUDY_EN.md), [AGRO_CASE_STUDY_RU.md](./AGRO_CASE_STUDY_RU.md) |
+| 44 | Пилотная группа 5–10 пользователей | 🔲 | Организационно |
+| 45 | Сбор обратной связи раз в неделю | 🔲 | Процесс |
 
 ---
 
@@ -122,24 +129,24 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 |---------|----------|
 | Статьи RAG | ~344 apple, ~42 pear, ~108 plum |
 | Фрагментов в индексе | 14 554 |
-| Eval retrieval (all) | **100%** (переподтвердить перед пилотом) |
-| apple / pear / plum / demo_hr | 30/30 · 8/8 · 10/10 · 5/5 |
-| Unit-тесты Python | 33 passed (2026-07-01) |
+| Eval retrieval (all) | **68/68 (100%)** — переподтвердить перед пилотом |
+| apple / pear / plum / demo_hr | 45/45 · 8/8 · 10/10 · 5/5 |
+| Unit-тесты Python | **45 passed** (2026-07-01) |
 | Unit-тесты Go | `go test ./...` — ok (2026-07-01) |
 | Misc plum (аудит) | 0 misc, 10 mixed |
 
 ---
 
-## Минимальный чеклист «старт пилота завтра»
+## Минимальный чеклист «демо / пилот завтра»
 
-- [ ] `.env` prod: `TELEGRAM_AUTH_DISABLED=false`, сильные пароли
+- [ ] `.env` prod: `TELEGRAM_AUTH_DISABLED=false`, сильные пароли (или API key для browser-only демо)
 - [ ] `CORS_ALLOWED_ORIGINS` с URL Web App
 - [ ] `HF_TOKEN` в `.env` (не в git)
 - [ ] Reindex + restart classifier (volumes не пустые)
-- [ ] `python scripts/run_rag_eval.py --suite all`
+- [ ] `python scripts/run_rag_eval.py --suite all` или Actions → **RAG Eval**
 - [ ] `make smoke`
-- [ ] Решение по фото: отключить CV в UI или дисклеймер «бета»
-- [ ] 5 тестовых вопросов вручную в Telegram
+- [ ] Прогреть classifier (первый вопрос не на демо)
+- [ ] 5–10 тестовых вопросов вручную (текст RAG; фото — только с оговоркой «бета»)
 
 ---
 
@@ -148,10 +155,12 @@ python scripts/run_rag_eval.py --suite all --timeout 300
 - [IMPROVEMENT_BACKLOG.md](./IMPROVEMENT_BACKLOG.md)
 - [ROADMAP.md](./ROADMAP.md)
 - [DEPLOY.md](./DEPLOY.md)
+- [BACKUPS.md](./BACKUPS.md)
+- [AGRO_CASE_STUDY_RU.md](./AGRO_CASE_STUDY_RU.md)
 - [eval/README.md](../eval/README.md)
 - [knowledge-base/rag-hybrid-search.md](./knowledge-base/rag-hybrid-search.md)
-- [knowledge-base/plum_miscategorized_audit.md](./knowledge-base/plum_miscategorized_audit.md)
+- [knowledge-base/metrics-and-alerts.md](./knowledge-base/metrics-and-alerts.md)
 
 ---
 
-*Файл обновлять после каждого крупного изменения KB, RAG-пайплайна или перед релизом пилота.*
+*Файл обновлять после каждого крупного изменения KB, RAG-пайплайна, CI или перед релизом пилота.*

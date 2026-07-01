@@ -4,7 +4,8 @@
 
 ## Аудит пилота
 
-- [x] Чеклист готовности: [`docs/PILOT_READINESS_AUDIT.md`](PILOT_READINESS_AUDIT.md) (2026-06-05)
+- [x] Чеклист готовности: [`docs/PILOT_READINESS_AUDIT.md`](PILOT_READINESS_AUDIT.md) (обновлён 2026-07-01)
+- [x] Case study для портфолио: [`docs/AGRO_CASE_STUDY_EN.md`](AGRO_CASE_STUDY_EN.md), [`docs/AGRO_CASE_STUDY_RU.md`](AGRO_CASE_STUDY_RU.md)
 
 ## Фаза 0 — Подготовка
 - [x] `.env.example`
@@ -49,11 +50,10 @@
 - [ ] Qdrant (при росте объёма)
 
 ### 3B — Eval
-- [x] Набор **30 вопросов** по яблоне (`eval/rag_apple_baseline.jsonl`)
-- [x] Mini-eval **demo_hr** (`eval/rag_demo_hr_baseline.jsonl`)
+- [x] Набор **45 вопросов** по яблоне (`eval/rag_apple_baseline.jsonl`) + pear/plum/demo_hr (**68** всего)
 - [x] `scripts/run_rag_eval.py` + `eval/results/`, `make eval-retrieval`
-- [x] Прогон eval retrieval в CI (classifier image + `run_rag_eval.py --suite all`)
-- [ ] Manual score 1–5 выборочно после пилота
+- [x] RAG eval в GitHub Actions — **ручной** workflow [`.github/workflows/rag-eval.yml`](../.github/workflows/rag-eval.yml) (не на каждый PR — скорость CI)
+- [ ] Manual score 1–5 выборочно после пилота / перед демо работодателю
 - Документация: [`docs/knowledge-base/quality-eval-and-rag-logs.md`](knowledge-base/quality-eval-and-rag-logs.md), [`eval/README.md`](../eval/README.md)
 
 ### 3C — Логи RAG
@@ -77,11 +77,9 @@
 - [x] Онбординг (`config/onboarding.json`)
 - [x] Feedback и analytics в Postgres
 - [x] Admin upload + RAG reindex
-- [x] `docs/LEARNING_SESSION_5.md`
 
 ### Сессия 6 (тесты + CI)
 - [x] Go unit-тесты (RAG verify, crops, admin)
 - [x] Python pytest (verifier, crops_config)
 - [x] Smoke-скрипты
-- [x] GitHub Actions CI
-- [x] `docs/LEARNING_SESSION_6.md`
+- [x] GitHub Actions CI + ручной RAG Eval workflow

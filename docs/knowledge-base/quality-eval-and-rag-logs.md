@@ -1,166 +1,119 @@
 # План: Eval RAG (3B) и логи RAG (3C)
 
-**Статус:** частично реализовано — eval-наборы и `scripts/run_rag_eval.py`, логи `[RAG]` в Go. Связка с feedback в отчёте — в плане.  
-**Связь:** [../ROADMAP.md](../ROADMAP.md), [server-rag_chat.md](./server-rag_chat.md), [data-pipeline.md](./data-pipeline.md)
+**Статус:** **реализовано** (2026-07-01) — eval-наборы **68 вопросов**, `run_rag_eval.py`, логи `[RAG]`, связка feedback↔RAG в `GET /admin/feedback`, `/metrics`.  
+**Связь:** [../ROADMAP.md](../ROADMAP.md), [server-rag_chat.md](./server-rag_chat.md), [metrics-and-alerts.md](./metrics-and-alerts.md)
 
 ---
 
 ## Зачем это нужно
 
-Сейчас качество проверяют вручную в чате и unit-тестами верификатора чисел. Для роста до **Middle-уровня продукта** и пилота нужно:
-
-1. **Воспроизводимый eval** — набор вопросов + прогон после каждого reindex/смены модели.
-2. **Наблюдаемость** — понять, *почему* ответ плохой (какие чанки, прошёл ли verify, был ли 👎).
+1. **Воспроизводимый eval** — набор вопросов + прогон после reindex / смены промпта.
+2. **Наблюдаемость** — почему ответ плохой (чанки, verify, 👎, latency).
 
 ---
 
-## Фаза 3B — Eval-набор (30–50 Q&A)
+## Фаза 3B — Eval-набор
 
-### Цель
+### Файлы (реализовано)
 
-Регрессии RAG: не сломать ответы после новых статей, смены `LLM_MODEL`, правки промпта.
+| Файл | Вопросов | `crop_id` |
+|------|----------|-----------|
+| `eval/rag_apple_baseline.jsonl` | **45** | apple |
+| `eval/rag_pear_baseline.jsonl` | 8 | pear |
+| `eval/rag_plum_baseline.jsonl` | 10 | plum |
+| `eval/rag_demo_hr_baseline.jsonl` | 5 | demo_hr |
+| **Итого** | **68** | |
 
-### Что подготовить
-
-Файлы (реализовано): `eval/rag_apple_baseline.jsonl` (30 вопросов), `eval/rag_demo_hr_baseline.jsonl` (5). Формат строки JSON:
+Формат строки JSON:
 
 ```json
 {
   "crop_id": "apple",
   "question": "Какие признаки парши на листьях?",
   "expect_contains": ["пятн", "парша"],
-  "expect_numbers_from_context": false,
-  "notes": "эталон вручную после просмотра ответа с текущим индексом"
+  "expect_context": true,
+  "expect_out_of_scope": false,
+  "category": "disease"
 }
 ```
 
-Или проще на старте: таблица в CSV / Markdown с колонками: вопрос | допустим ли ответ «нет в материалах» | ключевые слова | эталонный фрагмент.
+- `expect_contains` — подстроки в **контексте** retrieval (стемминг RU).
+- `expect_contains_any` — достаточно одной из синонимов.
+- `expect_out_of_scope: true` — вопрос вне KB.
 
-### Минимум 30–50 вопросов для яблони
-
-| Категория | Доля | Примеры |
-|-----------|------|---------|
-| disease | ~30% | парша, пятна, лечение |
-| fertilizer | ~30% | дозы, подкормка (с цифрами из статей) |
-| variety | ~20% | сорта, рентабельность, склон |
-| general / edge | ~20% | вопрос вне статей → «нет в материалах» |
-
-Часть вопросов взять из [config/onboarding.json](../../config/onboarding.json), часть — из реальных пользователей пилота.
-
-### Метрики прогона (ручные + полуавто)
+### Метрики прогона
 
 | Метрика | Как считать |
 |---------|-------------|
-| **retrieval hit** | есть ли `success` от `/rag/context` |
-| **verify pass rate** | доля ответов без ⚠️ verify |
-| **«нет в материалах» accuracy** | на вопросах вне корпуса — не выдумывает |
-| **manual score 1–5** | выборочно 10 ответов после прогона |
+| **retrieval pass** | `expect_contains` / out-of-scope в контексте |
+| **verify pass rate** | доля ответов без ⚠️ verify (режим `--full` через Go) |
+| **manual score 1–5** | выборочно 10 ответов (рекомендуется перед демо/пилотом) |
 
 ### Когда гонять
 
-- после **каждого reindex** с новыми статьями;
-- после смены **`LLM_MODEL`** или правки `prompts.json` / `rag_chat.go`;
-- перед **пилотом** и перед merge крупных PR.
+- после **reindex** с новыми статьями;
+- после смены **`LLM_MODEL`** или `prompts.json`;
+- перед **пилотом**, **демо для работодателя**, merge крупных PR по RAG.
 
-### Реализация
+### Запуск
 
-- Скрипт **`scripts/run_rag_eval.py`**: retrieval-режим → `POST /rag/context`, проверка `expect_contains` / `expect_out_of_scope`.
-- Отчёты: `eval/results/<timestamp>_<suite>.json`.
-- Запуск: `make eval-retrieval` или `python scripts/run_rag_eval.py --suite all` (нужен classifier на `:5000`).
-- См. [eval/README.md](../../eval/README.md), [DEPLOY.md](../DEPLOY.md).
+```bash
+# Локально (classifier на :5000)
+python scripts/run_rag_eval.py --suite all --timeout 300
 
-**В плане:** full-режим с LLM через Go; порог pass rate в CI.
+# Или in-process (без HTTP)
+python scripts/run_rag_eval.py --suite apple --in-process --fast
+
+# CI: GitHub Actions → workflow RAG Eval (ручной)
+```
+
+Отчёты: `eval/results/<timestamp>_<suite>.json`.  
+См. [eval/README.md](../../eval/README.md).
+
+**Целевой порог:** 100% retrieval pass (последний зафиксированный прогон — 68/68; переподтверждать после смен KB).
+
+**В плане:** автоматический порог pass rate в CI на каждый PR (отклонено из-за времени; см. [github-ci.yml.md](./github-ci.yml.md)).
 
 ---
 
-## Фаза 3C — Логи RAG (наблюдаемость)
+## Фаза 3C — Логи и аналитика RAG
 
-### Цель
+### Stdout (`rag_log.go`)
 
-Разбор плохих ответов и связка с feedback 👍/👎 без логирования тела LLM (политика 1C в ROADMAP).
-
-### Что логируется (Go, `rag_log.go`)
-
-На каждый текстовый ответ в `answerWithRAG` (из `handleTextMessage` / `handleChat`):
-
-| Поле | Пример |
-|------|--------|
-| `session_id` | hex |
-| `message_id` | после INSERT assistant |
-| `crop_id` | apple |
-| `question` | до 120 символов (обрезка) |
-| `crop_id` | apple / demo_hr / … |
-| `session_id` | из чата (пусто для `/chat`) |
-| `fragments` | число фрагментов из RAG |
-| `verify_pass` | true/false |
-| `verify_reason` | текст при fail |
-| `soft_fail` | RAG не нашёл материалы |
-
-Пример в логах сервера: `[RAG] crop_id=apple session_id=… fragments=4 verify_pass=true …`
-
+На каждый текстовый ответ: `crop_id`, `session_id`, `fragments`, `verify_pass`, `verify_reason`, `soft_fail`.  
 **Не логируется:** полный промпт и тело LLM.
 
-### Куда писать дальше (план)
+### Prometheus (`server/metrics.go`)
 
-| Вариант | Плюсы |
-|---------|--------|
-| **Postgres** `rag_query_log` | SQL + связь с `message_id` и feedback |
-| **analytics_events** | расширить `event_type: rag_trace` |
+`GET /metrics` — счётчики HTTP, LLM errors, RAG requests, verify pass/fail, latency sums.  
+См. [metrics-and-alerts.md](./metrics-and-alerts.md).
 
-Сейчас: **stdout** Go (`docker compose logs server`).
+### Feedback + RAG в админке
 
-Связка с feedback:
+`GET /admin/feedback?rating=-1&limit=50` — для каждой оценки поле **`rag`** (если есть `rag_answer` в `analytics_events`):
 
-```sql
--- идея: message_id уже в message_feedback
-SELECT m.content, mf.rating, /* будущие поля trace */
-FROM messages m
-JOIN message_feedback mf ON mf.message_id = m.id
-WHERE mf.rating = -1;
-```
+- `category`, `fragments`, `verify_pass`, `retrieval_ms`, `llm_ms`
 
-### Использование
+Разбор 👎: админка → негативные оценки → метрики RAG по сообщению.
 
-1. Пользователь нажал 👎 → найти `message_id` → посмотреть фрагменты и verify.
-2. Массово: топ-10 вопросов с `verify_pass = false` за неделю.
-3. Дополнение eval-набора реальными провальными вопросами.
+### Postgres (опционально на будущее)
+
+Отдельная таблица `rag_query_log` — не реализована; сейчас достаточно stdout + metrics + analytics_events.
 
 ---
 
-## Порядок внедрения (рекомендация)
+## Чеклист «готово к пилоту / демо» (качество)
 
-```mermaid
-flowchart LR
-    A[~494 статей data/ + hybrid reindex] --> B[eval 53 вопроса + run_rag_eval]
-    B --> C[Ручной прогон в чате + feedback]
-    C --> D[Логи 3C в БД опционально]
-    F --> G[Пилот пользователей]
-```
-
-1. Сначала **контент** ([data-pipeline.md](./data-pipeline.md)).  
-2. Параллельно набросать **10–15 eval-вопросов**.  
-3. После стабильного RAG — **логи 3C** (проще отладка).  
-4. Довести eval до **30–50** перед пилотом.
-
----
-
-## Чеклист «готово к пилоту» (качество)
-
-- [x] Корпус ПВЮР (~344 apple, ~42 pear, ~108 plum), reindex Chroma+BM25 после изменений  
-- [x] Eval-набор 30 вопросов (`rag_apple_baseline.jsonl`), скрипт прогона  
-- [x] Retrieval baseline apple 30/30 (после правок KB; отчёты локально в `eval/results/`)  
-- [ ] Verify pass rate известен (retrieval + выборочно full LLM)  
-- [x] Логи `[RAG]` в Go (fragments + verify + session_id)  
-- [ ] 5+ реальных пользователей, feedback разбирается раз в неделю  
-
----
-
-## Обновление ROADMAP
-
-См. секции **3B** и **3C** в [../ROADMAP.md](../ROADMAP.md).
+- [x] Корпус ПВЮР (~344 apple, ~42 pear, ~108 plum), reindex Chroma+BM25
+- [x] Eval **68** вопросов, скрипт прогона
+- [x] Retrieval baseline **100%** (переподтвердить на живом индексе)
+- [ ] Verify pass rate известен (выборочно `--full` или ручной чат)
+- [x] Логи `[RAG]` + `/metrics`
+- [x] Feedback ↔ RAG в админ-отчёте
+- [ ] 5–10 ручных вопросов перед демо работодателю
 
 ---
 
 ## Краткий итог
 
-**3B Eval** — эталонные вопросы и регрессии качества RAG. **3C Логи** — трассировка от вопроса до verify и связь с 👍/👎. Оба пункта — следующий шаг после наполнения `data/apple/` и стабильного compose, без блокера для чтения текущего кода.
+**3B Eval** — 68 эталонных вопросов, регрессия retrieval. **3C** — логи, метрики, связка с feedback. Полный eval в CI — только вручную (**RAG Eval** workflow).
