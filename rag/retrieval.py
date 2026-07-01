@@ -15,11 +15,24 @@ _few_shot_cache = None
 
 
 # Загружает config/few_shot.json один раз в кэш.
+def _few_shot_path() -> str:
+    env = os.environ.get("FEW_SHOT_CONFIG_PATH")
+    if env and os.path.isfile(env):
+        return env
+    for candidate in (
+        os.path.join(_PROJECT_ROOT, "config", "few_shot.json"),
+        "/config/few_shot.json",
+    ):
+        if os.path.isfile(candidate):
+            return candidate
+    return os.path.join(_PROJECT_ROOT, "config", "few_shot.json")
+
+
 def _load_few_shot() -> dict:
     global _few_shot_cache
     if _few_shot_cache is not None:
         return _few_shot_cache
-    path = os.path.join(_PROJECT_ROOT, "config", "few_shot.json")
+    path = _few_shot_path()
     with open(path, encoding="utf-8") as f:
         _few_shot_cache = json.load(f)
     return _few_shot_cache
