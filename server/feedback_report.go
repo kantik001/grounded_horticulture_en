@@ -64,7 +64,7 @@ func (st *ChatStore) ListFeedbackReport(ctx context.Context, ratingFilter, limit
 		             AND m2.id < m_assist.id
 		           ORDER BY m2.id DESC
 		           LIMIT 1
-		       ), '') AS question
+		       ), '') AS question,
 		       COALESCE((
 		           SELECT ae.payload
 		           FROM analytics_events ae

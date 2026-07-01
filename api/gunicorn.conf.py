@@ -9,14 +9,15 @@ timeout = max(30, int(os.environ.get("GUNICORN_TIMEOUT", "300")))
 graceful_timeout = 30
 keepalive = 5
 worker_class = "gthread" if threads > 1 else "sync"
-preload_app = workers == 1
+# PyTorch / sentence-transformers нельзя инициализировать в master до fork — deadlock в worker.
+preload_app = False
 accesslog = "-"
 errorlog = "-"
 capture_output = True
 
 
-def when_ready(server):
-    """Прогрев RAG после старта master (до приёма трафика)."""
+def post_fork(server, worker):
+    """Прогрев RAG в worker-процессе, который обрабатывает /rag/context."""
     from rag.warmup import warmup_rag
 
     warmup_rag()
