@@ -22,6 +22,26 @@
 - `data/apple/sample_*.txt` — демо для быстрого старта
 - [DATA_LICENSE.md](DATA_LICENSE.md), [data/README.md](data/README.md)
 
+## Имена репозиториев на GitHub
+
+| Аудитория | Репозиторий | Статьи |
+|-----------|-------------|--------|
+| RU | `grounded-horticulture_ru` | Habr |
+| EN | `grounded-horticulture` | dev.to |
+
+Взаимные ссылки в README обоих репо.
+
+## Запись демо (GIF для README)
+
+1. **Чат:** http://localhost/ — ввести API-ключ из `.env` (`API_KEYS`), культура «Яблоня», вопросы:
+   - «Какие признаки парши на листьях?»
+   - «Какие подвои подходят для интенсивного сада?»
+2. **Админка:** http://localhost/admin.html — логин `ADMIN_USER` / пароль `ADMIN_PASSWORD` из `.env`.
+3. Сохранить GIF в `docs/assets/demo-chat.gif` и `docs/assets/demo-admin.gif`.
+4. Вставить в README (секция «Демо»).
+
+Перед записью: дождаться healthy у classifier (~1–2 мин после старта), один тестовый вопрос «вхолостую».
+
 ## Публикация
 
 ```bash

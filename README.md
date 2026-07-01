@@ -289,9 +289,21 @@ python train_classifier.py
 
 - **И текст RAG, и советы по фото:** `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` в Go (см. `.env.example`). Без ключа по фото — шаблоны; текстовый чат вернёт ошибку о необходимости ключа.
 
+## Демо
+
+<!-- После записи GIF/MP4 положите файлы в docs/assets/ и раскомментируйте: -->
+
+<!-- ![Чат: текстовый RAG](docs/assets/demo-chat.gif) -->
+
+<!-- ![Админка: статьи и feedback](docs/assets/demo-admin.gif) -->
+
+Запись: см. [docs/PUBLIC_REPO.md](docs/PUBLIC_REPO.md) (сценарий для Habr / dev.to).
+
 ## Лицензия
 
-MIT License
+Исходный код — [Apache License 2.0](LICENSE).
+
+Тексты в `data/` — см. [DATA_LICENSE.md](DATA_LICENSE.md) (отдельно от лицензии на код).
 
 ## Контакты
 
