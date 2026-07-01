@@ -44,9 +44,17 @@
 
 ## Публикация
 
+Публичный репозиторий (RU): **https://github.com/kantik001/grounded-horticulture_ru**
+
+Обновление публичного репо (чистая история, без журнального корпуса в прошлых коммитах):
+
 ```bash
-git push -u origin public-portfolio
-# на GitHub: сделать default branch или открыть PR в main
+git checkout public-portfolio
+git checkout --orphan public-release
+git add -A
+git commit -m "Initial public release: grounded-horticulture portfolio."
+git push public-ru public-release:main --force
+git checkout public-portfolio
 ```
 
 Перед push: убедитесь, что `.env` никогда не коммитился (`git log -- .env`).
