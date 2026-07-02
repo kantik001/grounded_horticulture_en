@@ -1,0 +1,52 @@
+# Git and local artifacts
+.git
+.gitignore
+.github
+.cursor
+.DS_Store
+Thumbs.db
+Info
+
+# Secrets and local configuration
+.env
+.env.example
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv
+env
+.pytest_cache
+.mypy_cache
+
+# Documentation (not needed in runtime images)
+*.md
+!README.md
+docs
+
+# Tests and eval (CI/local; in Docker — volumes or not needed)
+tests
+eval
+
+# Article corpus and indexes — only via compose volumes (./data, chroma_data, bm25_data)
+data
+chroma_db
+bm25_db
+hf_cache
+
+# Heavy ML weights — volume models:
+models/*.pth
+
+# Go builds / binaries
+server/main
+*.exe
+
+# Eval suites in git are not needed in the classifier image
+*.jsonl
+eval/results/
+
+# Note: scripts/docker_build.sh temporarily narrows context per image.
+# Compose 2.17+ supports build.ignore; for now — shared .dockerignore + script for CI.

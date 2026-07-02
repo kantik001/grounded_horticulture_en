@@ -1,0 +1,13 @@
+Source metadata:
+- Title: Demo — apple rootstocks (synthetic portfolio text)
+- Crop (RAG): apple
+
+Brief for the grower:
+Dwarf rootstocks SK 4 and M 9 suit intensive orchards: shorter trees, denser planting, earlier cropping. SK 4 tolerates southern drought well. M 9 gives a compact canopy but needs support and regular irrigation.
+
+Main findings:
+Rootstock choice depends on soil type, irrigation, and desired tree height. For sloped sites, stable clonal rootstocks with developed root systems are preferred. Scion–rootstock compatibility should be checked in variety catalogs.
+
+Figures from the text:
+- Planting density on dwarf rootstocks is often 4 × 1.2–1.5 m.
+- SK 4 is recommended for regions with periodic drought.

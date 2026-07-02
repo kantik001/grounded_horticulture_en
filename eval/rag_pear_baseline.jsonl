@@ -1,0 +1,8 @@
+{"crop_id": "pear", "question": "Which pear varieties and rootstocks give yield in Stavropol?", "expect_contains": ["pear", "rootstock", "variety"], "category": "variety"}
+{"crop_id": "pear", "question": "What is the winter hardiness of pear varieties on North Caucasus slopes?", "expect_contains": ["winter"], "category": "winterhardiness"}
+{"crop_id": "pear", "question": "What is the adaptive potential of pear in complex KBR terrain?", "expect_contains": ["adapt", "relief"], "category": "relief"}
+{"crop_id": "pear", "question": "How is pear propagated by green cuttings?", "expect_contains": ["cutting"], "category": "nursery"}
+{"crop_id": "pear", "question": "What is the role of mother trees for pear and quince?", "expect_contains": ["quince", "mother"], "category": "nursery"}
+{"crop_id": "pear", "question": "Why use chelated foliar feeds for pear?", "expect_contains": ["chelat", "foliar"], "category": "fertilizer"}
+{"crop_id": "pear", "question": "How to grow pineapple on Mars in open ground?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}
+{"crop_id": "pear", "question": "What is the dollar exchange rate tomorrow for a gardener?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}

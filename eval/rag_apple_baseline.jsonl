@@ -1,0 +1,45 @@
+{"crop_id": "apple", "question": "Which SK-series apple rootstocks suit southern Russia?", "expect_contains": ["rootstock", "SK"], "category": "rootstock"}
+{"crop_id": "apple", "question": "What does high budding at 40 cm height give for seedlings?", "expect_contains": ["bud", "graft"], "category": "rootstock"}
+{"crop_id": "apple", "question": "How does knip-baum differ from a regular one-year tree?", "expect_contains": ["knip"], "category": "nursery"}
+{"crop_id": "apple", "question": "What planting scheme is used at high density on M9?", "expect_contains": ["M 9", "density"], "category": "planting"}
+{"crop_id": "apple", "question": "How does planting depth affect apple yield on SK rootstock?", "expect_contains": ["planting", "depth"], "category": "planting"}
+{"crop_id": "apple", "question": "How does slope exposure affect apple on terraces in KBR?", "expect_contains": ["slope", "exposure"], "category": "relief"}
+{"crop_id": "apple", "question": "Which KBR lands are suitable for apple per GIS assessment?", "expect_contains": ["GIS", "apple"], "category": "relief"}
+{"crop_id": "apple", "question": "Why are compacted soil layers dangerous in foothills?", "expect_contains": ["compact"], "category": "soil"}
+{"crop_id": "apple", "question": "How does seasonal moisture affect apple yield in foothills?", "expect_contains": ["moist", "humid"], "category": "relief"}
+{"crop_id": "apple", "question": "What is fertigation in intensive apple orchards?", "expect_contains": ["fertigat"], "category": "fertilizer"}
+{"crop_id": "apple", "question": "Why use foliar biostimulators based on amino acids?", "expect_contains": ["biostimul", "amino"], "category": "fertilizer"}
+{"crop_id": "apple", "question": "How do foliar potassium and calcium affect fruit storability?", "expect_contains": ["calcium", "potassium"], "category": "fertilizer"}
+{"crop_id": "apple", "question": "How do fertilizers affect columnar apple?", "expect_contains": ["columnar"], "category": "fertilizer"}
+{"crop_id": "apple", "question": "Why use drip irrigation for apple during drought?", "expect_contains": ["drip", "irrigat"], "category": "care"}
+{"crop_id": "apple", "question": "Why thin fruit set on young apple trees?", "expect_contains": ["thin"], "category": "care"}
+{"crop_id": "apple", "question": "Which apple varieties resist spring hypothermia?", "expect_contains": ["Liberty", "cold"], "category": "variety"}
+{"crop_id": "apple", "question": "How does canopy lightening on slopes affect yield?", "expect_contains": ["canopy", "crown"], "category": "care"}
+{"crop_id": "apple", "question": "What soil pH is optimal for apple?", "expect_contains": ["pH", "6"], "category": "soil"}
+{"crop_id": "apple", "question": "What is known about apple marssonina in the south?", "expect_contains_any": ["Marssonina", "marssonina"], "category": "disease"}
+{"crop_id": "apple", "question": "How to control codling moth on apple?", "expect_contains": ["codling", "moth"], "category": "pest"}
+{"crop_id": "apple", "question": "Why not rely only on old scab spray schedules?", "expect_contains": ["scab"], "category": "disease"}
+{"crop_id": "apple", "question": "Which apple varieties are used as pollinators?", "expect_contains": ["pollinat"], "category": "variety"}
+{"crop_id": "apple", "question": "How is fruit quality managed during storage and processing?", "expect_contains": ["storage", "quality"], "category": "quality"}
+{"crop_id": "apple", "question": "What is the Russian spindle for Orfey and Margo varieties?", "expect_contains": ["spindle", "Orfey"], "category": "care"}
+{"crop_id": "apple", "question": "Which rootstocks give early bearing for Liberty?", "expect_contains": ["Liberty", "rootstock"], "category": "rootstock"}
+{"crop_id": "apple", "question": "How does complex Krasnodar terrain affect orchard productivity?", "expect_contains": ["terrain", "relief", "productiv"], "category": "relief"}
+{"crop_id": "apple", "question": "Why are winter-hardy rootstocks needed with climate change?", "expect_contains": ["winter", "rootstock"], "category": "rootstock"}
+{"crop_id": "apple", "question": "How is mulching with chipped prunings in the row useful?", "expect_contains": ["mulch"], "category": "soil"}
+{"crop_id": "apple", "question": "How to grow pineapple on Mars in open ground?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}
+{"crop_id": "apple", "question": "What is the dollar exchange rate tomorrow for a gardener?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}
+{"crop_id": "apple", "question": "Which apple varieties showed maximum profitability on slopes?", "expect_contains": ["profit", "yield"], "category": "relief"}
+{"crop_id": "apple", "question": "What are signs of scab on apple leaves?", "expect_contains": ["scab", "spot"], "category": "disease"}
+{"crop_id": "apple", "question": "Which SK-4 rootstock is used for apple in the south?", "expect_contains_any": ["SK-4", "SK 4"], "category": "rootstock"}
+{"crop_id": "apple", "question": "How does terracing help develop slopes in KBR?", "expect_contains": ["terrace"], "category": "relief"}
+{"crop_id": "apple", "question": "Which slope exposure is best for apple yield in foothills?", "expect_contains_any": ["exposure", "slope", "north"], "category": "relief"}
+{"crop_id": "apple", "question": "How is scab resistance in apple varieties assessed?", "expect_contains": ["scab"], "category": "disease"}
+{"crop_id": "apple", "question": "Which clonal rootstocks M9 and SK-2 are used in apple nurseries?", "expect_contains_any": ["M 9", "SK-2", "SK 2"], "category": "rootstock"}
+{"crop_id": "apple", "question": "How does planting density affect Aidared on SK 4 rootstock?", "expect_contains": ["Aidared", "density"], "category": "planting"}
+{"crop_id": "apple", "question": "Why monitor leaves for marssonina in wet years?", "expect_contains_any": ["Marssonina", "marssonina"], "category": "disease"}
+{"crop_id": "apple", "question": "What is the biological efficacy of treatments against codling moth?", "expect_contains": ["codling"], "category": "pest"}
+{"crop_id": "apple", "question": "Why is scab dangerous for stored apple fruit?", "expect_contains": ["scab"], "category": "disease"}
+{"crop_id": "apple", "question": "Which precocity indicators were studied for apple varieties in KBR?", "expect_contains": ["precoc", "early"], "category": "variety"}
+{"crop_id": "apple", "question": "Why is plum pox virus dangerous for fruit nurseries?", "expect_contains_any": ["plum pox", "sharka"], "category": "disease"}
+{"crop_id": "apple", "question": "Why use foliar biostimulators based on amino acids for apple?", "expect_contains": ["amino", "biostimul"], "category": "fertilizer"}
+{"crop_id": "apple", "question": "How do biologized methods improve phytosanitary resilience in apple orchards?", "expect_contains": ["integrated", "biolog"], "category": "disease"}

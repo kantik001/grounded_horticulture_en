@@ -1,0 +1,5 @@
+{"crop_id": "demo_hr", "question": "How many days of paid vacation are employees entitled to?", "expect_contains": ["28"], "expect_context": true, "category": "policy"}
+{"crop_id": "demo_hr", "question": "How do I submit a sick leave certificate?", "expect_contains": ["sick", "3"], "expect_context": true, "category": "policy"}
+{"crop_id": "demo_hr", "question": "Can I work remotely two days a week?", "expect_contains": ["remote", "Tuesday", "Thursday"], "expect_context": true, "category": "policy"}
+{"crop_id": "demo_hr", "question": "Where should I report a conflict with my manager?", "expect_contains": ["hr@", "conflict"], "expect_context": true, "category": "policy"}
+{"crop_id": "demo_hr", "question": "What is the probation period for a marketing director on Mars?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}

@@ -1,0 +1,10 @@
+{"crop_id": "plum", "question": "What is the winter hardiness of plum varieties in Maykop foothills?", "expect_contains": ["winter"], "category": "winterhardiness"}
+{"crop_id": "plum", "question": "How does Stanley plum perform on PK SK rootstocks?", "expect_contains": ["Stanley", "rootstock"], "category": "rootstock"}
+{"crop_id": "plum", "question": "What yield does PoliMix-Agro give on Stanley plum?", "expect_contains": ["PoliMix", "yield"], "category": "fertilizer"}
+{"crop_id": "plum", "question": "Which slope exposure is best for plum on KBR terraces?", "expect_contains": ["slope", "exposure"], "category": "relief"}
+{"crop_id": "plum", "question": "What is plum pox virus and why is it dangerous?", "expect_contains": ["plum pox", "sharka"], "category": "disease"}
+{"crop_id": "plum", "question": "How is plum pox diagnosed by PCR?", "expect_contains": ["PCR", "plum pox"], "category": "disease"}
+{"crop_id": "plum", "question": "Which clonal plum rootstocks are propagated by green cuttings?", "expect_contains": ["cutting", "rootstock"], "category": "rootstock"}
+{"crop_id": "plum", "question": "Which adaptive plum rootstocks are recommended for the south?", "expect_contains": ["rootstock", "adapt"], "category": "rootstock"}
+{"crop_id": "plum", "question": "How to grow pineapple on Mars in open ground?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}
+{"crop_id": "plum", "question": "What is the dollar exchange rate tomorrow for a gardener?", "expect_out_of_scope": true, "expect_contains": [], "category": "edge"}

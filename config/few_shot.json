@@ -1,0 +1,29 @@
+{
+  "apple": {
+    "rootstock": "Example question: \"Which SK rootstocks suit the south?\"\nExample answer: For southern regions the materials highlight SK-series rootstocks with moderate vigor; the exact choice depends on soil and planting density — see figures in the context.",
+    "fertilizer": "Example question: \"How do fertilizers affect Triumph variety growth?\"\nExample answer: Fertilizers significantly affect vegetative growth of Triumph. Under option 1 (standard rate) shoot growth was 748.5 cm, under option 2 (double) 660.5 cm, under option 3 (half dose) 560.6 cm.",
+    "disease": "Example question: \"What are signs of scab on apple leaves?\"\nExample answer: Scab appears as velvety olive-green spots on leaves. List protection schedules and products only from the article context.",
+    "irrigation": "Example question: \"Why use drip irrigation during drought?\"\nExample answer: Drip irrigation keeps the root zone moist and reduces heat stress — take specific rates from the context.",
+    "relief": "Example question: \"How does slope exposure affect apple in mountainous regions?\"\nExample answer: Exposure and terrain change microclimate and yield; the context compares slopes and terraces.",
+    "variety": "Example question: \"Which variety showed maximum profitability on a north-facing slope?\"\nExample answer: On the north slope the summer variety Red Free showed maximum profitability (496.0%).",
+    "general": "Example question: \"What to do when spots appear on leaves?\"\nExample answer: Rely on signs and recommendations from the context; if data is insufficient, ask the user to clarify symptoms or send a photo."
+  },
+  "pear": {
+    "rootstock": "Example question: \"Which pear rootstocks for Stavropol?\"\nExample answer: Pear articles for Stavropol compare varieties and rootstocks — list combinations with figures found in the context.",
+    "fertilizer": "Example question: \"Why chelated foliar feeds for pear?\"\nExample answer: Chelated foliar feeds improve micronutrient uptake — doses and timing only from the context.",
+    "disease": "Example question: \"How to protect pear from diseases?\"\nExample answer: Describe measures from the context; do not name products absent from the articles.",
+    "variety": "Example question: \"Which pear varieties in the south?\"\nExample answer: List varieties and metrics from the context with trial region.",
+    "general": "Example question: \"When to prune pear?\"\nExample answer: Take pruning timing and methods from the context; if missing, say so clearly."
+  },
+  "plum": {
+    "rootstock": "Example question: \"Which plum rootstocks for the south?\"\nExample answer: The context lists adaptive rootstocks (e.g. PK SK-1, PK SK-2) — cite rooting figures from the articles.",
+    "fertilizer": "Example question: \"What to feed plum in spring?\"\nExample answer: Spring feeding follows soil analysis — specific rates only from the context.",
+    "disease": "Example question: \"What is plum pox?\"\nExample answer: Plum pox is a viral disease; describe symptoms and diagnosis from the context (PCR, rootstock signs).",
+    "relief": "Example question: \"Which slope exposure for plum in mountainous regions?\"\nExample answer: Compare metrics by exposure given in the context.",
+    "variety": "Example question: \"How does Stanley perform on rootstocks?\"\nExample answer: Cite yield and orchard condition from the context.",
+    "general": "Example question: \"How to care for plum?\"\nExample answer: Compile recommendations from the context; do not add facts outside the articles."
+  },
+  "demo_hr": {
+    "general": "Example question: \"How many vacation days?\"\nExample answer: Standard paid vacation is 28 calendar days for full-time employees."
+  }
+}

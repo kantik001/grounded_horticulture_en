@@ -1,0 +1,85 @@
+{
+  "default_category": "general",
+  "categories": [
+    {
+      "id": "rootstock",
+      "keywords": [
+        "rootstock",
+        "rootstoc",
+        "scion",
+        "budding",
+        "graft",
+        "cutting",
+        "seedling",
+        "nursery",
+        "knip"
+      ]
+    },
+    {
+      "id": "fertilizer",
+      "keywords": [
+        "fertiliz",
+        "dose",
+        "gram",
+        "liter",
+        "nitrogen",
+        "phosphorus",
+        "potassium",
+        "fertigat",
+        "foliar"
+      ]
+    },
+    {
+      "id": "disease",
+      "keywords": [
+        "disease",
+        "scab",
+        "spots",
+        "rot",
+        "rust",
+        "powdery",
+        "treatment",
+        "pest",
+        "codling",
+        "aphid",
+        "marsson",
+        "shark",
+        "phytosanit"
+      ]
+    },
+    {
+      "id": "irrigation",
+      "keywords": [
+        "irrigat",
+        "water",
+        "drip",
+        "drought",
+        "moisture"
+      ]
+    },
+    {
+      "id": "relief",
+      "keywords": [
+        "slope",
+        "relief",
+        "terrace",
+        "kbr",
+        "foothill",
+        "gis"
+      ]
+    },
+    {
+      "id": "variety",
+      "keywords": [
+        "variety",
+        "melba",
+        "golden",
+        "triumph",
+        "president",
+        "profitability",
+        "liberty",
+        "stanley"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "app_title": "Gardener's Assistant",
+  "header_emoji": "🍏",
+  "header_subtitle": "Text — answers from articles (RAG). Photo — disease recognition (beta).",
+  "crop_label": "Crop",
+  "onboarding_title": "Example questions",
+  "chat_divider": "Chat with the agronomist",
+  "disclaimer": "Reference information only. Does not replace an on-site agronomist visit. Product decisions must follow labels and local regulations.",
+  "photo_beta_notice": "⚠️ Photo disease recognition is in beta: the model is not yet trained on diseases and may be wrong. Use results as guidance, not a diagnosis."
+}

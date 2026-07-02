@@ -1,0 +1,7 @@
+Sick leave and temporary disability (demo).
+
+When ill, the employee must notify their manager by 10:00 on the first day of absence.
+
+The sick leave certificate must be submitted to HR within 3 business days after returning to work.
+
+Sick pay follows applicable law and internal rules; HR calculates the amount after receiving the certificate.

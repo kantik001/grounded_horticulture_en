@@ -1,0 +1,20 @@
+{
+  "apple": [
+    "Which apple varieties showed the highest profitability on a slope?",
+    "How do fertilizers affect columnar apple growth?",
+    "What are the signs of scab on apple leaves?"
+  ],
+  "pear": [
+    "When is the best time to prune a pear tree?",
+    "What should I feed a pear tree in spring?"
+  ],
+  "plum": [
+    "How do I care for a plum tree after flowering?",
+    "Which diseases most often affect plum trees?"
+  ],
+  "demo_hr": [
+    "How many days of paid vacation?",
+    "How do I file a sick leave?",
+    "Can I work remotely?"
+  ]
+}

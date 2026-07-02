@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "description": "Shared contract cases for rag verify (Go verifyRAGAnswer and Python verify_answer).",
+  "cases": [
+    {
+      "id": "pass_no_numbers",
+      "fragments": [{"content": "Scab appears as spots on leaves."}],
+      "answer": "Scab appears as spots on leaves.",
+      "expect_pass": true
+    },
+    {
+      "id": "pass_number_in_context",
+      "fragments": [{"content": "Mean value 77 and replication 3-72."}],
+      "answer": "Mean 77.",
+      "expect_pass": true
+    },
+    {
+      "id": "pass_decimal_comma",
+      "fragments": [{"content": "Fruit mass 304.7 kg per tree."}],
+      "answer": "Mass 304.7 kg.",
+      "expect_pass": true
+    },
+    {
+      "id": "fail_hallucinated_number",
+      "fragments": [{"content": "No numbers in the text."}],
+      "answer": "Profitability 72%.",
+      "expect_pass": false,
+      "expect_reason_substr": "72"
+    },
+    {
+      "id": "pass_with_disclaimer_stripped",
+      "fragments": [{"content": "Rate 50 g/L."}],
+      "answer": "Rate 50 g/L.\n\nReference information from the knowledge base. Does not replace an on-site agronomist visit; product decisions must follow labels and local regulations.",
+      "expect_pass": true
+    },
+    {
+      "id": "pass_strips_source_line",
+      "fragments": [{"content": "Yield 120 c/ha."}],
+      "answer": "Yield 120 c/ha.\n\nSource: \"Journal\"",
+      "expect_pass": true
+    }
+  ]
+}
