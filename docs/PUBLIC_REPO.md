@@ -29,6 +29,8 @@
 | RU | `grounded-horticulture_ru` | Habr |
 | EN | `grounded-horticulture` | dev.to |
 
+Ветка **`public-portfolio-en`** — подготовка EN-репо: [TRANSLATION_PLAN_EN.md](TRANSLATION_PLAN_EN.md), [EN_PUBLIC_REPO.md](EN_PUBLIC_REPO.md).
+
 Взаимные ссылки в README обоих репо.
 
 ## Запись демо (GIF для README)
