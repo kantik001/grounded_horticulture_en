@@ -45,8 +45,10 @@ JSON line format:
 
 | Metric | How to compute |
 |--------|----------------|
-| **retrieval pass** | `expect_contains` / out-of-scope in context |
-| **verify pass rate** | share of answers without ⚠️ verify (`--full` mode via Go) |
+| **pass_rate** | binary per question: retrieval OK and all `expect_contains` / out-of-scope conditions met |
+| **ranking: MRR, hit_rate@1/3/5** | rank of the first fragment containing an expected term (single-relevant proxy; out-of-scope excluded) |
+| **verify_pass_rate** (`--full`) | share of LLM answers passing the numeric verifier (`rag.verifier`) |
+| **answer_contains_rate** (`--full`) | share of LLM answers containing the expected substrings |
 | **manual score 1–5** | sample 10 answers (recommended before demo/pilot) |
 
 ### When to run
@@ -58,11 +60,14 @@ JSON line format:
 ### Run
 
 ```bash
-# Locally (classifier on :5000)
-python scripts/run_rag_eval.py --suite all --timeout 300
+# Locally (classifier on :5000); --workers 2 ≈ 2× speedup
+python scripts/run_rag_eval.py --suite all --timeout 300 --workers 2
 
-# Or in-process (no HTTP)
+# Or in-process without HTTP; --fast disables the reranker
 python scripts/run_rag_eval.py --suite apple --in-process --fast
+
+# Full mode: LLM answers + numeric verify (needs LLM_API_KEY)
+python scripts/run_rag_eval.py --suite apple --full
 
 # CI: GitHub Actions → workflow RAG Eval (manual)
 ```
@@ -80,7 +85,8 @@ See [eval/README.md](../../eval/README.md).
 
 ### Stdout (`rag_log.go`)
 
-On each text answer: `crop_id`, `session_id`, `fragments`, `verify_pass`, `verify_reason`, `soft_fail`.  
+On each text answer, one `[RAG]` line: `crop_id`, `session_id`, `message_id`, `category`, `fragments`, `verify_pass`, `soft_fail`, `stream`, `retrieval_ms`, `llm_ms`, `history_ms`, `total_ms`, `reason` (verify reason), `question` (truncated to 120 runes).  
+The same fields go to `analytics_events` (event_type `rag_answer`).  
 **Not logged:** full prompt and LLM body.
 
 ### Prometheus (`server/metrics.go`)

@@ -18,7 +18,8 @@
 | `question_categories.json` | Python `question_categories.py` | Keywords for `classify_question` (few-shot) |
 | `agro_glossary.json` | Python `query_expand.py` | Synonyms for query expansion (optional) |
 | `branding.json` | Go | Header, disclaimer, `photo_beta_notice`, UI labels |
-| `article_titles.json` | Python `vector_store.py` | Display article titles in metadata (optional) |
+| `article_titles.json` | Python `vector_store.py` (via `rag/titles.py`) | Display article titles in metadata (optional) |
+| `api_keys.example.json` | — (sample) | Template for `API_KEYS_FILE` (browser/API clients without Telegram) |
 
 Code details: [rag-crops_config.md](./rag-crops_config.md), [server-admin-and-ux-api.md](./server-admin-and-ux-api.md).
 
@@ -30,9 +31,9 @@ Code details: [rag-crops_config.md](./rag-crops_config.md), [server-admin-and-ux
 {
   "default_crop": "apple",
   "crops": {
-    "apple": { "name_ru": "Apple", "emoji": "🍎", "cv_enabled": true, "rag_enabled": true },
-    "pear": { "name_ru": "Pear", "emoji": "🍐", "cv_enabled": false, "rag_enabled": true },
-    "plum": { "name_ru": "Plum", "emoji": "🍑", "cv_enabled": false, "rag_enabled": true },
+    "apple": { "name_ru": "Apple", "name_en": "Apple", "emoji": "🍎", "cv_enabled": true, "rag_enabled": true },
+    "pear": { "name_ru": "Pear", "name_en": "Pear", "emoji": "🍐", "cv_enabled": false, "rag_enabled": true },
+    "plum": { "name_ru": "Plum", "name_en": "Plum", "emoji": "🍑", "cv_enabled": false, "rag_enabled": true },
     "demo_hr": { "cv_enabled": false, "rag_enabled": true, "ui_hidden": true }
   }
 }
@@ -47,7 +48,7 @@ Adding a crop: entry in JSON + folder `data/{crop_id}/` + if needed blocks in `p
 
 Env: `CROPS_CONFIG_PATH` (in Docker: `/config/crops.json` on server and classifier).
 
-**Reload:** Go — `SIGHUP` or `CONFIG_RELOAD_INTERVAL_SEC`; Python `rag/crops_config.py` — on file mtime at next `load_crops_config()`.
+**Reload:** Go — `SIGHUP` or `CONFIG_RELOAD_INTERVAL_SEC`; all hot-reloadable catalogs (crops, prompts, onboarding, photo templates, branding) are parsed into one `runtimeCatalogs` set and swapped **atomically** (`server/catalogs.go`), so handlers never see a partially reloaded state; on any parse error the previous set stays active. Python `rag/crops_config.py` — on file mtime at next `load_crops_config()`.
 
 ---
 
@@ -76,7 +77,7 @@ Key — `crop_id`, fields:
 | `photo_user_intro` | intro in photo user prompt |
 | `photo_user_body` | prompt body: class, confidence, top-3 (`fmt.Sprintf` with `%s`, `%.2f%%`, `%v`) |
 
-Load: `loadPromptCatalog()` on Go startup (`crops.go`), `promptsForCrop(cropID)` in `rag_chat.go` and `photo_recommendations.go`.
+Load: `loadPromptCatalog()` via `loadRuntimeCatalogs()` (`server/catalogs.go`) on startup and on reload; `promptsForCrop(cropID)` in `rag_chat.go` and `photo_recommendations.go`.
 
 Env: `PROMPTS_CONFIG_PATH` (server: `/config/prompts.json`).
 
@@ -86,7 +87,7 @@ Env: `PROMPTS_CONFIG_PATH` (server: `/config/prompts.json`).
 
 Key — CV class label (`healthy_apple`, `apple_scab`, …) or **`default`** (placeholders `{{PREDICTION}}`, `{{CONFIDENCE}}`).
 
-Load: `loadPhotoTemplates()` in `main.go` (`photo_templates.go`).
+Load: `loadPhotoTemplates()` (`photo_templates.go`) via `loadRuntimeCatalogs()` on startup and on reload.
 
 Env: `PHOTO_TEMPLATES_PATH` (default `config/photo_templates.json`, in Docker: `/config/photo_templates.json`).
 
@@ -102,7 +103,7 @@ Web App texts (domain pack): `app_title`, `header_emoji`, `header_subtitle`, `cr
 
 - `photo_beta_notice` — CV beta warning; shown in UI when attaching photo and appended to recommendation in Go (`classify_flow.go`).
 
-- Load: `loadBrandingConfig()` in `main.go` (`branding.go`).
+- Load: `loadBrandingConfig()` (`branding.go`) via `loadRuntimeCatalogs()` on startup and on reload.
 - API: `GET /branding`, `GET /api/branding` (public).
 - Web App: `loadBranding()` in `app.js` on startup.
 
@@ -156,7 +157,7 @@ If file missing — filename is used as-is.
 
 | Service | Action after JSON edit |
 |---------|------------------------|
-| **crops / prompts / onboarding / photo_templates** | `docker compose restart server` (folder `/config` in image; hot-reload without rebuild needs volume — config is in image now) |
+| **crops / prompts / onboarding / photo_templates / branding** | `./config` is mounted to `/config` (server and classifier), so edits are visible immediately; apply in Go with `docker compose kill -s HUP server` (or `CONFIG_RELOAD_INTERVAL_SEC` polling), or simply `docker compose restart server` |
 | **few_shot / article_titles** | `restart classifier` or reindex not needed for few_shot; for titles — **reindex** if only titles changed |
 | **New articles in data/** | reindex — [data-pipeline.md](./data-pipeline.md) |
 
@@ -168,7 +169,9 @@ After changing `crops.json` in dev also reset Python cache: restart classifier s
 
 Configs do not duplicate secrets. In `.env` only paths if needed:
 
-- `CROPS_CONFIG_PATH`, `PROMPTS_CONFIG_PATH`, `ONBOARDING_CONFIG_PATH`, `PHOTO_TEMPLATES_PATH`
+- `CROPS_CONFIG_PATH`, `PROMPTS_CONFIG_PATH`, `ONBOARDING_CONFIG_PATH`, `PHOTO_TEMPLATES_PATH`, `BRANDING_CONFIG_PATH`, `CV_CLASS_LABELS_PATH`, `QUESTION_CATEGORIES_CONFIG_PATH`, `AGRO_GLOSSARY_PATH`
+
+Behavior toggles live in `.env` too, e.g. `RAG_VERIFY_CLAIMS_ENABLED` (off by default) — an extra LLM-judge pass over the answer's claims in Go (`server/rag_verify_claims.go`); fail-open, requires `LLM_API_KEY`.
 
 ---
 

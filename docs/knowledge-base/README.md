@@ -2,7 +2,7 @@
 
 Documentation for self-study: you or a colleague can open the right file and quickly understand what a module does.
 
-**Platform (core vs domain pack):** [../ARCHITECTURE.md](../ARCHITECTURE.md), [../DEPLOY.md](../DEPLOY.md), [../eval/README.md](../eval/README.md).
+**Platform (core vs domain pack):** [../ARCHITECTURE.md](../ARCHITECTURE.md), [../DEPLOY.md](../DEPLOY.md), [../../eval/README.md](../../eval/README.md).
 
 ## Contents
 
@@ -13,10 +13,10 @@ Documentation for self-study: you or a colleague can open the right file and qui
 | [cv-apple_classifier.md](./cv-apple_classifier.md) | PyTorch MobileNetV2: disease classes, inference, `.pth` weights |
 | [cv-registry.md](./cv-registry.md) | Model factory and cache by `crop_id`, `MODEL_PATH`, `cv_enabled` |
 | [cv-train_classifier.md](./cv-train_classifier.md) | Model training, dataset, saving `apple_classifier.pth` |
-| [github-ci.yml.md](./github-ci.yml.md) | GitHub Actions: CI (3 jobs) + manual **RAG Eval** |
+| [github-ci.yml.md](./github-ci.yml.md) | GitHub Actions: CI (5 jobs: lint, tests, docker + compose smoke) + manual **RAG Eval** |
 | [migrations-overview.md](./migrations-overview.md) | SQL migrations 001–003: syntax, table relations, apply on startup |
 
-### RAG (`rag/`, no `__init__.py`)
+### RAG (`rag/` package)
 
 | Document | Description |
 |----------|-------------|
@@ -33,7 +33,7 @@ Documentation for self-study: you or a colleague can open the right file and qui
 
 | Document | Description |
 |----------|-------------|
-| [scripts-overview.md](./scripts-overview.md) | `reindex_rag.py`, `smoke.ps1`, `smoke.sh` — when to run, what they check |
+| [scripts-overview.md](./scripts-overview.md) | `reindex_rag.py`, `run_rag_eval.py`, `smoke.ps1`/`smoke.sh`, corpus utilities — when to run, what they check |
 
 ### Tests
 
@@ -73,7 +73,7 @@ Documentation for self-study: you or a colleague can open the right file and qui
 
 1. Do not know where to look → **PROJECT_STRUCTURE.md**.
 2. Studying a specific file → open the matching `*.md` in this folder.
-3. Pilot / demo readiness → [`../AGRO_CASE_STUDY_EN.md`](../AGRO_CASE_STUDY_EN.md), [`../DATA_LICENSE.md`](../DATA_LICENSE.md).
+3. Pilot / demo readiness → [`../AGRO_CASE_STUDY_EN.md`](../AGRO_CASE_STUDY_EN.md), [`../../DATA_LICENSE.md`](../../DATA_LICENSE.md).
 
 ## Adding new articles
 

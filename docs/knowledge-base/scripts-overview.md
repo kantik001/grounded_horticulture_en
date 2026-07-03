@@ -6,12 +6,16 @@
 | File | Platform | Task |
 |------|----------|------|
 | `reindex_rag.py` | Python | Rebuild Chroma + BM25 from `data/` |
-| `run_rag_eval.py` | Python | Run `eval/*.jsonl` (retrieval), report to `eval/results/` |
-| `docker_build.sh` | Linux / CI | Build Docker images |
-| `smoke.sh` | Linux / macOS / Git Bash | Quick Go API check |
+| `run_rag_eval.py` | Python | Run `eval/*.jsonl` (retrieval and optional `--full` LLM mode), report to `eval/results/` |
+| `download_hf_models.py` | Python / Docker build | Pre-download HF models (e5 + reranker) into `HF_HOME` — used by `Dockerfile.classifier` (skipped with `SKIP_HF_BAKE=1`) |
+| `docker_build.sh` | Linux / CI | Build a single image (`classifier`/`server`/`webapp`) with a temporarily narrowed `.dockerignore` context |
+| `check_article_breaks.py` | Python | Check `data/` articles for broken line wraps, PDF glue artifacts, header junk |
+| `fix_article_breaks.py` | Python | Targeted cleanup of clearly damaged article files |
+| `expand_short_articles.py` | Python | Expand short articles from journal PDFs (same format as auto-ingest) |
+| `fix_article_metadata_titles.py` | Python | Insert human-readable titles from `config/article_titles.json` into article metadata |
+| `view_feedback.sql` | psql | View 👍/👎 ratings in PostgreSQL (`message_feedback`) |
+| `smoke.sh` | Linux / macOS / Git Bash / CI | Quick Go API check |
 | `smoke.ps1` | Windows PowerShell | Same for Windows |
-
-> Article ingestion scripts (`journal_ingest.py`, etc.) exist on the `master` branch but **are not** in the public `public-portfolio` branch.
 
 ---
 
@@ -57,7 +61,7 @@ From project root (need Python with `cv/requirements.txt` deps, `rag/` packages)
 python scripts/reindex_rag.py
 ```
 
-Expected output: `Creating new vector store...`, `Fragments: N`, `BM25 index saved...`, `RAG reindex complete.`
+Expected output: `Building new vector store (multi-crop)...`, `Fragments: N`, `RAG reindex complete.`
 
 ### Alternatives (same meaning)
 
@@ -104,12 +108,29 @@ python scripts/run_rag_eval.py --suite all
 # Fast in-process (in Docker classifier)
 python scripts/run_rag_eval.py --suite all --in-process --fast
 
-make eval-retrieval
+# Parallel HTTP requests (~2x)
+python scripts/run_rag_eval.py --suite all --workers 2
+
+# Full mode: LLM answers + numeric verify (needs LLM_API_KEY)
+python scripts/run_rag_eval.py --suite apple --full
+
+make eval-retrieval   # also: eval-fast, eval-apple, eval-pear, eval-plum
 ```
+
+### Flags and metrics
+
+| Flag | Effect |
+|------|--------|
+| `--in-process` | Call `retrieve_rag_context()` without HTTP (best inside the Docker classifier) |
+| `--fast` | Disable cross-encoder rerank (`RAG_RERANK_ENABLED=false`), ~15× faster |
+| `--workers N` | Parallel requests (optimum ~2 per classifier) |
+| `--full` | LLM answer per question + `rag.verifier` numeric check |
+
+Report per suite: `pass_rate`, ranking metrics (`mrr`, `hit_rate@1/3/5`), and with `--full` — `verify_pass_rate` and `answer_contains_rate`.
 
 **CI:** full run — GitHub Actions → workflow **RAG Eval** (manual). See [github-ci.yml.md](./github-ci.yml.md).
 
-Report: `eval/results/`. Details: [eval/README.md](../../eval/README.md), [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md).
+Report: `eval/results/<timestamp>_<suite>.json`. Details: [eval/README.md](../../eval/README.md), [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md).
 
 ---
 
@@ -183,7 +204,7 @@ For RAG/CV — manual webapp test or separate tests (`pytest`, `go test`).
 
 ### CI relation
 
-In [github-ci.yml.md](./github-ci.yml.md) smoke is **not** in the workflow — only `go-test`, `python-test`, `docker-build`. Smoke — **locally after `docker compose up`**.
+`smoke.sh` **is** part of CI: the `docker-build` job brings up the full compose stack (`docker compose up -d --build --wait`) and runs `scripts/smoke.sh http://localhost:8080`. See [github-ci.yml.md](./github-ci.yml.md). Locally run it after `docker compose up`.
 
 ---
 

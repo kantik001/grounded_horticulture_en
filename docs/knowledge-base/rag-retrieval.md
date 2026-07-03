@@ -41,10 +41,11 @@
 
 1. Empty question → `success: false`.
 2. `normalize_crop_id` — invalid crop → error.
-3. `get_crop` → if `rag_enabled: false` → “article database not connected”.
-4. `search(q, crop_id, k=8)` — hybrid search (see [rag-hybrid-search.md](./rag-hybrid-search.md)).
-5. No fragments → “Could not find information in articles…”.
-6. Context assembly:
+3. `get_crop` → if `rag_enabled: false` → “Article base for «…» is not connected yet.”
+4. `classify_question(q)` → **category** (computed before search — it decides whether the reranker runs).
+5. `search(q, crop_id, k=8, category=category)` — hybrid search with conditional rerank (see [rag-hybrid-search.md](./rag-hybrid-search.md)).
+6. No fragments → “No information found in articles for crop «…».”
+7. Context assembly:
 
 ```
 Text from article 'article1.txt':
@@ -56,23 +57,24 @@ Text from article 'article2.txt':
 ...
 ```
 
-7. `classify_question(q)` → category.
 8. `few_shot_for(crop_id, category)` → example string for prompt.
 
 ---
 
 ## Question classification: `classify_question`
 
-**Rule-based** (keywords from **`config/question_categories.json`**), not ML. Affects **few-shot** only, not search.
+**Rule-based** (keywords from **`config/question_categories.json`**), not ML. Rule order in the config matters — first match wins; no match → `default_category` (`general`).
+
+The category affects **few-shot selection** and **whether the reranker runs** (`rerank_for_category` in `rag/hybrid.py`).
 
 Default categories: `rootstock`, `fertilizer`, `disease`, `irrigation`, `relief`, `variety`, `general`.  
-Override: env `QUESTION_CATEGORIES_CONFIG_PATH`. See `rag/question_categories.py`.
+Override: env `QUESTION_CATEGORIES_CONFIG_PATH`. Config is cached with mtime-based reload (changes picked up without restart). See `rag/question_categories.py`.
 
 ---
 
 ## Few-shot: `few_shot_for`
 
-Reads `config/few_shot.json`:
+Reads `config/few_shot.json` (path overridable via env `FEW_SHOT_CONFIG_PATH`):
 
 ```json
 {
@@ -116,7 +118,7 @@ Go does **not** hit Chroma/BM25 directly — only through Python.
 [RAG:apple] source: article1.txt
 ```
 
-Helps debugging: which chunks entered context.
+Emitted via `rag_debug` (`rag/debug_log.py`). Helps debugging: which chunks entered context.
 
 ---
 

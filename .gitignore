@@ -29,6 +29,9 @@ data/_archive/
 # Local PDF/journal catalogs (do not commit)
 _tmp/
 
+# dev.to article drafts — local only
+docs/devto/
+
 # RAG / logs
 chroma_db/
 bm25_db/

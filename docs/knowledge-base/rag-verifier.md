@@ -18,7 +18,7 @@ Article names (`Source: "..."`) are **not** shown to the user — replaced by a 
 
 Text at end of answer (Go adds in `appendRAGDisclaimer`):
 
-> Reference information from the knowledge base. Does not replace an in-person agronomist visit; …
+> Reference information from the knowledge base. Does not replace an on-site agronomist visit; product decisions must follow labels and local regulations.
 
 In `verifier.py` used in `strip_source_attribution` — so disclaimer numbers do not affect verification.
 
@@ -54,6 +54,7 @@ Needed to verify **answer body** without service footers.
 
 ### Algorithm
 
+0. `answer` is `None` → `(False, "Answer is missing (None)")`; not a string → `(False, "Answer is not a string")`.
 1. Concatenate `page_content` of all fragments → `context_text`.
 2. Clean answer → `body`.
 3. Extract numbers from `body` and `context_text`.
