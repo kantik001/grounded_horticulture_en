@@ -68,12 +68,17 @@ Details: [rag-vector_store.md](./rag-vector_store.md), [scripts-overview.md](./s
 
 Expect **minutes** on first run (embeddings `multilingual-e5-small` + BM25 over full corpus). First **query** after startup may additionally load reranker (`BAAI/bge-reranker-base`).
 
-**Docker:** after `reindex_rag.py` or admin reindex restart classifier, otherwise in-memory Chroma cache is stale and search returns `Error finding id`:
+Both indexes are rebuilt **together**: `create_vector_store()` writes Chroma (`chroma_db/`) and then BM25 (`bm25_db/`) from the same chunks.
+
+**Docker:** after running `reindex_rag.py` as a separate process (host or `docker compose exec`) restart classifier, otherwise the in-memory Chroma cache of the serving worker is stale and search returns `Error finding id`:
 
 ```bash
 docker compose exec classifier python scripts/reindex_rag.py
 docker compose restart classifier
+# or in one step: make docker-reindex-apply
 ```
+
+Admin UI / `POST /admin/reindex` do **not** need a restart — the endpoint resets the in-process cache itself (`reset_vector_store()` + forced reload).
 
 ### Step 4 — verification
 
@@ -134,7 +139,7 @@ Result: `apple_classifier.pth` (or path from `save_path`).
 
 - Send photo in chat (crop apple).
 - Check `prediction`, `confidence` in response / DB.
-- Confidence threshold — in roadmap phase 4 (not in code yet).
+- Confidence threshold — not implemented in code yet.
 
 ---
 
@@ -160,7 +165,7 @@ Result: `apple_classifier.pth` (or path from `save_path`).
 | CV always “random” class | no `.pth` in models volume |
 | reindex on host, Docker empty | host indexes ≠ volumes `chroma_data` / `bm25_data` |
 | Hybrid off after restart | no `bm25_data` volume or no reindex |
-| `Error finding id` after reindex | classifier not restarted — `docker compose restart classifier` |
+| `Error finding id` after script reindex | classifier not restarted — `docker compose restart classifier` |
 
 ---
 

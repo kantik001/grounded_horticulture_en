@@ -24,12 +24,14 @@ Without `registry.py` this logic would be duplicated in `app.py`.
 ## Global cache `_classifiers`
 
 ```python
-_classifiers: Dict[str, object] = {}
+_classifiers: Dict[str, AppleClassifier] = {}
+_classifiers_lock = threading.Lock()
 ```
 
 - Key: normalized `crop_id` (e.g. `"apple"`).
 - Value: `AppleClassifier` instance.
 - Lives **in Python service process memory** until container restart.
+- All access goes through `_classifiers_lock` (thread-safe lazy loading under gunicorn threads).
 
 Pro: fast repeat requests.  
 Con: changed `.pth` on disk — need **restart** of `classifier` container, else old model stays in RAM.
@@ -83,11 +85,12 @@ if not crop.get("cv_enabled", False):
 Currently only **apple** has `"cv_enabled": true` in `config/crops.json`.  
 For pear/plum user gets clear error (HTTP 400 from `api/app.py`).
 
-### Step 2 — cache
+### Step 2 — cache (under lock)
 
 ```python
-if crop_id in _classifiers:
-    return _classifiers[crop_id]
+with _classifiers_lock:
+    if crop_id in _classifiers:
+        return _classifiers[crop_id]
 ```
 
 ### Step 3 — model creation

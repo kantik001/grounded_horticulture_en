@@ -25,6 +25,15 @@ No LLM here — only indexing and search (vector + BM25 + rerank).
 | `PERSIST_DIR` | `{root}/chroma_db` |
 | BM25 | `{root}/bm25_db` (`rag/bm25_store.py`) |
 
+Candidate pool sizes (env):
+
+| Constant | Env | Default |
+|----------|-----|---------|
+| `FETCH_K` | `RAG_FETCH_K` | 16 |
+| `BM25_FETCH_K` | `RAG_BM25_FETCH_K` | = `FETCH_K` |
+
+Meta files like `readme.txt` inside `data/` are skipped (not indexed).
+
 ---
 
 ## Indexing pipeline
@@ -62,7 +71,7 @@ LangChain document metadata:
 1. Load all documents.
 2. **Chunking** (`rag/chunking.py`): 650/80, section delimiters.
 3. **chunk_id** in each chunk metadata.
-4. **Embeddings:** `intfloat/multilingual-e5-small` with `passage:` / `query:` prefixes (`rag/embeddings.py`).
+4. **Embeddings:** `intfloat/multilingual-e5-small` with `passage:` / `query:` prefixes (`rag/embeddings.py`, thread-safe lazy singleton with double-checked locking).
 5. **Chroma** → `chroma_db/`.
 6. **BM25** → `bm25_db/` (`rag/bm25_store.py`).
 
@@ -79,6 +88,8 @@ If no articles → `None`, empty search.
 | `chroma_db` not empty | open Chroma + load BM25 from disk |
 | otherwise | `create_vector_store()` |
 
+Loading is **thread-safe**: `_vector_store_lock` serializes cold-start loading and `/admin/reindex` against concurrent searches (double-checked locking).
+
 `reset_vector_store()` — reset RAM cache for Chroma and BM25 (before admin reindex).
 
 ### Admin reindex (`api/app.py`)
@@ -91,17 +102,18 @@ After uploading new `.txt` to `data/` — reindex required, otherwise indexes do
 
 ---
 
-## Search: `search(query, crop_id, k=8)`
+## Search: `search(query, crop_id, k=8, category=None)`
 
 Not only `similarity_search` — full pipeline:
 
-1. **Vector:** `similarity_search`, `k=FETCH_K`, filter `crop_id`.
-2. **BM25** (if `RAG_HYBRID_ENABLED` and `bm25_db` exists): top `BM25_FETCH_K`.
-3. **RRF** by `chunk_id` from both lists.
-4. **Reranker** (if `RAG_RERANK_ENABLED`): cross-encoder on pool up to `RERANK_TOP_N`.
-5. **diversify_fragments:** max 2 chunks per article → **8** in context.
+1. **`expand_query`** (`rag/query_expand.py`): adds synonyms/terms from `config/agro_glossary.json`.
+2. **Vector:** `similarity_search`, `k = max(k*3, FETCH_K)`, filter `crop_id`.
+3. **BM25** (if `RAG_HYBRID_ENABLED` and `bm25_db` exists): top `max(fetch_k, BM25_FETCH_K)` chunk ids.
+4. **`rrf_merge`** by `chunk_id` from both lists.
+5. **Reranker** — **conditional by category** (`rerank_for_category(category)`; see [rag-hybrid-search.md](./rag-hybrid-search.md)): cross-encoder on pool up to `RERANK_TOP_N`.
+6. **diversify_fragments:** max 2 chunks per article → **k=8** in context.
 
-First call may **long** download e5 and reranker from HuggingFace.
+First call may **long** download e5 and reranker from HuggingFace (mitigated by `rag/warmup.py` preloading when `RAG_WARMUP_ENABLED`).
 
 ---
 
@@ -136,7 +148,7 @@ No — generated locally / in Docker volumes (`.gitignore`).
 
 Check volume `bm25_data` and that reindex ran after `data/` change.
 
-### Qdrant in roadmap
+### Could Chroma be replaced (e.g. Qdrant)?
 
 At larger scale Chroma may be replaced; interface for `retrieval.py` would change inside `vector_store.py`.
 

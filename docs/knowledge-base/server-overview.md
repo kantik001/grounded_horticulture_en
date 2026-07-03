@@ -20,9 +20,11 @@ Other articles on `server/`:
 
 | File | Purpose |
 |------|---------|
-| `main.go` | Entry point: router, migrations on startup, route registration |
-| `config.go` | `Config`, `loadConfig`, `getEnv`, `logStartup` |
-| `llm.go` | `Message`, `callLLMCompletion` (OpenAI-compatible API) |
+| `main.go` | Entry point: migrations, catalogs, router, `http.Server` with graceful shutdown (SIGINT/SIGTERM, 30s drain) |
+| `config.go` | `Config`, `loadConfig`, `getEnv`, `logStartup`, `warnInsecureStartup` |
+| `catalogs.go` | `runtimeCatalogs` behind `atomic.Pointer` — thread-safe hot reload of crops/prompts/onboarding/photo templates/branding |
+| `llm.go` | `Message`, `callLLMCompletion`, `callLLMCompletionStream` (OpenAI-compatible API, SSE streaming) |
+| `http_clients.go` | shared outbound `http.Transport` and clients for Python/LLM (keep-alive pool) |
 | `classifier_client.go` | `sendToClassifier`, `ClassificationResult` types |
 | `classify_flow.go` | `classifyAndRecommend`, 10 MB limit, shared CV+recommendation flow |
 | `photo_recommendations.go` | `generatePhotoRecommendation`, templates from JSON |
@@ -30,17 +32,23 @@ Other articles on `server/`:
 | `classify_handler.go` | `handleClassification` — `POST /classify` (integrations) |
 | `session_handlers.go` | `/session`, `/history`, `/media` |
 | `message_handlers.go` | `POST /message` — text and photo in chat |
+| `message_stream_handlers.go` | `POST /message/stream` — text answer with SSE token streaming |
+| `sse.go` | `writeSSE`, `beginSSEStream` — Server-Sent Events helpers |
 | `chat_session.go` | message types, mapping to LLM |
-| `rag_chat.go` | RAG, `answerWithRAG`, legacy `POST /chat` |
+| `rag_chat.go` | RAG: `buildRAGLLMMessages`, `finalizeRAGAnswer`, `answerWithRAG`, legacy `POST /chat` |
 | `rag_verify.go` | number verify, disclaimer (mirror of `rag/verifier.py`) |
+| `rag_verify_claims.go` (+ test) | optional claim-level LLM judge (`RAG_VERIFY_CLAIMS_ENABLED`, fail-open) |
 | `crop_guards.go` | check `cv_enabled` / `rag_enabled` |
 | `api_errors.go` | `publicAPIError`, safe client responses |
 | `routes.go` | public and protected routes, `Deprecation` on `/chat` |
-| `config_reload.go` | SIGHUP and `CONFIG_RELOAD_INTERVAL_SEC` |
-| `postgres_store.go` | SQL, migrations, photos on disk |
+| `config_reload.go` | SIGHUP and `CONFIG_RELOAD_INTERVAL_SEC` → `loadRuntimeCatalogs` atomic swap |
+| `postgres_store.go` | SQL, migrations (`schema_migrations` ledger), photos on disk |
 | `analytics_store.go` | feedback, events |
-| `auth_telegram.go`, `middleware.go`, `ratelimit.go` | auth and limits |
-| `metrics.go` | Prometheus `/metrics` |
+| `auth_telegram.go`, `auth_combined.go`, `middleware.go`, `ratelimit.go` | auth (Telegram + API key) and limits |
+| `api_keys.go` | `X-API-Key` registry from `API_KEYS` / `API_KEYS_FILE`, stable actor IDs |
+| `rbac.go` | API key roles (`chat_only`), `canUseChatAPI` |
+| `auth_info.go` | `GET /auth/info` — which auth methods are available |
+| `metrics.go` | Prometheus `/metrics`, `metricsMiddleware`, counters |
 | `feedback_report.go` | enrich feedback with RAG data |
 | `crops.go`, `onboarding.go`, `branding.go`, `admin.go`, `feedback.go` | configs and UX API |
 | `rag_log.go` | structured `[RAG]` logs (no LLM body) |
@@ -88,17 +96,15 @@ flowchart TB
 1. **`loadConfig()`** (`config.go`) — `.env`, variables (see table below).
 2. **`logStartup(config)`** — summary in log.
 3. **Wait for Postgres** (`waitForPostgres` in `postgres_store.go`, up to ~30 attempts).
-4. **`runAllMigrations`** — SQL from `migrations/` → [migrations-overview.md](./migrations-overview.md).
-5. Load configs:
-   - `loadCropCatalog()` — `config/crops.json` (`crops.go`)
-   - `loadPromptCatalog()` — `config/prompts.json` (`crops.go`)
-   - `loadOnboardingConfig()` — `config/onboarding.json` (`onboarding.go`)
-   - `loadPhotoTemplates()` — `config/photo_templates.json` (`photo_templates.go`)
-6. **`newChatStore`** — pgx pool + `UPLOAD_DIR` folder for photos.
-7. **Gin router** — CORS, JSON charset, routes (`middleware.go`, `main.go`).
-8. **`router.Run(:8080)`**.
+4. **`runAllMigrations`** — pending SQL from `migrations/`, each applied once in a transaction and recorded in `schema_migrations` → [migrations-overview.md](./migrations-overview.md). The migration pool is closed afterwards.
+5. **`loadRuntimeCatalogs()`** (`catalogs.go`) — parses all JSON configs (crops, prompts, onboarding, photo templates, branding) into one `runtimeCatalogs` struct and stores it in an `atomic.Pointer`.
+6. **`loadAPIKeys(config)`** (`api_keys.go`) — `X-API-Key` registry from `API_KEYS_FILE` or `API_KEYS`.
+7. **`newChatStore`** — pgx pool + `UPLOAD_DIR` folder for photos.
+8. **Gin router** — CORS, `metricsMiddleware`, JSON charset (skipped for `/media/`, `*/stream`, `/metrics`), routes; `startConfigReloadWatcher()` for hot reload.
+9. **`http.Server`** on `:SERVER_PORT` (default 8080) with `ReadHeaderTimeout: 10s`, started in a goroutine.
+10. **Graceful shutdown** — on SIGINT/SIGTERM, `srv.Shutdown` drains in-flight requests for up to 30 seconds (`shutdownTimeout`) before exit.
 
-Global variables: `config`, `chatStore`, crop/prompt catalogs.
+Global variables: `config`, `chatStore`, `apiKeyRegistry`; catalogs are read via `currentCatalogs()` (`catalogs.go`).
 
 ---
 
@@ -118,6 +124,8 @@ Global variables: `config`, `chatStore`, crop/prompt catalogs.
 | `TelegramBotToken` | `TELEGRAM_BOT_TOKEN` | initData verification |
 | `TelegramAuthDisabled` | `TELEGRAM_AUTH_DISABLED` | dev without Telegram |
 | `AdminUser/Password/Secret` | `ADMIN_*` | admin UI |
+| `ServerPort` | `SERVER_PORT` | listen port (default 8080) |
+| `VerifyClaimsEnabled` | `RAG_VERIFY_CLAIMS_ENABLED` | LLM claim judge for RAG answers (see [server-rag_chat.md](./server-rag_chat.md)) |
 
 ---
 
@@ -130,16 +138,19 @@ Duplication **`/`** and **`/api/`** — for nginx (`/api/` → Go without prefix
 | Method | Path | Handler | File |
 |--------|------|---------|------|
 | GET | `/health`, `/api/health` | `handleHealthCheck` | `health.go` |
+| GET | `/metrics`, `/api/metrics` | `handleMetrics` | `metrics.go` |
 | GET | `/crops`, `/api/crops` | `handleListCrops` | `crops.go` |
 | GET | `/onboarding`, `/api/onboarding` | `handleOnboarding` | `onboarding.go` |
 | GET | `/branding`, `/api/branding` | `handleBranding` | `branding.go` |
+| GET | `/auth/info`, `/api/auth/info` | `handleAuthInfo` | `auth_info.go` |
 
 ### Admin (HTTP Basic, not Telegram)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/admin/status`, `/api/admin/status` | status, `data_dir` |
+| GET | `/admin/status`, `/api/admin/status` | status, `data_dir`, crop count |
 | GET | `/admin/articles` | list `.txt` |
+| GET | `/admin/feedback` | 👍/👎 ratings with Q&A and RAG metadata |
 | POST | `/admin/upload` | upload article |
 | POST | `/admin/reindex` | reindex Chroma + BM25 |
 
@@ -154,6 +165,7 @@ Duplication **`/`** and **`/api/`** — for nginx (`/api/` → Go without prefix
 | POST | `/session` | `handleNewSession` | `session_handlers.go` |
 | GET | `/history` | `handleHistory` | `session_handlers.go` |
 | POST | `/message` | `handleMessage` | `message_handlers.go` — main Web App API |
+| POST | `/message/stream` | `handleMessageStream` | `message_stream_handlers.go` — SSE token streaming |
 | POST | `/feedback` | `handleFeedback` | `feedback.go` |
 | GET | `/media/:token` | `handleMedia` | `session_handlers.go` |
 
@@ -172,7 +184,7 @@ Multipart `image` + `crop_id` → `CLASSIFIER_URL` (Python). Parses JSON into `C
 ### `classify_flow.go` — shared flow
 
 - **`maxUploadImageBytes`** (10 MB) — for `/classify` and `/message`.
-- **`classifyAndRecommend(image, cropID, caption, history)`** — CV → recommendation.
+- **`classifyAndRecommend(ctx, image, cropID, caption, history)`** — CV → recommendation.
 - **`parseClassifyForm`** — parse multipart for `POST /classify`.
 
 Before CV: **`requireCVEnabled`** (`crop_guards.go`). Used in `classify_handler.go` (no history) and `handleImageMessage` in `message_handlers.go` (with LLM history).
@@ -190,14 +202,14 @@ Before CV: **`requireCVEnabled`** (`crop_guards.go`). Used in `classify_handler.
 
 ---
 
-## `llm.go` — `callLLMCompletion`
+## `llm.go` — `callLLMCompletion` / `callLLMCompletionStream`
 
 ```http
 POST {LLM_BASE_URL}/v1/chat/completions
 Authorization: Bearer {LLM_API_KEY}
 ```
 
-Timeout 120s. Used in `photo_recommendations.go` and `rag_chat.go`.
+Timeout 120s, shared connection pool from `http_clients.go`. `callLLMCompletion` is the non-streaming wrapper; `callLLMCompletionStream` reads the SSE stream and calls `onDelta` per token chunk (used by `POST /message/stream`). Used in `photo_recommendations.go`, `rag_chat.go`, `rag_verify_claims.go`, and `message_stream_handlers.go`.
 
 ---
 
@@ -218,4 +230,4 @@ Startup logs (`logStartup` in `config.go`): Python URL, LLM model, Telegram auth
 
 ## Brief summary
 
-`server/` — one Go service split by responsibility. **`main.go`** only starts and registers routes; config, LLM, CV client, and photo advice live in sibling `.go` files. Chat, RAG, and admin details — in related knowledge-base articles.
+`server/` — one Go service split by responsibility. **`main.go`** starts the server (migrations, catalogs, routes) and shuts it down gracefully; config, LLM, CV client, and photo advice live in sibling `.go` files. Chat, RAG, and admin details — in related knowledge-base articles.

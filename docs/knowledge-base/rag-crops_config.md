@@ -21,17 +21,20 @@ One JSON — Python RAG/CV and Go API read the same thing (via their code / env 
 
 ```python
 _CONFIG: Optional[Dict[str, Any]] = None
+_CONFIG_MTIME: Optional[float] = None
 ```
 
-`load_crops_config()` reads JSON **once** per Python process lifetime. After editing `crops.json`, **restart** classifier/server.
+`load_crops_config()` caches the parsed JSON together with the file **mtime** and **reloads automatically** when `crops.json` changes on disk — no restart needed. `reload_crops_config()` clears the cache explicitly (used in tests).
 
 ---
 
 ## Where `crops.json` is found
 
-1. `CROPS_CONFIG_PATH` from env (in Docker: `/config/crops.json`)
+1. `CROPS_CONFIG_PATH` from env (in Docker: `/config/crops.json`) — used only if the file exists
 2. `{root}/config/crops.json`
 3. `/config/crops.json`
+
+If none exists, falls back to the `{root}/config/crops.json` path (open will fail with a clear error).
 
 ---
 
@@ -71,7 +74,11 @@ One crop dict after normalization — to check `rag_enabled` / `cv_enabled`.
 
 ### `list_crops()`
 
-Simplified response for API `GET /crops` in `api/app.py`.
+Simplified response for API `GET /crops` in `api/app.py` (`default_crop` + all crop entries).
+
+### `crop_display_name(crop, crop_id)`
+
+English display name when set (`name_en`), else Russian (`name_ru`), else `crop_id`.
 
 ---
 

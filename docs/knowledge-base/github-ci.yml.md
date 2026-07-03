@@ -66,7 +66,7 @@ Typical time: **~10–15 minutes** (no reindex, no full RAG eval).
 - `go mod tidy` → `go vet ./...` → `go test -v -race -count=1 ./...`
 - `CROPS_CONFIG_PATH: ${{ github.workspace }}/config/crops.json`
 
-Coverage: verify, crops, admin, auth, rate limit, feedback report, verify contract.
+Coverage: verify (numeric + claims judge), crops, admin, auth, rate limit, feedback report, verify contract.
 
 ---
 
@@ -78,9 +78,9 @@ Coverage: verify, crops, admin, auth, rate limit, feedback report, verify contra
 
 ## Job 3: `python-test`
 
-- Python **3.11**, `pytest tests/ -v --tb=short`
+- Python **3.11**, `pytest tests/ -v --tb=short` (env `CROPS_CONFIG_PATH: config/crops.json`)
 - Dependencies: `tests/requirements-test.txt` (no PyTorch/Chroma)
-- Expected: **40 passed**
+- Expected: **45 passed** (39 test functions + 6 parametrized verify-contract cases)
 
 ---
 
@@ -116,8 +116,8 @@ Why not on every PR: reindex + embeddings on CPU in GHA takes **20–45+ minutes
 
 ### What job `rag-eval` does
 
-1. Build classifier image
-2. In container: `reindex_rag.py` → `run_rag_eval.py --suite … --in-process --fast`
+1. Build classifier image (`SKIP_HF_BAKE=1`)
+2. In container: `reindex_rag.py` → `run_rag_eval.py --suite … --in-process --fast --timeout 300 --workers 2`
 3. `RAG_RERANK_ENABLED=false` on CI (speed; reranker enabled locally)
 4. Secret **`HF_TOKEN`** in repo settings (optional, speeds up HF)
 

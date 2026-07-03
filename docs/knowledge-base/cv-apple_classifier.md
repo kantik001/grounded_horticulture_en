@@ -40,7 +40,7 @@ During training (`train_classifier.py`) dataset folders follow **`DEFAULT_CLASS_
 
 ---
 
-## Initialization: `__init__` (lines 28–54)
+## Initialization: `__init__`
 
 ```python
 AppleClassifier(model_path='../models/mobilenet_v2-b0353104.pth', num_classes=10)
@@ -57,7 +57,7 @@ What happens:
    - to tensor;
    - **Normalize** with ImageNet mean/std — same as backbone pretraining.
 
-Without your weights model still “runs”, but head is random → predictions meaningless until you train and set `MODEL_PATH`.
+With `model_path=None` the class itself still builds (random head, meaningless predictions), but in production `registry.py` refuses to create a classifier without an existing weights file (`ModelWeightsUnavailableError` → HTTP 503).
 
 ---
 
@@ -80,9 +80,14 @@ Last layer replaced with:
 
 Transfer learning: ImageNet body, last layer for your classes.
 
-### Step 3 — your weights (if `model_path` exists)
+### Step 3 — your weights (if `model_path` given)
 
-Checkpoint read **once** in `__init__`; `_build_model` applies `state_dict`.
+Checkpoint read **once** in `__init__` via `_read_checkpoint`; `_build_model` applies `state_dict`.
+
+Loading details:
+
+- `torch.load(..., weights_only=True)` — refuses to unpickle arbitrary objects from the checkpoint (only tensors and primitive containers are allowed);
+- a corrupt or unreadable checkpoint **raises `RuntimeError`** instead of silently falling back to an untrained head.
 
 Expected `.pth` format (as saved by `train_classifier.py`):
 
@@ -95,7 +100,7 @@ Expected `.pth` format (as saved by `train_classifier.py`):
 }
 ```
 
-In `registry.py` weight path comes from `.env` (`MODEL_PATH`, `MODEL_PATH_{CROP}`). If file missing — log: “No weights — ImageNet backbone only”.
+In `registry.py` weight path comes from `.env` (`MODEL_PATH`, `MODEL_PATH_{CROP}`). If the file is missing, registry raises `ModelWeightsUnavailableError` (API returns 503) — there is no untrained fallback.
 
 ---
 
@@ -148,7 +153,7 @@ Exceptions are not re-raised — API gets JSON with `success: false` (convenient
 
 ---
 
-## Factory: `create_classifier` (lines 190–200)
+## Factory: `create_classifier`
 
 ```python
 def create_classifier(model_path: str = None) -> AppleClassifier:
@@ -159,7 +164,7 @@ Used in **`registry.py`**: create classifier once per crop and cache in `_classi
 
 ---
 
-## `if __name__ == '__main__'` block (lines 203–212)
+## `if __name__ == '__main__'` block
 
 Local test without server:
 
@@ -192,13 +197,13 @@ In Go (`server/classifier_client.go`, `server/photo_recommendations.go`):
 - `classifyAndRecommend` → `generatePhotoRecommendation` / `generateTemplateRecommendation` — advice text by class;
 - saves `class_prediction`, `class_confidence` in DB (`postgres_store.go`).
 
-Confidence threshold for “not sure” is still planned in roadmap (phase 4) — `apple_classifier.py` has **no** threshold cutoff yet, always returns best class.
+`apple_classifier.py` has **no** confidence threshold cutoff — it always returns the best class; any “not sure” handling would live on the Go side.
 
 ---
 
 ## Model training (separate file)
 
-Weights for `_load_model` come from **`train_classifier.py`**:
+Weights consumed by `_read_checkpoint` / `_build_model` come from **`train_classifier.py`**:
 
 - dataset: folders per class (`healthy_apple/`, `apple_scab/`, …);
 - same MobileNetV2 architecture + head replacement;
@@ -226,7 +231,7 @@ Must match. Adding a class — change list, `num_classes`, and retrain.
 
 ### Model always confident but wrong
 
-Likely no your `.pth` or too little training data. Check registry log: `Loading weights: ...` vs `No weights — ImageNet backbone only`.
+Likely too little training data or a wrong checkpoint. Check registry log `Loading weights: ...` and which `.pth` file `MODEL_PATH` / `MODEL_PATH_{CROP}` points to (a missing file would return 503, not wrong answers).
 
 ### `predict` and `predict_from_bytes`
 

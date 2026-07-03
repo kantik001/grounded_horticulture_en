@@ -10,15 +10,14 @@
 ```mermaid
 flowchart LR
     subgraph host [Ports on PC]
-        P80[":80 webapp"]
-        P8080[":8080 server"]
-        P5000[":5000 classifier"]
-        P5432[":5432 postgres optional"]
+        P80[":80 → webapp:8080"]
+        P8080["127.0.0.1:8080 server"]
+        P5000["127.0.0.1:5000 classifier"]
     end
-    webapp[Nginx webapp]
+    webapp[Nginx webapp unprivileged]
     server[Go server]
     classifier[Python classifier]
-    db[(PostgreSQL)]
+    db[(PostgreSQL, no host port)]
 
     P80 --> webapp
     webapp -->|/api/ proxy| server
@@ -27,6 +26,8 @@ flowchart LR
     server --> classifier
     P5000 --> classifier
 ```
+
+All app containers run as **non-root**: server and classifier as user `app` (UID 1000), webapp as unprivileged nginx (UID 101, listens on 8080). Server and classifier ports are published on **127.0.0.1 only** — public traffic goes through the webapp nginx proxy.
 
 | Service | Image | Role |
 |---------|-------|------|
@@ -83,8 +84,10 @@ docker compose up -d --force-recreate classifier server webapp
 | Host path | Container | Purpose |
 |-----------|-----------|---------|
 | `./data` | classifier `:ro`, server `/app/data` | `.txt` articles |
-| `./webapp/*.html`, `nginx.conf` | webapp | UI without rebuild |
-| `./api`, `./cv`, `./rag` | classifier `:ro` | dev (Python code) |
+| `./config` | server and classifier `/config:ro` | JSON configs without rebuild |
+| `./webapp/*.html`, `app.css`, `app.js`, `nginx.conf` | webapp `:ro` | UI without rebuild |
+| `./api`, `./cv`, `./rag`, `./scripts` | classifier `:ro` | dev (Python code, scripts) |
+| `./eval` | classifier `/app/eval` (rw) | eval suites + writable `results/` |
 
 Important: `MODEL_PATH=models/apple_classifier.pth` (from `/app` in container) points to **volume `models`**, not `doctor_gardens_ai/models/` on disk. To use a local folder — change compose to `./models:/app/models`.
 
@@ -92,7 +95,8 @@ Important: `MODEL_PATH=models/apple_classifier.pth` (from `/app` in container) p
 
 ## `postgres` service
 
-- User/password/db: `gardener` / `gardener` / `gardener`
+- User/db: `gardener` / `gardener`; password `${POSTGRES_PASSWORD:-gardener}` (set in `.env` for prod)
+- No published host port — reachable only on the compose network
 - `DATABASE_URL` in server matches compose
 - Healthcheck `pg_isready` — server starts after DB
 
@@ -100,24 +104,25 @@ Important: `MODEL_PATH=models/apple_classifier.pth` (from `/app` in container) p
 
 ## `classifier` service (Python: `api/` + `cv/` + `rag/`)
 
-- Port **5000** (published on `127.0.0.1` only), entrypoint: `gunicorn -c api/gunicorn.conf.py api.app:app`, runs as non-root (UID 1000)
-- Env: `MODEL_PATH`, `ADMIN_SECRET`, `FORCE_RAG_REINDEX`, `CROPS_CONFIG_PATH`, `HF_TOKEN`, `RAG_*` (hybrid/rerank)
+- Port **5000** (published on `127.0.0.1` only), entrypoint: `gunicorn -c api/gunicorn.conf.py api.app:app`, runs as non-root (user `app`, UID 1000)
+- Env: `MODEL_PATH`, `ADMIN_SECRET`, `FORCE_RAG_REINDEX`, `CROPS_CONFIG_PATH`, `HF_TOKEN`, `RAG_WARMUP_ENABLED`, `RAG_*` (hybrid/rerank), `GUNICORN_*`
 - Volumes: `chroma_data` → `/app/chroma_db`, `bm25_data` → `/app/bm25_db`
-- Healthcheck: long `start_period: 120s` (embeddings + reranker on first RAG)
+- Healthcheck: long `start_period: 120s` (model load + warmup)
 - Endpoints: `/health`, `/classify`, `/rag/context`, `/admin/reindex`, `/crops`
 
-First RAG request may be slow (download e5 + reranker from HuggingFace).
+HF models (e5 embeddings + bge reranker) are **baked into the image at build** (`scripts/download_hf_models.py`, `HF_HOME=/app/hf_cache`) — no network needed at container startup. Build arg `SKIP_HF_BAKE=1` skips the bake (used on CI); then the first RAG request downloads models from HuggingFace.
 
 ---
 
 ## `server` service
 
-- Port **8080**
+- Port **8080** (published on `127.0.0.1` only), runs as non-root (user `app`, UID 1000)
 - Depends on healthy `postgres` + `classifier`
-- In image: `main`, `migrations/`, `config/` → `/config`
+- In image: `main`, `migrations/`, `config/` → `/config`; compose also mounts `./config:/config:ro` so JSON edits are visible without rebuild
 - `MIGRATIONS_DIR=/migrations` — SQL on startup
-- Mounts `./data` to `/app/data` for admin upload
+- Mounts `./data` to `/app/data` for admin upload (UID 1000 matches the default host user, so the bind mount stays writable)
 - `UPLOAD_DIR` on volume `uploads_data`
+- Healthcheck: `curl -f http://127.0.0.1:8080/health`
 
 Key env see [server-overview.md](./server-overview.md).
 
@@ -133,10 +138,10 @@ then `docker compose up -d --force-recreate server`.
 
 ## `webapp` service
 
-- Port **80** → http://localhost/
+- Host port **80** → container **8080** (image `nginxinc/nginx-unprivileged:alpine`, non-root UID 101, no root needed for port 80) → http://localhost/
 - `index.html` — chat, `admin.html` — admin
 - `location /api/` → proxy `http://server:8080/`
-- Healthcheck: `GET /` (in Docker Desktop gray circle = “no healthcheck” until compose fix)
+- Healthcheck: `wget http://127.0.0.1:8080/`
 
 User opens **localhost**, API goes through nginx (initData from browser in dev).
 
@@ -159,9 +164,9 @@ From host: `localhost:8080` (direct to Go), `localhost/api/` (through nginx).
 Compose substitutes `${VAR:-default}` from `.env` in project root:
 
 - `LLM_API_KEY`, `TELEGRAM_BOT_TOKEN`
-- `ADMIN_PASSWORD`, `ADMIN_SECRET`
+- `POSTGRES_PASSWORD`, `ADMIN_PASSWORD`, `ADMIN_SECRET`
 - `TELEGRAM_AUTH_DISABLED`
-- `FORCE_RAG_REINDEX`
+- `FORCE_RAG_REINDEX`, `HF_TOKEN`, `SKIP_HF_BAKE`
 
 Without `.env` some values are empty — LLM and admin will not work.
 
@@ -174,7 +179,7 @@ Without `.env` some values are empty — LLM and admin will not work.
 | classifier Restarting, `api_server.py` not found | old image; `docker compose build classifier` and recreate |
 | server unhealthy | `docker compose logs server`, wait for postgres/classifier |
 | classifier unhealthy 2 min | normal on first start; check logs |
-| webapp gray in UI | no healthcheck or server/classifier down; `docker compose ps` |
+| webapp unhealthy | server/classifier down (webapp waits for healthy server); `docker compose ps` |
 | Changes in `config/` | volume `./config:/config` (server, classifier); Go: `kill -HUP` or `CONFIG_RELOAD_INTERVAL_SEC` |
 | Articles not in RAG | file in `data/apple/`, then reindex |
 | Model not loading | put `.pth` in models volume or bind `./models` |
@@ -184,7 +189,7 @@ Without `.env` some values are empty — LLM and admin will not work.
 
 ## CI vs local Docker
 
-GitHub Actions on PR: **go-test**, **python-test**, **docker-build** (server + webapp + classifier import smoke). Full compose and RAG eval **not** in PR CI — eval manual: workflow **RAG Eval**. Locally — full stack. See [github-ci.yml.md](./github-ci.yml.md), [BACKUPS.md](../BACKUPS.md).
+GitHub Actions on PR: **go-test**, **go-lint**, **python-test**, **python-lint**, **docker-build**. The docker-build job builds all three images (`SKIP_HF_BAKE=1`), then runs an end-to-end **compose smoke**: `docker compose up -d --build --wait` + `scripts/smoke.sh`. RAG eval is **not** in PR CI — manual workflow **RAG Eval**. See [github-ci.yml.md](./github-ci.yml.md), [BACKUPS.md](../BACKUPS.md).
 
 **Metrics:** `GET http://localhost:8080/metrics` (server, no auth).
 

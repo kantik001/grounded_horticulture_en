@@ -18,12 +18,20 @@ Endpoint is **public** (no auth) — on production restrict access by network (f
 | `garden_http_responses_4xx_total` | counter | 4xx responses |
 | `garden_http_responses_5xx_total` | counter | 5xx responses |
 | `garden_llm_errors_total` | counter | LLM API call errors |
-| `garden_rag_requests_total` | counter | Completed RAG answers (via `logRAGTrace`) |
+| `garden_rag_requests_total` | counter | RAG answer attempts, incl. soft fails (via `logRAGTrace`) |
 | `garden_rag_verify_pass_total` | counter | Answers that passed number verify |
 | `garden_rag_verify_fail_total` | counter | Answers that failed verify |
 | `garden_rag_soft_fail_total` | counter | Soft fail (no context / verify) |
 | `garden_rag_retrieval_ms_total` | counter | Sum of retrieval latency (ms) |
 | `garden_rag_llm_ms_total` | counter | Sum of LLM latency (ms) |
+
+How counters are recorded (`server/metrics.go`):
+
+- **HTTP counters** — `metricsMiddleware` (registered in `main.go`) calls `recordHTTPStatus` for every response except `/metrics` itself.
+- **`garden_llm_errors_total`** — `recordLLMError` on any failed LLM call: chat completion, streaming, photo recommendation, and the claim-verify judge.
+- **RAG counters** — `recordRAGTraceMetrics(trace)` called from `logRAGTrace` for each completed RAG answer (both `/message` and `/message/stream`).
+
+There are no separate claim-verification metrics: when the optional LLM claim judge (`RAG_VERIFY_CLAIMS_ENABLED`, see [server-rag_chat.md](./server-rag_chat.md)) rejects an answer, it is counted in `garden_rag_verify_fail_total` and `garden_rag_soft_fail_total`; a failed judge call itself (fail-open) increments `garden_llm_errors_total`.
 
 Average retrieval latency (PromQL):
 
@@ -94,7 +102,7 @@ Tune thresholds for pilot load.
 
 ## Feedback + RAG in admin
 
-`GET /admin/feedback` returns field `rag` for each rating (if `rag_answer` event exists in `analytics_events` with same `message_id`): category, fragments, verify_pass, latency.
+`GET /admin/feedback` returns a `summary` (`likes`/`dislikes`) and, for each rating, an optional `rag` field (if a `rag_answer` event exists in `analytics_events` with the same `message_id`): category, fragments, verify_pass, verify_reason, soft_fail, latency.
 
 ---
 

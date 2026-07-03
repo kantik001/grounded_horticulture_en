@@ -25,23 +25,26 @@ Pure **vector search** (e5 embeddings) captures meaning well but is weaker on:
 
 ```mermaid
 flowchart LR
-    Q[Question] --> V[Chroma vector FETCH_K]
-    Q --> B[BM25 FETCH_K]
+    Q[Question] --> X[expand_query glossary]
+    X --> V[Chroma vector FETCH_K]
+    X --> B[BM25 FETCH_K]
     V --> RRF[RRF by chunk_id]
     B --> RRF
-    RRF --> CE[Cross-encoder up to RERANK_TOP_N]
+    RRF --> CE[Cross-encoder up to RERANK_TOP_N, only for complex categories]
     CE --> D[diversify max 2/article]
     D --> K[top 8 in LLM context]
 ```
 
 | Stage | Default | Env |
 |-------|---------|-----|
-| Vector candidates | 24 | `RAG_FETCH_K` |
-| BM25 candidates | 24 | `RAG_BM25_FETCH_K` |
+| Vector candidates | 16 (effective fetch is `max(k*3, FETCH_K)` = 24 for k=8) | `RAG_FETCH_K` |
+| BM25 candidates | = `FETCH_K` (effective fetch is `max(fetch_k, BM25_FETCH_K)`) | `RAG_BM25_FETCH_K` |
 | RRF constant | 60 | `RAG_RRF_K` |
-| Rerank pool | 32 | `RAG_RERANK_TOP_N` |
+| Rerank pool | 16 | `RAG_RERANK_TOP_N` |
 | Final context | 8 | hardcoded in `retrieval.py` |
 | Max chunks per article | 2 | `RAG_MAX_CHUNKS_PER_SOURCE` |
+
+Reranking is **conditional by question category** (see `rag/hybrid.py` below): by default only complex categories go through the cross-encoder.
 
 ---
 
@@ -60,7 +63,8 @@ Without stable `chunk_id` RRF cannot merge vector and BM25.
 ## `rag/bm25_store.py`
 
 - Index **per crop** (`crop_id`), same chunks as Chroma.
-- On `create_vector_store()` → `save_bm25_indexes()` to `bm25_db/index.pkl` + `meta.json`.
+- On `create_vector_store()` → `save_bm25_indexes()` to `bm25_db/index.pkl` + `meta.json` (versioned via `BM25_VERSION`; stale version → reindex required).
+- Load from disk is lazy and **thread-safe** (`_indexes_lock`, double-checked locking); cached in memory afterwards.
 - On `FORCE_RAG_REINDEX` folder `bm25_db/` is deleted with `chroma_db/`.
 - Tokenization: `\w+` with Unicode (Cyrillic + Latin + digits).
 
@@ -71,16 +75,20 @@ If BM25 index missing (old deploy without reindex) — `search()` runs **vector-
 ## `rag/hybrid.py`
 
 - `tokenize()` — text normalization for BM25.
-- `rrf_merge()` — merge ranked lists by `chunk_id`.
-- `hybrid_enabled()` / `rerank_enabled()` — flags from env.
+- `rrf_merge()` — Reciprocal Rank Fusion of ranked `chunk_id` lists; score `1/(k + rank + 1)` with **k=60** (`RAG_RRF_K`).
+- `hybrid_enabled()` / `rerank_enabled()` — flags from env (`RAG_HYBRID_ENABLED`, `RAG_RERANK_ENABLED`, both default true).
+- `rerank_for_category(category)` — decides whether to run the reranker:
+  - `RAG_RERANK_ALWAYS=true` → always rerank;
+  - `RAG_RERANK_CONDITIONAL=false` → always rerank (when enabled);
+  - otherwise rerank only if the question category is in `rerank_categories()` — env `RAG_RERANK_CATEGORIES` or defaults **rootstock, disease, variety, fertilizer, relief** (a missing category counts as `general` → no rerank).
 
 ---
 
 ## `rag/reranker.py`
 
-- Default model: **`BAAI/bge-reranker-base`** (multilingual).
-- Lazy-load on first request (like e5 embeddings).
-- On load error — search without rerank, API does not crash.
+- Default model: **`BAAI/bge-reranker-base`** (multilingual), `RERANK_TOP_N=16` pool.
+- Lazy-load on first request (like e5 embeddings), **thread-safe** (`_cross_encoder_lock`, double-checked locking).
+- **Fail-open:** on load error the failure is remembered and `rerank_documents` becomes a passthrough — search runs without rerank, API does not crash.
 
 First request after classifier start may take **extra seconds** (download reranker from HuggingFace).
 
@@ -91,10 +99,13 @@ First request after classifier start may take **extra seconds** (download rerank
 ```env
 RAG_HYBRID_ENABLED=true
 RAG_RERANK_ENABLED=true
-RAG_FETCH_K=24
-RAG_BM25_FETCH_K=24
+RAG_RERANK_CONDITIONAL=true
+RAG_RERANK_ALWAYS=false
+RAG_RERANK_CATEGORIES=rootstock,disease,variety,fertilizer,relief
+RAG_FETCH_K=16
+RAG_BM25_FETCH_K=16
 RAG_RRF_K=60
-RAG_RERANK_TOP_N=32
+RAG_RERANK_TOP_N=16
 RAG_RERANK_MODEL=BAAI/bge-reranker-base
 RAG_MAX_CHUNKS_PER_SOURCE=2
 ```

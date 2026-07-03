@@ -23,7 +23,7 @@ Go calls here, e.g.: `http://classifier:5000/classify` (see `CLASSIFIER_URL`, `C
 
 ---
 
-## Environment setup (lines 1–20)
+## Environment setup (top of file)
 
 ```python
 _root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -37,21 +37,26 @@ load_dotenv(os.path.join(_root, ".env"))
 
 Imports:
 
-- `get_classifier_for_crop` — CV model for crop (`cv/registry.py`).
+- `get_classifier_for_crop`, `ModelWeightsUnavailableError` — CV model for crop (`cv/registry.py`).
 - `retrieve_rag_context` — article search (`rag/retrieval.py`).
 - `vector_store` — Chroma and BM25 reindex.
+- `warmup_rag` — model preloading (`rag/warmup.py`).
 
 ---
 
-## Flask app (lines 22–23)
+## Flask app and upload limit
 
 ```python
+MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+
 app = Flask(__name__)
-CORS(app)
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES + 512 * 1024  # multipart overhead
+CORS(app, origins=_cors_origins, supports_credentials=True)
 ```
 
 **Flask** — URL bound to handler function.  
-**CORS** — allows requests from other origins (browser, dev).
+**`MAX_UPLOAD_BYTES`** — upload cap for `/classify` photos (env, default **10 MB**). `MAX_CONTENT_LENGTH` is set slightly higher (+512 KB) to allow multipart overhead; Flask rejects larger requests with **413**.  
+**CORS** — restricted to origins from `CORS_ALLOWED_ORIGINS` env (default `http://localhost,http://127.0.0.1`), with credentials support.
 
 ---
 
@@ -65,11 +70,11 @@ CORS(app)
 2. **`normalize_crop_id(crop_id)`** — check against `config/crops.json`; invalid crop → HTTP 400.
 3. **File `image`** — required in `request.files` (multipart, like HTML form).
 4. Checks: empty filename, zero size → 400.
-5. **`image_bytes = file.read()`** — raw image bytes.
+5. **`image_bytes = file.read(MAX_UPLOAD_BYTES + 1)`** — raw image bytes; if more than `MAX_UPLOAD_BYTES` → **413** "Image too large".
 6. **`get_classifier_for_crop(crop_id)`** (`registry.py`):
    - if `cv_enabled: false` for crop → `ValueError` → 400;
-   - else creates/gets from cache `AppleClassifier`;
-   - weights: `MODEL_PATH` or `MODEL_PATH_{CROP}`; if file missing — ImageNet backbone without your `.pth`.
+   - else creates/gets from cache `AppleClassifier` (thread-safe lazy loading);
+   - weights: `MODEL_PATH` or `MODEL_PATH_{CROP}`; if the file is missing or fails to load — `ModelWeightsUnavailableError` → **503** (no untrained fallback).
 7. **`clf.predict_from_bytes(image_bytes)`** (`apple_classifier.py`):
    - PIL opens image;
    - resize 224×224, normalization;
@@ -99,7 +104,9 @@ CORS(app)
 |-----------|------|
 | No file / empty file | 400 |
 | Crop without CV / invalid crop_id | 400 |
-| Model failure / unexpected error | 500 |
+| Image larger than `MAX_UPLOAD_BYTES` (or request over `MAX_CONTENT_LENGTH`) | 413 |
+| Model weights missing/broken (`ModelWeightsUnavailableError`) | 503 |
+| Unexpected error | 500 (generic `"Internal error"`; details only in server logs) |
 
 ### How Go sends request (reference)
 
@@ -134,7 +141,7 @@ In `server/classifier_client.go`, function `sendToClassifier`:
 
 **Important:** LLM is **not** called here. User answer is assembled by Go in `server/rag_chat.go`.
 
-HTTP status usually 200; inside JSON: `success: true/false`, on error — field `error`.
+HTTP status: **200** if `success: true`, **422** if retrieval reports `success: false`; unexpected error → **500** with generic `"Internal error"` (details only in logs). On failure JSON contains field `error`.
 
 ---
 
@@ -156,24 +163,31 @@ Smoke tests and Docker health.
 
 ## `POST /admin/reindex`
 
-**Protection:** header `X-Admin-Secret` = `ADMIN_SECRET` from `.env`, else 403.
+**Protection:** header `X-Admin-Secret` compared to `ADMIN_SECRET` from `.env` via `hmac.compare_digest` (constant-time); missing/wrong secret → 403.
 
 **Actions:**
 
 1. `vs.reset_vector_store()` — reset in-memory cache.
-2. `vs.load_vector_store(force_reindex=True)` — read `data/{crop}/*.txt`, chunking, embeddings → `chroma_db/`, BM25 → `bm25_db/`.
+2. `vs.load_vector_store(force_reindex=True)` — read `data/{crop}/*.txt`, chunking, embeddings → `chroma_db/`, BM25 → `bm25_db/`. If there are no articles to index → 400.
 
 Go admin after `.txt` upload calls this endpoint via `PYTHON_BASE_URL` + `/admin/reindex`.
 
 ---
 
-## Server run (lines 103–106)
+## Server run (bottom of file)
 
 ```python
 if __name__ == "__main__":
     port = int(os.environ.get("CLASSIFIER_PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    if os.environ.get("USE_GUNICORN", "").lower() in ("1", "true", "yes"):
+        # exec gunicorn -c api/gunicorn.conf.py api.app:app
+        ...
+    warmup_rag()
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
 ```
+
+- **`USE_GUNICORN=1`** — production mode: launches **gunicorn** with `api/gunicorn.conf.py` (1 worker by default + `gthread` threads, `preload_app = False` so PyTorch doesn't initialize before fork; RAG warmup happens in `post_fork`).
+- Otherwise — Flask dev server (threaded), with `warmup_rag()` called before start.
 
 Locally: `python app.py` → port 5000. In Docker — via `Dockerfile.classifier`.
 

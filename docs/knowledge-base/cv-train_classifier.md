@@ -17,7 +17,7 @@ After training:
 2. Set `MODEL_PATH` in `.env`.
 3. Restart `classifier` — `registry.py` loads weights.
 
-This file is **not** called automatically in production; it is an offline task (roadmap session 4).
+This file is **not** called automatically in production; it is an offline task.
 
 ---
 
@@ -103,7 +103,7 @@ model.classifier = nn.Sequential(
 )
 ```
 
-Same scheme as `_load_model` in `apple_classifier.py` — weights are compatible.
+Same scheme as `_build_model` in `apple_classifier.py` — weights are compatible.
 
 ### Optimization
 
@@ -193,12 +193,12 @@ flowchart LR
 
 ---
 
-## Dataset tips (session 4)
+## Dataset tips
 
 - **Minimum:** tens of photos per class; hundreds better for common diseases.
 - **Class balance:** otherwise model favors frequent class.
 - **Val:** separate photos, not train duplicates (other angles/light).
-- **Metrics:** watch `Val Acc` in log; production confidence threshold planned (not in `apple_classifier` yet).
+- **Metrics:** watch `Val Acc` in log; `apple_classifier` has no confidence threshold — it always returns the best class.
 
 ---
 
@@ -227,7 +227,7 @@ Overfitting: more data, augmentations, fewer epochs, early stopping (not in code
 
 ### API predicts wrong disease
 
-Check: folder names = `DEFAULT_CLASS_LABELS`, checkpoint has `class_labels`, registry log — “Loading weights”, not “ImageNet backbone only”.
+Check: folder names = `DEFAULT_CLASS_LABELS`, checkpoint has `class_labels`, registry log shows `Loading weights: ...` for the expected `.pth` (a missing file would return 503, not wrong predictions).
 
 ### File not picked up
 
@@ -247,4 +247,4 @@ Wrong path, relative path not from `cv/`, container not restarted, cache `_class
 
 ## Brief summary
 
-`train_classifier.py` — **offline MobileNetV2 training**: folder dataset, augmentations, val accuracy, save `state_dict` to `.pth`. Without this file production runs only empty ImageNet head; with it — your trained model via `MODEL_PATH`.
+`train_classifier.py` — **offline MobileNetV2 training**: folder dataset, augmentations, val accuracy, save `state_dict` to `.pth`. Without a trained `.pth` production `/classify` returns 503 (`ModelWeightsUnavailableError`); with it — your trained model via `MODEL_PATH`.

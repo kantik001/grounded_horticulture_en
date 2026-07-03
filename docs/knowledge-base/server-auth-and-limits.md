@@ -1,6 +1,6 @@
 # Walkthrough: authentication and limits (`server/`)
 
-**Files:** `auth_telegram.go`, `middleware.go`, `ratelimit.go`  
+**Files:** `auth_telegram.go`, `auth_combined.go`, `api_keys.go`, `rbac.go`, `middleware.go`, `ratelimit.go`, `auth_info.go`  
 **Related:** [webapp-overview.md](./webapp-overview.md) (initData header), [server-overview.md](./server-overview.md) (routes)
 
 ---
@@ -43,10 +43,10 @@ Tests: `auth_telegram_test.go` (valid / invalid hash).
 
 ### `corsMiddleware(allowedOrigins)`
 
-- Reads `CORS_ALLOWED_ORIGINS` (comma-separated).
-- If Origin is in the list — reflect in `Access-Control-Allow-Origin`.
-- Allows methods GET, POST, OPTIONS.
-- Headers: `Content-Type`, `X-Telegram-Init-Data`, `X-API-Key`, `Authorization`.
+- Reads `CORS_ALLOWED_ORIGINS` (comma-separated); empty list → any Origin is reflected.
+- If Origin is in the list — reflect in `Access-Control-Allow-Origin` (+ `Vary: Origin`).
+- Allows methods GET, POST, OPTIONS; `Access-Control-Max-Age: 86400`.
+- Headers: `Content-Type`, `X-Requested-With`, `X-Telegram-Init-Data`, `X-API-Key`, `Authorization`.
 - **OPTIONS** → 204 with no body.
 
 Why: webapp on `http://localhost` hits API on the same origin through nginx.
@@ -66,7 +66,7 @@ Why: webapp on `http://localhost` hits API on the same origin through nginx.
 **Production:**
 
 1. Reads `X-Telegram-Init-Data` or `Authorization: tma <initData>`.
-2. Empty → **401** with text “open from the bot”.
+2. Empty → **401** “Authorization required: Telegram (X-Telegram-Init-Data) or API key (X-API-Key)”.
 3. `validateTelegramInitData` → on error **401**.
 4. Success → in Gin context: `telegram_user_id`, `telegram_user`.
 
@@ -74,24 +74,40 @@ Handlers read via `ctxTelegramUser(c)` in `chat_session.go`.
 
 ---
 
+## `auth_combined.go` + `api_keys.go` + `rbac.go` — API key auth
+
+Protected routes use **`combinedAuthMiddleware`**, not the Telegram middleware directly:
+
+1. If header `X-API-Key` is present — look up the key in the registry (`loadAPIKeys`: `API_KEYS_FILE` JSON with `key`/`label`/`roles`, or `API_KEYS` env as `key:label,...`).
+2. Unknown key → **401**; key without chat access (RBAC) → **403**.
+3. Valid key → context gets a synthetic `TelegramUser` with a **stable negative actor ID** (`apiKeyActorID`, SHA-256 of the key) and username `api:<label>`, plus `api_key_label` and `api_roles`.
+4. No `X-API-Key` header → fall through to `telegramAuthMiddleware`.
+
+RBAC (`rbac.go`): the only built-in role is **`chat_only`** (aliases `chat`, `chat-only`); keys without explicit roles get it by default; `canUseChatAPI` gates chat access.
+
+`GET /auth/info` (`auth_info.go`, public) reports which methods are enabled: `telegram`, `web_api_key`, `dev_mode`.
+
+---
+
 ## `registerProtectedRoutes`
 
-All below use **`auth` + `lim`** (rate limit):
+All below use **`auth` (combined) + `lim`** (rate limit):
 
-- `/classify`, `/chat`, `/session`, `/history`, `/message`, `/feedback`, `/media/:token`
+- `/classify`, `/chat`, `/session`, `/history`, `/message`, `/message/stream`, `/feedback`, `/media/:token`
 - Duplicates on `/api/...`
 
-**Not protected:** `/health`, `/crops`, `/onboarding`, `/branding`, `/metrics`, admin (different auth).
+**Not protected:** `/health`, `/crops`, `/onboarding`, `/branding`, `/auth/info`, `/metrics`, admin (different auth).
 
 ---
 
 ## `ratelimit.go` — request limit
 
-### In-memory by `telegram_user_id` (or API key user)
+### In-memory, keyed by `rateLimitKey` (`auth_combined.go`)
 
+- Bucket key: `api:<label>` for API keys, `tg:<id>` for Telegram users; unauthenticated `anon` requests skip the limiter.
 - `RATE_LIMIT_REQUESTS_PER_MINUTE` (default 30).
 - 1-minute window, sliding list of timestamps.
-- `gcStale()` — periodic cleanup of empty keys (prevents map growth on long runs).
+- `gcStale()` — cleanup of stale keys every 256 requests (prevents map growth on long runs).
 - `0` or negative → limit disabled.
 
 On exceed: **429** “Too many requests…”.
@@ -118,9 +134,9 @@ sequenceDiagram
     participant G as Gin
     participant H as Handler
 
-    B->>G: POST /api/message + Init-Data
+    B->>G: POST /api/message + Init-Data (or X-API-Key)
     G->>G: CORS
-    G->>G: telegramAuthMiddleware
+    G->>G: combinedAuthMiddleware (API key or Telegram)
     G->>G: rateLimitMiddleware
     G->>H: handleMessage
 ```
@@ -131,13 +147,15 @@ sequenceDiagram
 
 | Symptom | Cause |
 |---------|-------|
-| 401 on session | no initData, auth not disabled |
+| 401 on session | no initData / API key, auth not disabled |
 | 401 “invalid signature” | wrong `TELEGRAM_BOT_TOKEN` |
 | 401 “expired” | stale initData, reopen Web App |
-| 429 | > N requests per minute from one user id |
+| 401 “Invalid API key” | key not in `API_KEYS` / `API_KEYS_FILE` |
+| 403 | API key has no `chat_only` role |
+| 429 | > N requests per minute from one user id / key |
 
 ---
 
 ## Brief summary
 
-**auth_telegram** — Telegram cryptography. **middleware** — CORS + auth wrapper. **ratelimit** — protection against LLM/CV spam. Chat, photo, and feedback require passing auth.
+**auth_telegram** — Telegram cryptography. **auth_combined + api_keys + rbac** — API-key path with roles. **middleware** — CORS + Telegram auth wrapper. **ratelimit** — protection against LLM/CV spam. Chat, photo, and feedback require passing auth.
