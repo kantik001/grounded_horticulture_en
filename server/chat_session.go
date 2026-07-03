@@ -7,21 +7,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ChatMessage — одно сообщение в истории (для UI и восстановления контекста LLM).
+// ChatMessage is one history entry (for UI and LLM context restoration).
 type ChatMessage struct {
 	ID              int64   `json:"id,omitempty"`
 	Role            string  `json:"role"`
 	Content         string  `json:"content"`
-	ImageDataURL    string  `json:"image_data_url,omitempty"` // устаревшее поле, см. image_url
+	ImageDataURL    string  `json:"image_data_url,omitempty"` // deprecated; see image_url
 	ImageURL        string  `json:"image_url,omitempty"`
 	ImageToken      string  `json:"-"`
 	ClassPrediction string  `json:"class_prediction,omitempty"`
 	ClassConfidence float64 `json:"class_confidence,omitempty"`
 	Kind            string  `json:"kind,omitempty"`
-	FeedbackRating  *int    `json:"feedback_rating,omitempty"` // 1 или -1, если пользователь оценил
+	FeedbackRating  *int    `json:"feedback_rating,omitempty"` // 1 or -1 when user rated the reply
 }
 
-// Оставляет последние max сообщений для контекста LLM.
+// trimHistoryMessages keeps the last max messages for LLM context.
 func trimHistoryMessages(msgs []Message, max int) []Message {
 	if len(msgs) <= max {
 		return msgs
@@ -29,7 +29,7 @@ func trimHistoryMessages(msgs []Message, max int) []Message {
 	return msgs[len(msgs)-max:]
 }
 
-// Преобразует ChatMessage в формат сообщения для LLM API.
+// toLLMMessage converts ChatMessage to the LLM API message format.
 func (m ChatMessage) toLLMMessage() (Message, bool) {
 	switch m.Role {
 	case "assistant":
@@ -39,15 +39,15 @@ func (m ChatMessage) toLLMMessage() (Message, bool) {
 		return Message{Role: "assistant", Content: m.Content}, true
 	case "user":
 		if m.ImageURL != "" || m.ImageDataURL != "" || m.ImageToken != "" {
-			s := "Пользователь отправил фотографию яблони или листа."
+			s := "The user sent a photo of an apple or leaf."
 			if m.ClassPrediction != "" {
-				s += " Результат классификации модели: " + m.ClassPrediction + "."
+				s += " Model classification result: " + m.ClassPrediction + "."
 				if m.ClassConfidence > 0 && m.ClassConfidence <= 1 {
-					s += fmt.Sprintf(" Уверенность модели: %.0f%%.", m.ClassConfidence*100)
+					s += fmt.Sprintf(" Model confidence: %.0f%%.", m.ClassConfidence*100)
 				}
 			}
 			if t := trimUserCaption(m.Content); t != "" {
-				s += " Подпись к фото: " + t
+				s += " Photo caption: " + t
 			}
 			return Message{Role: "user", Content: s}, true
 		}
@@ -60,12 +60,12 @@ func (m ChatMessage) toLLMMessage() (Message, bool) {
 	}
 }
 
-// Нормализует подпись пользователя (пробелы, переносы).
+// trimUserCaption normalizes the user caption (whitespace, line breaks).
 func trimUserCaption(s string) string {
 	return strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(s, "\r", " "), "\n", " "))
 }
 
-// Достаёт TelegramUser из контекста Gin после middleware авторизации.
+// ctxTelegramUser returns TelegramUser from Gin context after auth middleware.
 func ctxTelegramUser(c *gin.Context) (*TelegramUser, error) {
 	if raw, ok := c.Get(ctxKeyTelegramUser); ok {
 		if u, ok := raw.(*TelegramUser); ok && u != nil {

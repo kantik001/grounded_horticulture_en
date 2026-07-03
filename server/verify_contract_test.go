@@ -22,6 +22,7 @@ type verifyContractFixture struct {
 	Cases []verifyContractCase `json:"cases"`
 }
 
+// verifyContractFixturePath locates the shared verify contract fixture.
 func verifyContractFixturePath(t *testing.T) string {
 	t.Helper()
 	for _, p := range []string{
@@ -36,6 +37,7 @@ func verifyContractFixturePath(t *testing.T) string {
 	return ""
 }
 
+// loadVerifyContractCases reads and parses the contract fixture cases.
 func loadVerifyContractCases(t *testing.T) []verifyContractCase {
 	t.Helper()
 	body, err := os.ReadFile(verifyContractFixturePath(t))
@@ -52,6 +54,7 @@ func loadVerifyContractCases(t *testing.T) []verifyContractCase {
 	return fix.Cases
 }
 
+// Verifies verifyRAGAnswer against the contract fixture shared with the Python side.
 func TestVerifyRAGAnswer_ContractFixture(t *testing.T) {
 	for _, tc := range loadVerifyContractCases(t) {
 		tc := tc

@@ -7,26 +7,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// publicAPIError возвращает безопасное сообщение для клиента; детали — в лог.
+// publicAPIError returns a safe client message; details go to the log.
 func publicAPIError(err error) string {
 	if err == nil {
-		return "Ошибка сервера"
+		return "Server error"
 	}
 	s := strings.TrimSpace(err.Error())
 	if s == "" {
-		return "Ошибка сервера"
+		return "Server error"
 	}
 
-	// Уже по-русски из normalizeCropID, classify_flow, crop guards.
-	if strings.Contains(s, "культура") ||
-		strings.Contains(s, "изображение") ||
-		strings.Contains(s, "файл") ||
-		strings.Contains(s, "сессия") ||
-		strings.Contains(s, "помощник") ||
-		strings.Contains(s, "распознавание") ||
-		strings.Contains(s, "Пустой вопрос") ||
+	// Already user-facing from normalizeCropID, classify_flow, crop guards.
+	if strings.Contains(s, "crop") ||
+		strings.Contains(s, "image") ||
+		strings.Contains(s, "file") ||
+		strings.Contains(s, "session") ||
+		strings.Contains(s, "assistant") ||
+		strings.Contains(s, "recognition") ||
+		strings.Contains(s, "Empty question") ||
 		strings.Contains(s, "LLM_API_KEY") ||
-		strings.Contains(s, "классификации") {
+		strings.Contains(s, "classification") ||
+		strings.Contains(s, "unknown crop") {
 		return s
 	}
 
@@ -37,16 +38,17 @@ func publicAPIError(err error) string {
 		strings.Contains(lower, "no such host"),
 		strings.Contains(lower, "rag request failed"),
 		strings.Contains(lower, "classifier"):
-		return "Сервис анализа временно недоступен. Попробуйте позже."
+		return "Analysis service is temporarily unavailable. Please try again later."
 	case strings.Contains(lower, "unauthorized"),
 		strings.Contains(lower, "telegram"):
-		return "Ошибка авторизации. Откройте приложение из бота Telegram."
+		return "Authorization error. Open the app from the Telegram bot."
 	default:
-		log.Printf("publicAPIError (скрыта деталь): %v", err)
-		return "Ошибка сервера"
+		log.Printf("publicAPIError (detail hidden): %v", err)
+		return "Server error"
 	}
 }
 
+// jsonError logs the error and responds with a safe JSON error body.
 func jsonError(c *gin.Context, code int, err error) {
 	if err != nil {
 		log.Printf("%s %s: %v", c.Request.Method, c.Request.URL.Path, err)

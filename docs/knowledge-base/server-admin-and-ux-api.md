@@ -1,100 +1,100 @@
-﻿# Разбор: админка и UX API (`server/`)
+﻿# Walkthrough: admin and UX API (`server/`)
 
-**Файлы:** `admin.go`, `onboarding.go`, `feedback.go`, `analytics_store.go`, `crops.go`  
-**Клиент:** [webapp-overview.md](./webapp-overview.md) (`admin.html`, `index.html`)
-
----
-
-## Обзор
-
-Мелкие handlers, которые не тянут ML сами:
-
-- **админка** — статьи на диск + reindex;
-- **crops / onboarding** — конфиг для UI;
-- **feedback + analytics** — продуктовые метрики.
+**Files:** `admin.go`, `onboarding.go`, `feedback.go`, `analytics_store.go`, `crops.go`  
+**Client:** [webapp-overview.md](./webapp-overview.md) (`admin.html`, `index.html`)
 
 ---
 
-## `admin.go` — управление статьями RAG
+## Overview
 
-### Авторизация `adminBasicAuth`
+Small handlers that do not run ML themselves:
+
+- **admin** — articles on disk + reindex;
+- **crops / onboarding** — config for UI;
+- **feedback + analytics** — product metrics.
+
+---
+
+## `admin.go` — RAG article management
+
+### Auth `adminBasicAuth`
 
 - HTTP Basic: `ADMIN_USER` / `ADMIN_PASSWORD`.
-- Если `ADMIN_PASSWORD` пуст → **503** «админка отключена».
+- If `ADMIN_PASSWORD` empty → **503** “admin disabled”.
 
-**Не** Telegram initData.
+**Not** Telegram initData.
 
-### Маршруты (дубль `/admin` и `/api/admin`)
+### Routes (duplicate `/admin` and `/api/admin`)
 
-| Метод | Handler | Действие |
-|-------|---------|----------|
+| Method | Handler | Action |
+|--------|---------|--------|
 | GET | `handleAdminStatus` | `{ data_dir, ok }` |
-| GET | `handleAdminListArticles` | список `.txt` в `data/{crop_id}/` |
-| POST | `handleAdminUpload` | сохранить файл |
+| GET | `handleAdminListArticles` | list `.txt` in `data/{crop_id}/` |
+| POST | `handleAdminUpload` | save file |
 | POST | `handleAdminReindex` | `triggerRAGReindex` → Python |
-| GET | `handleAdminFeedback` | оценки 👍/👎 с вопросом, ответом и полем **`rag`** |
+| GET | `handleAdminFeedback` | 👍/👎 ratings with question, answer, and **`rag`** field |
 
 ### Upload
 
-- `crop_id` из формы.
-- Файл: regex `^[a-zA-Z0-9._-]+\.txt$`, max **2 МБ**.
-- Путь: `{DATA_DIR}/{crop_id}/{filename}`.
+- `crop_id` from form.
+- File: regex `^[a-zA-Z0-9._-]+\.txt$`, max **2 MB**.
+- Path: `{DATA_DIR}/{crop_id}/{filename}`.
 
-Тест: `admin_test.go` — `TestSafeFilename`.
+Test: `admin_test.go` — `TestSafeFilename`.
 
 ### Reindex
 
-HTTP POST на `{PYTHON_BASE_URL}/admin/reindex` с заголовком **`X-Admin-Secret`** = `ADMIN_SECRET`.
+HTTP POST to `{PYTHON_BASE_URL}/admin/reindex` with header **`X-Admin-Secret`** = `ADMIN_SECRET`.
 
-Сбрасывает Chroma + BM25 в Python — см. [rag-vector_store.md](./rag-vector_store.md).
+Resets Chroma + BM25 in Python — see [rag-vector_store.md](./rag-vector_store.md).
 
 ---
 
-## `crops.go` — каталог культур
+## `crops.go` — crop catalog
 
-### Загрузка при старте
+### Load on startup
 
-`loadCropCatalog()` читает `CROPS_CONFIG_PATH` или `config/crops.json` (тот же смысл, что Python `crops_config`).
+`loadCropCatalog()` reads `CROPS_CONFIG_PATH` or `config/crops.json` (same meaning as Python `crops_config`).
 
-### `GET /crops`, `/api/crops` — публично
+### `GET /crops`, `/api/crops` — public
 
-Без Telegram auth. Ответ:
+No Telegram auth. Response:
 
 ```json
 {
   "success": true,
   "default_crop": "apple",
   "crops": [
-    { "id": "apple", "name_ru": "Яблоня", "emoji": "🍎", "cv_enabled": true, "rag_enabled": true }
+    { "id": "apple", "name_ru": "Apple", "emoji": "🍎", "cv_enabled": true, "rag_enabled": true }
   ]
 }
 ```
 
-`normalizeCropID` / `getCropMeta` — используются в обработчиках чата и RAG.
+`normalizeCropID` / `getCropMeta` — used in chat and RAG handlers.
 
 ---
 
-## `onboarding.go` — примеры вопросов
+## `onboarding.go` — sample questions
 
-### Конфиг
+### Config
 
-`config/onboarding.json` — map `crop_id` → массив строк-вопросов.
+`config/onboarding.json` — map `crop_id` → array of question strings.
 
-`ONBOARDING_CONFIG_PATH` в Docker: `/config/onboarding.json`.
+`ONBOARDING_CONFIG_PATH` in Docker: `/config/onboarding.json`.
 
-### `GET /onboarding?crop_id=apple` — публично
+### `GET /onboarding?crop_id=apple` — public
 
 ```json
-{ "success": true, "crop_id": "apple", "questions": ["Какие признаки парши?", ...] }
+{ "success": true, "crop_id": "apple", "questions": ["What are scab symptoms?", ...] }
 ```
 
-Web App рисует chips; клик → `sendMessage()`.
+Web App renders chips; click → `sendMessage()`.
 
 ---
 
-## `feedback.go` — оценка ответов
+## `feedback.go` — answer ratings
 
-### `POST /feedback` (защищённый)
+### `POST /feedback` (protected)
 
 JSON:
 
@@ -102,39 +102,39 @@ JSON:
 { "session_id": "...", "message_id": 123, "rating": 1 }
 ```
 
-`rating`: **1** (👍) или **-1** (👎).
+`rating`: **1** (👍) or **-1** (👎).
 
-- Проверка: сообщение существует и принадлежит пользователю.
-- `UNIQUE (message_id, user_id)` в БД — один голос на сообщение.
+- Check: message exists and belongs to user.
+- `UNIQUE (message_id, user_id)` in DB — one vote per message.
 - `LogEvent("message_feedback", ...)`.
 
-Таблица: `message_feedback` — [migrations-overview.md](./migrations-overview.md).
+Table: `message_feedback` — [migrations-overview.md](./migrations-overview.md).
 
 ### `GET /admin/feedback` (Basic auth)
 
-Query: `rating` (1 или -1), `limit` (default 50).
+Query: `rating` (1 or -1), `limit` (default 50).
 
-Ответ: список оценок с `question`, `answer`, `rating`, и опционально **`rag`** — метаданные из `analytics_events` (`rag_answer`): category, fragments, verify_pass, latency.  
-См. [metrics-and-alerts.md](./metrics-and-alerts.md), `server/feedback_report.go`.
+Response: list of ratings with `question`, `answer`, `rating`, and optional **`rag`** — metadata from `analytics_events` (`rag_answer`): category, fragments, verify_pass, latency.  
+See [metrics-and-alerts.md](./metrics-and-alerts.md), `server/feedback_report.go`.
 
 ---
 
-## `analytics_store.go` — события
+## `analytics_store.go` — events
 
 ### `LogEvent(userTelegramID, eventType, payload)`
 
-INSERT в `analytics_events` (`event_type`, `payload` JSONB).
+INSERT into `analytics_events` (`event_type`, `payload` JSONB).
 
-Вызывается из:
+Called from:
 
 - `feedback.go`
-- `logAnalytics` в `message_handlers.go` (`rag_answer`, `photo_classified`)
+- `logAnalytics` in `message_handlers.go` (`rag_answer`, `photo_classified`)
 
-Примеры SQL-аналитики — таблицы `analytics_events`, `message_feedback` (см. [migrations-overview.md](./migrations-overview.md)).
+Example SQL analytics — tables `analytics_events`, `message_feedback` (see [migrations-overview.md](./migrations-overview.md)).
 
 ---
 
-## Связь компонентов
+## Component relationships
 
 ```mermaid
 flowchart LR
@@ -154,10 +154,10 @@ flowchart LR
 
 ---
 
-## Env для этой группы
+## Env for this group
 
-| Переменная | Файл |
-|------------|------|
+| Variable | File |
+|----------|------|
 | `ADMIN_USER`, `ADMIN_PASSWORD`, `ADMIN_SECRET` | admin |
 | `DATA_DIR` | admin upload |
 | `CROPS_CONFIG_PATH` | crops |
@@ -165,6 +165,6 @@ flowchart LR
 
 ---
 
-## Краткий итог
+## Brief summary
 
-**admin.go** — контент RAG на диске. **crops/onboarding** — публичный UX-config. **feedback/analytics** — качество ответов и телеметрия. Всё вокруг основного чата из [server-chat-and-db.md](./server-chat-and-db.md), без дублирования ML-логики.
+**admin.go** — RAG content on disk. **crops/onboarding** — public UX config. **feedback/analytics** — answer quality and telemetry. All around main chat from [server-chat-and-db.md](./server-chat-and-db.md), without duplicating ML logic.

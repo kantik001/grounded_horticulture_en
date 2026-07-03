@@ -1,4 +1,4 @@
--- Сессия 3: культура (crop_id) привязана к чат-сессии
+-- Session 3: crop_id bound to chat session
 
 ALTER TABLE chat_sessions
     ADD COLUMN IF NOT EXISTS crop_id TEXT NOT NULL DEFAULT 'apple';

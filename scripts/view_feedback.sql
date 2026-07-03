@@ -1,9 +1,9 @@
--- Просмотр оценок ответов (👍/👎) в PostgreSQL.
--- Запуск:
+-- View answer ratings (thumbs up/down) in PostgreSQL.
+-- Run:
 --   docker exec -it union_ai_apple_postgres psql -U gardener -d gardener -f - < scripts/view_feedback.sql
--- или интерактивно: \i scripts/view_feedback.sql (из psql в контейнере)
+-- or interactively: \i scripts/view_feedback.sql (from psql in the container)
 
-\echo '=== Сводка ==='
+\echo '=== Summary ==='
 SELECT rating,
        CASE rating WHEN 1 THEN 'like' WHEN -1 THEN 'dislike' END AS kind,
        COUNT(*) AS cnt
@@ -11,7 +11,7 @@ FROM message_feedback
 GROUP BY rating
 ORDER BY rating;
 
-\echo '=== Последние дизлайки (вопрос + ответ) ==='
+\echo '=== Recent dislikes (question + answer) ==='
 SELECT mf.created_at AS feedback_at,
        cs.crop_id,
        u.telegram_id,
@@ -35,7 +35,7 @@ WHERE mf.rating = -1
 ORDER BY mf.created_at DESC
 LIMIT 30;
 
-\echo '=== События message_feedback (analytics) ==='
+\echo '=== message_feedback analytics events ==='
 SELECT created_at, payload
 FROM analytics_events
 WHERE event_type = 'message_feedback'

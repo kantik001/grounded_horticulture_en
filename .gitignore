@@ -26,10 +26,10 @@ data/plum/*.txt
 !data/plum/sample_*.txt
 data/_archive/
 
-# Локальные PDF/каталоги журнала (не коммитить)
+# Local PDF/journal catalogs (do not commit)
 _tmp/
 
-# RAG / логи
+# RAG / logs
 chroma_db/
 bm25_db/
 hf_cache/

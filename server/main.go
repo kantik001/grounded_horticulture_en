@@ -2,15 +2,20 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Точка входа: Postgres, миграции, каталоги культур, Gin-роутер и HTTP-сервер.
+// Entry point: Postgres, migrations, crop catalogs, Gin router, and HTTP server.
 func main() {
 	config = loadConfig()
 	logStartup(config)
@@ -30,20 +35,8 @@ func main() {
 	}
 	pool.Close()
 
-	if err := loadCropCatalog(); err != nil {
-		log.Fatalf("Crops config: %v", err)
-	}
-	if err := loadPromptCatalog(); err != nil {
-		log.Fatalf("Prompts config: %v", err)
-	}
-	if err := loadOnboardingConfig(); err != nil {
-		log.Fatalf("Onboarding config: %v", err)
-	}
-	if err := loadPhotoTemplates(); err != nil {
-		log.Fatalf("Photo templates: %v", err)
-	}
-	if err := loadBrandingConfig(); err != nil {
-		log.Fatalf("Branding config: %v", err)
+	if err := loadRuntimeCatalogs(); err != nil {
+		log.Fatalf("Runtime configs: %v", err)
 	}
 	loadAPIKeys(config)
 
@@ -53,7 +46,8 @@ func main() {
 	}
 	defer chatStore.Close()
 	log.Printf("PostgreSQL: connected, migrations from %s", migDir)
-	log.Printf("Crops loaded: %d, default=%s", len(cropCatalog.Crops), cropCatalog.DefaultCrop)
+	crops := currentCatalogs().Crops
+	log.Printf("Crops loaded: %d, default=%s", len(crops.Crops), crops.DefaultCrop)
 
 	gin.SetMode(gin.ReleaseMode)
 
@@ -77,9 +71,40 @@ func main() {
 	registerProtectedRoutes(router, config, rl)
 	startConfigReloadWatcher()
 
-	serverAddr := fmt.Sprintf(":%s", config.ServerPort)
-	log.Printf("Server starting on port %s", config.ServerPort)
-	if err := router.Run(serverAddr); err != nil {
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%s", config.ServerPort),
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		log.Printf("Server starting on port %s", config.ServerPort)
+		errCh <- srv.ListenAndServe()
+	}()
+
+	stopCh := make(chan os.Signal, 1)
+	signal.Notify(stopCh, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case err := <-errCh:
 		log.Fatalf("Failed to start server: %v", err)
+	case sig := <-stopCh:
+		log.Printf("Received %s, shutting down gracefully (max %s)", sig, shutdownTimeout)
+	}
+
+	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancelShutdown()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Graceful shutdown incomplete: %v", err)
+	} else {
+		log.Printf("Server stopped cleanly")
+	}
+	if err := <-errCh; err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Printf("Server error: %v", err)
 	}
 }
+
+// shutdownTimeout bounds in-flight request draining on SIGINT/SIGTERM.
+// LLM streaming can take tens of seconds; give it room without hanging deploys.
+const shutdownTimeout = 30 * time.Second

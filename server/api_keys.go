@@ -27,6 +27,7 @@ type apiKeyFileEntry struct {
 
 var apiKeyRegistry map[string]apiKeyRecord
 
+// loadAPIKeys fills the registry from API_KEYS_FILE (JSON) or the API_KEYS env variable.
 func loadAPIKeys(cfg *Config) {
 	apiKeyRegistry = make(map[string]apiKeyRecord)
 	if path := strings.TrimSpace(os.Getenv("API_KEYS_FILE")); path != "" {
@@ -77,15 +78,18 @@ func loadAPIKeys(cfg *Config) {
 	}
 }
 
+// lookupAPIKey returns the record for a key; ok is false for unknown keys.
 func lookupAPIKey(key string) (apiKeyRecord, bool) {
 	rec, ok := apiKeyRegistry[strings.TrimSpace(key)]
 	return rec, ok
 }
 
+// apiKeyCount reports how many API keys are registered.
 func apiKeyCount() int {
 	return len(apiKeyRegistry)
 }
 
+// apiKeyActorID derives a stable negative actor ID from the key hash.
 func apiKeyActorID(key string) int64 {
 	sum := sha256.Sum256([]byte(key))
 	n := binary.BigEndian.Uint64(sum[:8]) & 0x7FFFFFFFFFFFFFFF

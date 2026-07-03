@@ -23,6 +23,7 @@ var (
 	metricRAGLLMMs       atomic.Uint64
 )
 
+// recordHTTPStatus increments total and per-class HTTP response counters.
 func recordHTTPStatus(status int) {
 	metricHTTPRequests.Add(1)
 	switch {
@@ -35,10 +36,12 @@ func recordHTTPStatus(status int) {
 	}
 }
 
+// recordLLMError increments the LLM failure counter.
 func recordLLMError() {
 	metricLLMErrors.Add(1)
 }
 
+// recordRAGTraceMetrics updates RAG counters from one request trace.
 func recordRAGTraceMetrics(t RAGTrace) {
 	metricRAGRequests.Add(1)
 	if t.VerifyPass {
@@ -57,6 +60,7 @@ func recordRAGTraceMetrics(t RAGTrace) {
 	}
 }
 
+// metricsMiddleware counts HTTP responses for all routes except /metrics itself.
 func metricsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.URL.Path == "/metrics" {

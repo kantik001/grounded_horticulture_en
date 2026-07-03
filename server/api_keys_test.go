@@ -2,6 +2,7 @@ package main
 
 import "testing"
 
+// Verifies that lookupAPIKey finds registered keys and rejects unknown ones.
 func TestLookupAPIKey(t *testing.T) {
 	apiKeyRegistry = map[string]apiKeyRecord{
 		"secret-key": {Label: "demo", Roles: []string{RoleChatOnly}},
@@ -15,6 +16,7 @@ func TestLookupAPIKey(t *testing.T) {
 	}
 }
 
+// Verifies that apiKeyActorID is deterministic and always negative.
 func TestAPIKeyActorIDStable(t *testing.T) {
 	a := apiKeyActorID("same-key")
 	b := apiKeyActorID("same-key")
@@ -23,6 +25,7 @@ func TestAPIKeyActorIDStable(t *testing.T) {
 	}
 }
 
+// Verifies that keys without roles fall back to the default chat_only role.
 func TestAPIKeyDefaultRoles(t *testing.T) {
 	apiKeyRegistry = map[string]apiKeyRecord{
 		"k": {Label: "x", Roles: nil},

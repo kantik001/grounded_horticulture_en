@@ -1,20 +1,20 @@
-﻿# Разбор: RAG и LLM на Go (`server/rag_chat.go`)
+﻿# Walkthrough: RAG and LLM on Go (`server/rag_chat.go`)
 
-**Файл:** `server/rag_chat.go`  
+**File:** `server/rag_chat.go`  
 **Python:** [rag-retrieval.md](./rag-retrieval.md), [rag-verifier.md](./rag-verifier.md)  
-**Вызывается из:** `handleChat` (устарел), `handleTextMessage` (`message_handlers.go`)
+**Called from:** `handleChat` (deprecated), `handleTextMessage` (`message_handlers.go`)
 
 ---
 
-## Роль файла
+## Role of this file
 
-Go **не** ищет в индексах сам. Цепочка:
+Go does **not** search indexes itself. Chain:
 
 1. **`fetchRAGContext`** → Python `POST /rag/context` → context, few_shot, fragments.
-2. Сборка **промпта** (`buildRAGUserPrompt` + `config/prompts.json`).
+2. **Prompt** assembly (`buildRAGUserPrompt` + `config/prompts.json`).
 3. **`callLLMCompletion`** → OpenRouter / OpenAI-compatible.
-4. **Постобработка** — `cleanRAGAnswer`, `appendRAGDisclaimer`.
-5. **`verifyRAGAnswer`** — числа только из fragments (как [rag/verifier.py](../rag/verifier.py)).
+4. **Post-processing** — `cleanRAGAnswer`, `appendRAGDisclaimer`.
+5. **`verifyRAGAnswer`** — numbers only from fragments (like [rag/verifier.py](../rag/verifier.py)).
 
 ---
 
@@ -25,131 +25,131 @@ POST CLASSIFIER_RAG_URL
 { "question": "...", "crop_id": "apple" }
 ```
 
-Ответ `pythonRAGContextResponse`:
+Response `pythonRAGContextResponse`:
 
-| Поле | Использование |
-|------|----------------|
-| `success` / `error` | ошибка «нет статей» и т.д. |
-| `context` | блок `<context>` в промпте |
-| `few_shot` | блок `<examples>` |
-| `fragments` | верификация чисел |
+| Field | Use |
+|-------|-----|
+| `success` / `error` | “no articles” etc. |
+| `context` | `<context>` block in prompt |
+| `few_shot` | `<examples>` block |
+| `fragments` | number verification |
 
-Таймаут HTTP: **120s**.
+HTTP timeout: **120s**.
 
 ---
 
-## Промпт LLM
+## LLM prompt
 
-### Шаблон `ragUserPromptTpl`
+### Template `ragUserPromptTpl`
 
-Секции:
+Sections:
 
-- `<system>` — intro из `prompts.json` (`RAGTaskIntro`)
-- `<context>` — фрагменты статей
+- `<system>` — intro from `prompts.json` (`RAGTaskIntro`)
+- `<context>` — article fragments
 - `<examples>` — few-shot
-- `<constraints>` — не выдумывать, русский, без «вероятно», **без названий статей**
-- Вопрос пользователя
+- `<constraints>` — do not invent, answer language per prompt, no “probably”, **no article names**
+- User question
 
-Системное сообщение отдельно: `prompts.RAGSystem` из `promptsForCrop(cropID)`.
+System message separately: `prompts.RAGSystem` from `promptsForCrop(cropID)`.
 
-### История диалога
+### Dialog history
 
 `answerWithRAG(q, cropID, history)`:
 
-- `history` — предыдущие user/assistant из БД (`HistoryForLLM`).
-- В `/chat` history = `nil`.
-- В `/message` — передаётся prior для контекста мультитурного чата.
+- `history` — prior user/assistant from DB (`HistoryForLLM`).
+- In `/chat` history = `nil`.
+- In `/message` — prior passed for multi-turn context.
 
 ---
 
-## Постобработка ответа
+## Answer post-processing
 
 ### `cleanRAGAnswer`
 
-Удаляет мусор модели: ``, `<answer>`, вступления «Давайте посмотрим…», «аботчик».
+Removes model junk: ``, `<answer>`, intros like “Let’s look…”, “handler”.
 
 ### `appendRAGDisclaimer`
 
-1. `stripSourceAttribution` — строки `Источник: ...`
-2. Добавляет константу:
+1. `stripSourceAttribution` — `Source: ...` lines
+2. Adds constant:
 
-> Справочная информация из базы знаний. Не заменяет очный осмотр агронома…
+> Reference information from the knowledge base. Does not replace an in-person agronomist visit…
 
-Пользователь **не** видит названия статей (политика продукта).
+User **does not** see article names (product policy).
 
 ---
 
 ## `verifyRAGAnswer`
 
-1. Собрать текст всех `fragments[].content`.
-2. Извлечь числа из ответа (без дисклеймера) — regex, запятая → точка.
-3. Каждое число в ответе должно совпасть с числом в контексте (±0.01).
+1. Concatenate all `fragments[].content`.
+2. Extract numbers from answer (without disclaimer) — regex, comma → dot.
+3. Each number in answer must match a number in context (±0.01).
 
-**Провал:** пользователю сообщение вида «⚠️ Система не смогла подтвердить ответ…» + причина (число 72 не найдено).
+**Failure:** user message like “⚠️ System could not confirm answer…” + reason (number 72 not found).
 
-**Без чисел в ответе** — verify OK.
+**No numbers in answer** — verify OK.
 
-Тесты: `rag_chat_test.go` (зеркало Python `test_verifier.py`).
-
----
-
-## `answerWithRAG` — итоговая функция
-
-Возвращает `(answer, success, errMsg, ragSoftFail)`:
-
-| Случай | Поведение |
-|--------|-----------|
-| Пустой вопрос | error |
-| RAG `success: false` | `ragSoftFail=true`, текст из Python |
-| Нет `LLM_API_KEY` | error про ключ |
-| LLM ошибка | error |
-| Verify fail | answer с ⚠️, `success=true` (мягкий отказ) |
-| OK | answer с дисклеймером |
+Tests: `rag_chat_test.go` (mirror of Python `test_verifier.py`).
 
 ---
 
-## `handleChat` — `POST /chat` (устарел)
+## `answerWithRAG` — final function
 
-Ответ содержит заголовки `Deprecation: true` и `Link: </message>; rel="successor-version"`. Для новых интеграций используйте `POST /message` с `session_id`.
+Returns `(answer, success, errMsg, ragSoftFail)`:
+
+| Case | Behavior |
+|------|----------|
+| Empty question | error |
+| RAG `success: false` | `ragSoftFail=true`, text from Python |
+| No `LLM_API_KEY` | error about key |
+| LLM error | error |
+| Verify fail | answer with ⚠️, `success=true` (soft refusal) |
+| OK | answer with disclaimer |
+
+---
+
+## `handleChat` — `POST /chat` (deprecated)
+
+Response includes headers `Deprecation: true` and `Link: </message>; rel="successor-version"`. For new integrations use `POST /message` with `session_id`.
 
 JSON: `{ "question", "crop_id" }`.
 
-- Без сохранения в Postgres.
-- Удобно для отладки RAG+LLM.
-- Те же коды ответа: 400, 503 (нет ключа), 200 + `answer`.
+- No Postgres save.
+- Handy for RAG+LLM debugging.
+- Same response codes: 400, 503 (no key), 200 + `answer`.
 
 ---
 
-## Связь с `handleTextMessage`
+## Relation to `handleTextMessage`
 
-Тот же `answerWithRAG`, но:
+Same `answerWithRAG`, but:
 
-- до/после — `AppendMessage` в БД;
+- before/after — `AppendMessage` in DB;
 - analytics `rag_answer`;
-- ответ клиенту — весь массив `messages`.
+- client response — full `messages` array.
 
 ---
 
-## Требования для работы
+## Requirements
 
-| Компонент | Env / сервис |
+| Component | Env / service |
 |-----------|----------------|
-| RAG retrieval | classifier up, статьи + reindex |
+| RAG retrieval | classifier up, articles + reindex |
 | LLM | `LLM_API_KEY` |
-| Промпты | `PROMPTS_CONFIG_PATH` или `config/prompts.json` |
-| Культура | `normalizeCropID` + `rag_enabled` |
+| Prompts | `PROMPTS_CONFIG_PATH` or `config/prompts.json` |
+| Crop | `normalizeCropID` + `rag_enabled` |
 
 ---
 
-## Отладка
+## Debugging
 
-1. Лог `RAG fetch error` — Python (Chroma/BM25/reranker).
-2. Ответ «нет в справочных материалах» — RAG пустой или LLM по промпту.
-3. ⚠️ verify — число в ответе не из статей (классический кейс «72%»).
-4. 503 — нет `LLM_API_KEY`.
+1. Log `RAG fetch error` — Python (Chroma/BM25/reranker).
+2. “Not in reference materials” — empty RAG or LLM following prompt.
+3. ⚠️ verify — number in answer not from articles (classic “72%” case).
+4. 503 — no `LLM_API_KEY`.
 
 ---
 
-## Краткий итог
+## Brief summary
 
-`rag_chat.go` — **мозг текстового ассистента на Go**: Python даёт факты, LLM формулирует, Go чистит и проверяет числа. Дублирует идеи `rag/verifier.py`, но в проде работает именно Go-версия.
+`rag_chat.go` — **text assistant brain on Go**: Python supplies facts, LLM formulates, Go cleans and verifies numbers. Mirrors `rag/verifier.py` ideas; Go version runs in production.

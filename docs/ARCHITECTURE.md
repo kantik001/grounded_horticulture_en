@@ -1,113 +1,113 @@
-# Архитектура: универсальная платформа grounded LLM
+# Architecture: universal grounded LLM platform
 
-Репозиторий **doctor_gardens_ai** сейчас — **первый продуктовый пакет (агробот)** на общем каркасе.  
-Цель: клонировать репозиторий, заменить domain pack и развернуть ассистента для другой отрасли (HR, образование, регламенты, KSA и т.д.) **без переписывания ядра**.
+The **doctor_gardens_ai** repository is currently the **first production-shaped pack (agro bot)** on a shared core.  
+Goal: clone the repo, swap the domain pack, and deploy an assistant for another vertical (HR, education, regulations, KSA, etc.) **without rewriting the core**.
 
-См. также: [DEPLOY.md](./DEPLOY.md), [ROADMAP.md](./ROADMAP.md), [knowledge-base/README.md](./knowledge-base/README.md).
+See also: [DEPLOY.md](./DEPLOY.md), [knowledge-base/README.md](./knowledge-base/README.md).
 
 ---
 
-## Три слоя
+## Three layers
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Platform core (копируем в новый проект как есть)       │
+│  Platform core (copy to a new project as-is)            │
 │  Go orchestration · Python RAG · verify · admin · CI    │
 └───────────────────────────┬─────────────────────────────┘
                             │
          ┌──────────────────┼──────────────────┐
          ▼                  ▼                  ▼
    Domain pack A      Domain pack B     Domain pack C
-   (agro / apple)     (demo_hr)         (будущий клиент)
+   (agro / apple)     (demo_hr)         (future client)
    data + config      data + config      data + config
 ```
 
-| Слой | Папки / код | Меняется при клоне? |
-|------|-------------|-------------------|
-| **Core** | `server/` (кроме агро-формулировок в комментариях), `api/`, `rag/`, `migrations/`, `scripts/reindex_rag.py`, `scripts/run_rag_eval.py`, `docker-compose.yml`, `tests/`, `eval/` (механизм) | Нет |
-| **Domain pack** | `data/{domain_id}/`, `config/crops.json`, `prompts.json`, `few_shot.json`, `question_categories.json`, `onboarding.json`, `photo_templates.json`, `cv_class_labels.json`, `config/branding.json`, тексты `webapp/` | **Да** |
-| **Optional modules** | CV (`cv/`, `cv_enabled`), Telegram Web App | По задаче |
+| Layer | Folders / code | Changes when cloning? |
+|-------|----------------|----------------------|
+| **Core** | `server/`, `api/`, `rag/`, `migrations/`, `scripts/reindex_rag.py`, `scripts/run_rag_eval.py`, `docker-compose.yml`, `tests/`, `eval/` (mechanism) | No |
+| **Domain pack** | `data/{domain_id}/`, `config/crops.json`, `prompts.json`, `few_shot.json`, `question_categories.json`, `onboarding.json`, `photo_templates.json`, `cv_class_labels.json`, `config/branding.json`, `webapp/` copy | **Yes** |
+| **Optional modules** | CV (`cv/`, `cv_enabled`), Telegram Web App | As needed |
 
-**`crop_id` в API** — идентификатор **домена знаний** (workspace). В новых проектах можно мысленно называть `domain_id`; переименование в коде — позже, с alias.
+**`crop_id` in the API** is the **knowledge domain** (workspace) identifier. In new projects you can think of it as `domain_id`; renaming in code can come later with an alias.
 
 ---
 
-## Поток данных (текст)
+## Data flow (text)
 
-1. Клиент → Go `POST /message` (сессия + auth).
+1. Client → Go `POST /message` (session + auth).
 2. Go → Python `POST /rag/context` (`question`, `crop_id`).
-3. Python hybrid search (Chroma + BM25 + reranker) возвращает фрагменты + few-shot из `config/`.
-4. Go собирает промпт → LLM → `cleanRAGAnswer` → `verifyRAGAnswer` → дисклеймер.
-5. Ответ и метаданные → Postgres; структурированный лог RAG (`rag_log.go`).
+3. Python hybrid search (Chroma + BM25 + reranker) returns fragments + few-shot from `config/`.
+4. Go builds prompt → LLM → `cleanRAGAnswer` → `verifyRAGAnswer` → disclaimer.
+5. Reply and metadata → Postgres; structured RAG log (`rag_log.go`).
 
-Фото: `classifyAndRecommend` → Python CV (если `cv_enabled`) → LLM или `photo_templates.json`.
+Photo: `classifyAndRecommend` → Python CV (if `cv_enabled`) → LLM or `photo_templates.json`.
 
 ---
 
-## Platform core (файлы)
+## Platform core (files)
 
-| Компонент | Файлы | Роль |
+| Component | Files | Role |
 |-----------|-------|------|
-| API / auth | `middleware.go`, `auth_telegram.go`, `routes.go` | Telegram, CORS, rate limit, маршруты |
-| Чат | `message_handlers.go`, `session_handlers.go`, `postgres_store.go` | Сессии, история, фото |
+| API / auth | `middleware.go`, `auth_telegram.go`, `routes.go` | Telegram, CORS, rate limit, routes |
+| Chat | `message_handlers.go`, `session_handlers.go`, `postgres_store.go` | Sessions, history, photos |
 | RAG + LLM | `rag_chat.go`, `rag_verify.go`, `llm.go` | Retrieval orchestration, guardrails |
-| Качество | `rag_log.go`, `eval/`, `scripts/run_rag_eval.py` | Наблюдаемость и регрессии |
-| Конфиг runtime | `crops.go`, `config_reload.go`, `photo_templates.go`, `onboarding.go`, `branding.go` | JSON без rebuild |
+| Quality | `rag_log.go`, `eval/`, `scripts/run_rag_eval.py` | Observability and regressions |
+| Runtime config | `crops.go`, `config_reload.go`, `photo_templates.go`, `onboarding.go`, `branding.go` | JSON without rebuild |
 | Admin | `admin.go` | Upload `.txt`, reindex |
-| Python | `api/app.py`, `rag/*`, `cv/registry.py` | ML-сервис |
+| Python | `api/app.py`, `rag/*`, `cv/registry.py` | ML service |
 
 ---
 
-## Domain pack (агро сейчас)
+## Domain pack (agro today)
 
-| Файл | Содержание |
-|------|------------|
-| `data/apple/*.txt` | База знаний RAG |
+| File | Contents |
+|------|----------|
+| `data/apple/*.txt` | RAG knowledge base |
 | `config/crops.json` | `apple`, `demo_hr`, … + `cv_enabled` / `rag_enabled` |
-| `config/prompts.json` | Системные промпты по домену |
-| `config/few_shot.json` | Примеры тона ответа |
-| `config/question_categories.json` | Ключевые слова для `classify_question` (few-shot / rerank) |
-| `config/onboarding.json` | Чипы вопросов в UI |
-| `config/photo_templates.json` | Шаблоны без LLM |
-| `config/cv_class_labels.json` | Метки CV (только agro) |
-| `config/branding.json` | Заголовок, дисклеймер UI |
-| `webapp/` | Канал Telegram (можно заменить) |
+| `config/prompts.json` | System prompts per domain |
+| `config/few_shot.json` | Answer tone examples |
+| `config/question_categories.json` | Keywords for `classify_question` (few-shot / rerank) |
+| `config/onboarding.json` | Example question chips in UI |
+| `config/photo_templates.json` | Templates without LLM |
+| `config/cv_class_labels.json` | CV labels (agro only) |
+| `config/branding.json` | Header, UI disclaimer |
+| `webapp/` | Telegram channel (replaceable) |
 
-**Sandbox `demo_hr`:** RAG без CV — проверка, что платформа не привязана к агро.
-
----
-
-## Правило при разработке
-
-Перед merge: **«Это core или domain pack?»**
-
-- Универсальная логика → config / общий Go / `rag/`.
-- Тексты про яблоню, болезни, «садовод» → `data/`, `config/`, `branding.json`.
+**Sandbox `demo_hr`:** RAG without CV — proves the platform is not agro-specific.
 
 ---
 
-## Чеклист: новый проект на базе платформы
+## Development rule
 
-1. `git clone` → новое имя репозитория.
-2. Заменить `config/branding.json`, тексты `webapp` (или свой фронт).
-3. Очистить / заменить `data/*`, добавить документы заказчика.
-4. Обновить `crops.json` (домены), `prompts.json`, `few_shot.json`, `question_categories.json`, `onboarding.json`.
-5. `cv_enabled: false` если CV не нужен.
-6. `python scripts/reindex_rag.py` (или admin reindex).
-7. Скопировать `eval/rag_*_baseline.jsonl` → свои вопросы; `python scripts/run_rag_eval.py`.
-8. Deploy по [DEPLOY.md](./DEPLOY.md); пилот + feedback.
+Before merge: **“Is this core or domain pack?”**
 
-Оценка: **2–5 дней** на MVP при готовых документах и без CV.
+- Universal logic → config / shared Go / `rag/`.
+- Apple-specific copy, diseases, “gardener” wording → `data/`, `config/`, `branding.json`.
 
 ---
 
-## Дорожная карта платформы (после агро-пилота)
+## Checklist: new project on the platform
 
-| Приоритет | Задача |
-|-----------|--------|
-| Сейчас | Eval, RAG-логи, ARCHITECTURE, sandbox `demo_hr` |
-| Далее | `domain_id` alias в API, tenant в БД |
-| По заказчику | i18n (AR/EN), SSO, ingest PDF/SharePoint |
-| Опционально | Qdrant, multi-tenant SaaS |
+1. `git clone` → new repository name.
+2. Replace `config/branding.json`, `webapp/` texts (or your own frontend).
+3. Clear / replace `data/*`, add customer documents.
+4. Update `crops.json` (domains), `prompts.json`, `few_shot.json`, `question_categories.json`, `onboarding.json`.
+5. `cv_enabled: false` if CV is not needed.
+6. `python scripts/reindex_rag.py` (or admin reindex).
+7. Copy `eval/rag_*_baseline.jsonl` → your questions; `python scripts/run_rag_eval.py`.
+8. Deploy per [DEPLOY.md](./DEPLOY.md); pilot + feedback.
 
-Агробот остаётся **референсным пакетом** и полигоном качества, не единственным продуктом платформы.
+Estimate: **2–5 days** for MVP with ready documents and no CV.
+
+---
+
+## Platform roadmap (after agro pilot)
+
+| Priority | Task |
+|----------|------|
+| Now | Eval, RAG logs, ARCHITECTURE, sandbox `demo_hr` |
+| Next | `domain_id` alias in API, tenant in DB |
+| Per customer | i18n (AR/EN), SSO, PDF/SharePoint ingest |
+| Optional | Qdrant, multi-tenant SaaS |
+
+The agro bot remains a **reference pack** and quality testbed, not the only product on the platform.

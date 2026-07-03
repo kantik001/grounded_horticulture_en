@@ -1,42 +1,42 @@
-﻿# Разбор: `cv/registry.py`
+﻿# Walkthrough: `cv/registry.py`
 
-**Исходный файл:** `cv/registry.py`  
-**Язык:** Python  
-**Связанные модули:** `cv/apple_classifier.py`, `rag/crops_config.py`, `config/crops.json`, `api/app.py`  
-**Кто вызывает:** `api/app.py` (`classify_image`) → `get_classifier_for_crop(crop_id)`
-
----
-
-## Зачем этот файл
-
-Это **фабрика и кэш CV-моделей по культуре** (`crop_id`).
-
-Один файл решает три задачи:
-
-1. Проверить, разрешено ли распознавание фото для выбранной культуры (`cv_enabled` в `crops.json`).
-2. Найти путь к весам `.pth` в переменных окружения.
-3. Создать `AppleClassifier` **один раз на культуру** и переиспользовать (не грузить PyTorch при каждом запросе).
-
-Без `registry.py` пришлось бы дублировать эту логику в `app.py`.
+**Source file:** `cv/registry.py`  
+**Language:** Python  
+**Related modules:** `cv/apple_classifier.py`, `rag/crops_config.py`, `config/crops.json`, `api/app.py`  
+**Called by:** `api/app.py` (`classify_image`) → `get_classifier_for_crop(crop_id)`
 
 ---
 
-## Глобальный кэш `_classifiers`
+## Why this file exists
+
+**Factory and cache for CV models by crop** (`crop_id`).
+
+One file handles three tasks:
+
+1. Check whether photo recognition is allowed for the crop (`cv_enabled` in `crops.json`).
+2. Find `.pth` weight path in environment variables.
+3. Create `AppleClassifier` **once per crop** and reuse (do not reload PyTorch on every request).
+
+Without `registry.py` this logic would be duplicated in `app.py`.
+
+---
+
+## Global cache `_classifiers`
 
 ```python
 _classifiers: Dict[str, object] = {}
 ```
 
-- Ключ: нормализованный `crop_id` (например `"apple"`).
-- Значение: экземпляр `AppleClassifier`.
-- Живёт **в памяти процесса** Python-сервиса до перезапуска контейнера.
+- Key: normalized `crop_id` (e.g. `"apple"`).
+- Value: `AppleClassifier` instance.
+- Lives **in Python service process memory** until container restart.
 
-Плюс: быстрые повторные запросы.  
-Минус: сменили `.pth` на диске — нужен **restart** контейнера `classifier`, иначе старая модель в RAM.
+Pro: fast repeat requests.  
+Con: changed `.pth` on disk — need **restart** of `classifier` container, else old model stays in RAM.
 
 ---
 
-## Поиск пути к весам: `_model_path_for_crop`
+## Weight path lookup: `_model_path_for_crop`
 
 ```python
 def _model_path_for_crop(crop_id: str) -> Optional[str]:
@@ -49,29 +49,29 @@ def _model_path_for_crop(crop_id: str) -> Optional[str]:
     return None
 ```
 
-| Культура | Переменная в `.env` (пример) |
-|----------|------------------------------|
-| apple | `MODEL_PATH` или `MODEL_PATH_APPLE` |
-| pear (в будущем) | `MODEL_PATH_PEAR` |
-| любая | `MODEL_PATH_{CROP_ID_UPPER}` |
+| Crop | `.env` variable (example) |
+|------|---------------------------|
+| apple | `MODEL_PATH` or `MODEL_PATH_APPLE` |
+| pear (future) | `MODEL_PATH_PEAR` |
+| any | `MODEL_PATH_{CROP_ID_UPPER}` |
 
-Если переменной нет → `None` → классификатор без ваших весов (только ImageNet backbone).
+If variable missing → `None` → `ModelWeightsUnavailableError` (HTTP 503 from `api/app.py`). Without trained weights the classification head is randomly initialized, so serving predictions would be meaningless.
 
-### Относительные пути
+### Relative paths
 
 ```python
 if model_path and not os.path.isabs(model_path):
     model_path = os.path.normpath(os.path.join(os.path.dirname(__file__), model_path))
 ```
 
-Путь считается **от папки `cv/`**, не от корня проекта.  
-Пример: `MODEL_PATH=../models/apple_classifier.pth`.
+Path is relative to **`cv/`** folder, not project root.  
+Example: `MODEL_PATH=../models/apple_classifier.pth`.
 
 ---
 
-## Главная функция: `get_classifier_for_crop`
+## Main function: `get_classifier_for_crop`
 
-### Шаг 1 — нормализация и конфиг культуры
+### Step 1 — normalization and crop config
 
 ```python
 crop_id = normalize_crop_id(crop_id)
@@ -80,24 +80,26 @@ if not crop.get("cv_enabled", False):
     raise ValueError(...)
 ```
 
-Сейчас в `config/crops.json` только **apple** имеет `"cv_enabled": true`.  
-Для груши/сливы пользователь получит понятную ошибку на русском (HTTP 400 из `api/app.py`).
+Currently only **apple** has `"cv_enabled": true` in `config/crops.json`.  
+For pear/plum user gets clear error (HTTP 400 from `api/app.py`).
 
-### Шаг 2 — кэш
+### Step 2 — cache
 
 ```python
 if crop_id in _classifiers:
     return _classifiers[crop_id]
 ```
 
-### Шаг 3 — создание модели
+### Step 3 — model creation
 
-| Условие | Действие |
-|---------|----------|
-| `model_path` существует | `create_classifier(model_path=...)` + лог `Загрузка весов: ...` |
-| файла нет | `create_classifier()` без весов + лог `Весов нет — только backbone ImageNet` |
+| Condition | Action |
+|-----------|--------|
+| `model_path` exists | `create_classifier(model_path=...)` + log `Loading weights: ...` |
+| file missing | raise `ModelWeightsUnavailableError` → HTTP 503 (never serve an untrained head) |
 
-### Шаг 4 — сохранение в кэш
+Creation and cache access are guarded by `_classifiers_lock`, so concurrent first requests under gunicorn threads load the model exactly once.
+
+### Step 4 — cache store
 
 ```python
 _classifiers[crop_id] = clf
@@ -106,85 +108,84 @@ return clf
 
 ---
 
-## Схема вызовов
+## Call diagram
 
 ```mermaid
 flowchart TD
     A[POST /classify crop_id + image] --> B[get_classifier_for_crop]
     B --> C{normalize_crop_id}
     C --> D{cv_enabled?}
-    D -->|нет| E[ValueError 400]
-    D -->|да| F{есть в _classifiers?}
-    F -->|да| G[вернуть кэш]
-    F -->|нет| H[_model_path_for_crop]
-    H --> I{файл .pth есть?}
-    I -->|да| J[create_classifier path]
-    I -->|нет| K[create_classifier без весов]
-    J --> L[кэш + return]
-    K --> L
+    D -->|no| E[ValueError 400]
+    D -->|yes| F{in _classifiers?}
+    F -->|yes| G[return cache]
+    F -->|no| H[_model_path_for_crop]
+    H --> I{.pth file exists?}
+    I -->|yes| J[create_classifier path]
+    I -->|no| K[ModelWeightsUnavailableError 503]
+    J --> L[cache + return]
     L --> M[predict_from_bytes]
 ```
 
 ---
 
-## Связь с мультикультурой
+## Multi-crop support
 
-Сейчас реализована **одна** CV-модель (`AppleClassifier`), но интерфейс уже под несколько культур:
+Currently **one** CV model (`AppleClassifier`), but interface is ready for several crops:
 
-- разные `MODEL_PATH_*` на культуру;
-- отдельный объект в `_classifiers` на `crop_id`;
-- включение/выключение через `cv_enabled`.
+- different `MODEL_PATH_*` per crop;
+- separate object in `_classifiers` per `crop_id`;
+- enable/disable via `cv_enabled`.
 
-Чтобы добавить, например, грушу:
+To add pear, for example:
 
-1. Обучить отдельный `.pth` (или общий — по решению).
-2. `MODEL_PATH_PEAR=...` в `.env`.
-3. В `crops.json`: `"cv_enabled": true` для `pear`.
-4. При необходимости — другой класс модели вместо `create_classifier` (сейчас всегда `AppleClassifier`).
+1. Train separate `.pth` (or shared — your choice).
+2. `MODEL_PATH_PEAR=...` in `.env`.
+3. In `crops.json`: `"cv_enabled": true` for `pear`.
+4. If needed — different model class instead of `create_classifier` (currently always `AppleClassifier`).
 
 ---
 
-## Переменные окружения (практика)
+## Environment variables (practice)
 
 ```env
 MODEL_PATH=models/apple_classifier.pth
-# или явно:
+# or explicit:
 MODEL_PATH_APPLE=models/apple_classifier.pth
 ```
 
-В Docker часто volume `./models:/app/models` и путь `models/apple_classifier.pth`.
+In Docker often volume `./models:/app/models` and path `models/apple_classifier.pth`.
 
 ---
 
-## Типичные ситуации
+## Typical situations
 
-### «Распознавание фото для груши недоступно»
+### “Photo recognition for pear is unavailable”
 
-`cv_enabled: false` в `crops.json` — ожидаемое поведение, не баг registry.
+`cv_enabled: false` in `crops.json` — expected behavior, not a registry bug.
 
-### Модель «всегда ошибается» после обучения
+### Model “always wrong” after training
 
-1. Проверить лог: `Загрузка весов` vs `Весов нет — только backbone ImageNet`.
-2. Перезапустить контейнер после замены `.pth`.
-3. Убедиться, что папки датасета и `DEFAULT_CLASS_LABELS` / `class_labels` в checkpoint совпадают (см. [cv-train_classifier.md](./cv-train_classifier.md)).
+1. Check log: `Loading weights: ...` should appear at first classify request.
+2. Restart container after replacing `.pth`.
+3. Ensure dataset folders and `DEFAULT_CLASS_LABELS` / `class_labels` in checkpoint match (see [cv-train_classifier.md](./cv-train_classifier.md)).
 
-### Память растёт
+### Memory growth
 
-Каждая культура с `cv_enabled` держит свою модель в RAM. Для 1–2 культур это нормально.
+Each crop with `cv_enabled` holds its model in RAM. For 1–2 crops this is normal.
 
 ---
 
-## Что читать дальше
+## What to read next
 
-| Тема | Файл |
-|------|------|
-| Inference и классы | [cv-apple_classifier.md](./cv-apple_classifier.md) |
+| Topic | File |
+|-------|------|
+| Inference and classes | [cv-apple_classifier.md](./cv-apple_classifier.md) |
 | HTTP `/classify` | [python-api.md](./python-api.md) |
-| Обучение `.pth` | [cv-train_classifier.md](./cv-train_classifier.md) |
-| Флаги культур | `config/crops.json`, `rag/crops_config.py` |
+| Train `.pth` | [cv-train_classifier.md](./cv-train_classifier.md) |
+| Crop flags | `config/crops.json`, `rag/crops_config.py` |
 
 ---
 
-## Краткий итог
+## Brief summary
 
-`registry.py` — **тонкий слой между API и PyTorch**: проверка культуры, путь к весам из env, кэш `AppleClassifier` на `crop_id`. Вся математика — в `apple_classifier.py`.
+`registry.py` — **thin layer between API and PyTorch**: crop check, weight path from env, `AppleClassifier` cache per `crop_id`. All math is in `apple_classifier.py`.

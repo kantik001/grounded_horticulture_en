@@ -25,24 +25,17 @@
 
         var authInfo = null;
         var webLoginResolver = null;
-
-        function isEnglishUI() {
-            var lang = (navigator.language || '').toLowerCase();
-            return lang.indexOf('en') === 0;
-        }
-
-        function uiText(ru, en) {
-            return isEnglishUI() ? en : ru;
-        }
-
+        // True when running inside Telegram with signed initData.
         function isTelegramClient() {
             return !!(tg && tg.initData);
         }
 
+        // Returns the browser API key from sessionStorage, or ''.
         function getStoredApiKey() {
             return sessionStorage.getItem(API_KEY_STORAGE_KEY) || '';
         }
 
+        // Saves or clears the browser API key in sessionStorage.
         function setStoredApiKey(key) {
             if (key) {
                 sessionStorage.setItem(API_KEY_STORAGE_KEY, key);
@@ -95,21 +88,17 @@
             webLoginError: document.getElementById('webLoginError'),
         };
 
+        // Fills the web login overlay with English UI text.
         function applyWebLoginCopy() {
             if (!el.webLoginTitle) return;
-            el.webLoginTitle.textContent = uiText('Вход', 'Sign in');
-            el.webLoginHint.textContent = uiText(
-                'Введите ключ доступа для работы в браузере.',
-                'Enter your access key to use the assistant in the browser.'
-            );
-            el.webLoginKey.placeholder = uiText('Ключ доступа', 'Access key');
-            el.webLoginSubmit.textContent = uiText('Продолжить', 'Continue');
-            el.webLoginNote.textContent = uiText(
-                'Пользователям Telegram: откройте приложение из бота.',
-                'Telegram users: open the app from the bot.'
-            );
+            el.webLoginTitle.textContent = 'Sign in';
+            el.webLoginHint.textContent = 'Enter your access key to use the assistant in the browser.';
+            el.webLoginKey.placeholder = 'Access key';
+            el.webLoginSubmit.textContent = 'Continue';
+            el.webLoginNote.textContent = 'Telegram users: open the app from the bot.';
         }
 
+        // Loads branding config and applies titles, labels and disclaimer.
         async function loadBranding() {
             try {
                 var res = await apiFetch('/branding', { method: 'GET' });
@@ -125,12 +114,13 @@
                 if (el.onboardingTitle && b.onboarding_title) el.onboardingTitle.textContent = b.onboarding_title;
                 if (el.chatDivider && b.chat_divider) el.chatDivider.textContent = b.chat_divider;
                 if (el.photoBetaNotice && b.photo_beta_notice) el.photoBetaNotice.textContent = b.photo_beta_notice;
-                if (b.app_title) document.title = b.app_title + ' — чат';
+                if (b.app_title) document.title = b.app_title + ' — chat';
             } catch (e) {
                 console.warn('loadBranding', e);
             }
         }
 
+        // Shows a toast message that auto-hides after a few seconds.
         function showToast(msg) {
             el.toast.textContent = msg;
             el.toast.classList.add('show');
@@ -138,7 +128,7 @@
             showToast._t = setTimeout(function() { el.toast.classList.remove('show'); }, 4200);
         }
 
-        /** initData от Telegram — криптографически подписанные данные пользователя (см. core.telegram.org/bots/webapps). */
+        /** Telegram initData — cryptographically signed user payload (see core.telegram.org/bots/webapps). */
         function getTelegramInitData() {
             if (tg && tg.initData) {
                 return String(tg.initData);
@@ -146,7 +136,7 @@
             return '';
         }
 
-        /** Заголовки для API: Telegram initData или API-ключ для браузера. */
+        /** API headers: Telegram initData or browser API key. */
         function withAuthHeaders(extra) {
             var h = Object.assign({}, extra || {});
             var initData = getTelegramInitData();
@@ -161,6 +151,7 @@
             return h;
         }
 
+        // Queries /auth/info across API base candidates to detect the auth mode.
         async function fetchAuthInfo() {
             var candidates = buildApiCandidates();
             for (var i = 0; i < candidates.length; i++) {
@@ -182,6 +173,7 @@
             return null;
         }
 
+        // Opens the login overlay and returns a promise resolved on successful sign-in.
         function showWebLoginOverlay() {
             applyWebLoginCopy();
             el.webLoginError.hidden = true;
@@ -193,10 +185,12 @@
             });
         }
 
+        // Hides the web login overlay.
         function hideWebLoginOverlay() {
             el.webLoginOverlay.hidden = true;
         }
 
+        // Verifies an API key by creating a session; restores the previous key on failure.
         async function validateApiKey(key) {
             var prev = getStoredApiKey();
             setStoredApiKey(key);
@@ -213,13 +207,14 @@
                     return true;
                 }
                 setStoredApiKey(prev);
-                throw new Error(data.error || uiText('Неверный ключ', 'Invalid access key'));
+                throw new Error(data.error || 'Invalid access key');
             } catch (e) {
                 setStoredApiKey(prev);
                 throw e;
             }
         }
 
+        // Ensures browser clients are authenticated, prompting for a key when required.
         async function ensureWebAuth() {
             if (isTelegramClient()) return;
             if (!authInfo) {
@@ -232,22 +227,16 @@
                 return;
             }
             if (authInfo && authInfo.telegram) {
-                throw new Error(uiText(
-                    'Откройте приложение из Telegram-бота.',
-                    'Open this app from the Telegram bot.'
-                ));
+                throw new Error('Open this app from the Telegram bot.');
             }
-            throw new Error(uiText(
-                'Авторизация не настроена на сервере.',
-                'Server auth is not configured.'
-            ));
+            throw new Error('Server auth is not configured.');
         }
 
         if (el.webLoginSubmit) {
             el.webLoginSubmit.addEventListener('click', function() {
                 var key = (el.webLoginKey.value || '').trim();
                 if (!key) {
-                    el.webLoginError.textContent = uiText('Введите ключ', 'Enter a key');
+                    el.webLoginError.textContent = 'Enter a key';
                     el.webLoginError.hidden = false;
                     return;
                 }
@@ -259,7 +248,7 @@
                         webLoginResolver = null;
                     }
                 }).catch(function(e) {
-                    el.webLoginError.textContent = e.message || uiText('Ошибка', 'Error');
+                    el.webLoginError.textContent = e.message || 'Error';
                     el.webLoginError.hidden = false;
                 }).finally(function() {
                     el.webLoginSubmit.disabled = false;
@@ -273,6 +262,7 @@
             });
         }
 
+        // Removes empty and duplicate entries from a list of API base URLs.
         function dedupeApiBases(list) {
             var out = [];
             var seen = {};
@@ -285,7 +275,7 @@
             return out;
         }
 
-        /** Прямой Go на 8080 (обход nginx без proxy). */
+        /** Direct Go on port 8080 (bypass nginx proxy). */
         function alternateApiBase8080() {
             try {
                 var p = window.location.protocol;
@@ -303,7 +293,7 @@
             }
         }
 
-        /** Только ответы нашего Go: поле success. Иначе чужой JSON ({"error":"Not Found"}) обрывал перебор URL. */
+        /** Only our Go API responses include a success field; foreign JSON broke URL fallback. */
         function isOurAPIJsonBody(txt) {
             var t = String(txt).trim();
             if (t.charAt(0) !== '{') return false;
@@ -316,6 +306,7 @@
             }
         }
 
+        // Builds the ordered, deduplicated list of API base URLs to try.
         function buildApiCandidates() {
             var port = String(window.location.port || '');
             var list = [];
@@ -331,8 +322,8 @@
         }
 
         /**
-         * Запрос к API: сначала тот же origin (/api/), затем Go на :8080.
-         * path — с ведущим слэшем, напр. "/session" (итого /api/session).
+         * API request: same origin (/api/) first, then Go on :8080.
+         * path has a leading slash, e.g. "/session" -> /api/session.
          */
         async function apiFetch(path, init) {
             var candidates = buildApiCandidates();
@@ -365,12 +356,12 @@
                 }
             }
             if (!lastRes) {
-                throw new Error('Нет соединения с API. Запустите docker compose (webapp + server) или Go на порту 8080.');
+                throw new Error('Cannot reach the API. Start docker compose (webapp + server) or Go on port 8080.');
             }
             return lastRes;
         }
 
-        /** Запрос к SSE-эндпоинту (без проверки JSON success в теле). */
+        /** SSE endpoint request (no JSON success check on body). */
         async function apiStreamFetch(path, init) {
             var candidates = buildApiCandidates();
             var lastRes = null;
@@ -408,18 +399,20 @@
                 }
             }
             if (!lastRes) {
-                throw new Error('Нет соединения с API. Запустите docker compose (webapp + server) или Go на порту 8080.');
+                throw new Error('Cannot reach the API. Start docker compose (webapp + server) or Go on port 8080.');
             }
             return lastRes;
         }
 
+        // Reads the SSE stream and dispatches parsed events to handlers.
         function readSSEStream(res, handlers) {
             if (!res.body || !res.body.getReader) {
-                return Promise.reject(new Error('Стриминг не поддерживается браузером'));
+                return Promise.reject(new Error('Streaming is not supported by this browser'));
             }
             var reader = res.body.getReader();
             var decoder = new TextDecoder();
             var buffer = '';
+            // Parses one SSE block into event name and JSON payload, then calls its handler.
             function parseBlock(block) {
                 var eventName = 'message';
                 var dataLine = '';
@@ -432,6 +425,7 @@
                 try { payload = JSON.parse(dataLine); } catch (e) { return; }
                 if (handlers[eventName]) handlers[eventName](payload);
             }
+            // Reads stream chunks recursively, splitting the buffer into SSE blocks.
             function pump() {
                 return reader.read().then(function(chunk) {
                     if (chunk.done) {
@@ -448,6 +442,7 @@
             return pump();
         }
 
+        // Renders a streamed assistant reply, updating the chat as SSE events arrive.
         async function consumeMessageStream(res, userText) {
             clearChatHintIfEmpty();
             var userRow = buildMessageRow({ role: 'user', content: userText });
@@ -496,29 +491,29 @@
                     scrollToBottom();
                 },
                 error: function(data) {
-                    showToast(data.error || 'Ошибка стрима');
+                    showToast(data.error || 'Stream error');
                 }
             });
         }
 
         /**
-         * Парсит JSON-объект из тела ответа. Gin при 404 отдаёт текст "404 page not found" —
-         * тогда JSON.parse читает число 404 и падает на «position 4» (буква «p» в «page»).
+         * Parse a JSON object from the response body. Gin 404 returns "404 page not found" —
+         * JSON.parse then reads 404 as a number and fails at position 4 ('p' in 'page').
          */
         function parseApiResponseJson(raw) {
             var s = String(raw).replace(/^\uFEFF/, '').trim();
             if (!s) {
-                throw new Error('Пустой ответ сервера');
+                throw new Error('Empty server response');
             }
             if (s.indexOf('404 page not found') === 0 || /^404\s/.test(s)) {
-                throw new Error('Маршрут API не найден (404). Перезапустите контейнеры: docker compose up --build');
+                throw new Error('API route not found (404). Restart containers: docker compose up --build');
             }
             if (s.charAt(0) === '<') {
-                throw new Error('Вместо JSON пришла HTML-страница — проверьте прокси и адрес API.');
+                throw new Error('Expected JSON but got HTML — check proxy and API URL.');
             }
             var i = s.indexOf('{');
             if (i < 0) {
-                throw new Error('В ответе нет JSON: ' + s.slice(0, 200));
+                throw new Error('No JSON in response: ' + s.slice(0, 200));
             }
             var depth = 0;
             var inStr = false;
@@ -552,25 +547,27 @@
                     }
                 }
             }
-            throw new Error('Неполный JSON в ответе сервера');
+            throw new Error('Incomplete JSON in server response');
         }
 
+        // Maps a classifier label to a human-readable disease name.
         function formatPredictionName(prediction) {
             const names = {
-                healthy_apple: 'Здоровое яблоко',
-                apple_scab: 'Парша яблони',
-                black_rot: 'Чёрная гниль',
-                cedar_apple_rust: 'Кедрово-яблоневая ржавчина',
-                healthy_leaf: 'Здоровый лист',
-                powdery_mildew: 'Мучнистая роса',
-                fire_blight: 'Бактериальный ожог',
-                bitter_rot: 'Горькая гниль',
-                blue_mold: 'Голубая плесень',
-                brown_rot: 'Бурая гниль'
+                healthy_apple: 'Healthy apple',
+                apple_scab: 'Apple scab',
+                black_rot: 'Black rot',
+                cedar_apple_rust: 'Cedar apple rust',
+                healthy_leaf: 'Healthy leaf',
+                powdery_mildew: 'Powdery mildew',
+                fire_blight: 'Fire blight',
+                bitter_rot: 'Bitter rot',
+                blue_mold: 'Blue mold',
+                brown_rot: 'Brown rot'
             };
             return names[prediction] || (prediction || '').replace(/_/g, ' ');
         }
 
+        // Loads onboarding questions for the crop and renders them as clickable chips.
         async function loadOnboarding(selectedCrop) {
             try {
                 var res = await apiFetch('/onboarding?crop_id=' + encodeURIComponent(selectedCrop || cropId), { method: 'GET' });
@@ -600,11 +597,13 @@
             }
         }
 
+        // Shows onboarding chips only when the chat is empty.
         function updateOnboardingVisibility() {
             var hasMessages = el.messagesRoot.querySelector('.row');
             el.onboardingRoot.hidden = !el.onboardingChips.children.length || !!hasMessages;
         }
 
+        // Sends a thumbs up/down rating for an assistant message and locks the buttons.
         async function sendFeedback(messageId, rating) {
             if (!sessionId || !messageId) return;
             try {
@@ -615,7 +614,7 @@
                 });
                 var data = parseApiResponseJson(await res.text());
                 if (!res.ok || !data.success) {
-                    showToast(data.error || 'Не удалось сохранить оценку');
+                    showToast(data.error || 'Could not save rating');
                     return;
                 }
                 var btn = el.messagesRoot.querySelector('[data-feedback-for="' + messageId + '"][data-rating="' + rating + '"]');
@@ -626,10 +625,11 @@
                     });
                 }
             } catch (e) {
-                showToast(e.message || 'Ошибка оценки');
+                showToast(e.message || 'Rating error');
             }
         }
 
+        // Loads the crops catalog and fills the crop selector.
         async function loadCropsCatalog() {
             try {
                 var res = await apiFetch('/crops', { method: 'GET' });
@@ -639,8 +639,8 @@
                 data.crops.forEach(function(c) {
                     var opt = document.createElement('option');
                     opt.value = c.id;
-                    var label = (c.emoji ? c.emoji + ' ' : '') + c.name_ru;
-                    if (!c.rag_enabled && !c.cv_enabled) label += ' (скоро)';
+                    var label = (c.emoji ? c.emoji + ' ' : '') + (c.name_en || c.name_ru);
+                    if (!c.rag_enabled && !c.cv_enabled) label += ' (soon)';
                     opt.textContent = label;
                     el.cropSelect.appendChild(opt);
                 });
@@ -651,6 +651,7 @@
             }
         }
 
+        // Creates a fresh session for the selected crop and resets the chat.
         async function createSessionWithCrop(selectedCrop) {
             cropId = selectedCrop;
             sessionStorage.setItem(CROP_STORAGE_KEY, cropId);
@@ -663,7 +664,7 @@
             });
             var data = parseApiResponseJson(await res.text());
             if (!res.ok || !data.session_id) {
-                throw new Error(data.error || 'Не удалось создать сессию');
+                throw new Error(data.error || 'Could not create session');
             }
             sessionId = data.session_id;
             if (data.crop_id) cropId = data.crop_id;
@@ -676,18 +677,19 @@
             var next = el.cropSelect.value;
             if (next === cropId && sessionId) return;
             createSessionWithCrop(next).catch(function(e) {
-                showToast(e.message || 'Ошибка смены культуры');
+                showToast(e.message || 'Crop switch error');
                 el.cropSelect.value = cropId;
             });
         });
 
+        // Scrolls the chat to the newest message on the next frame.
         function scrollToBottom() {
             requestAnimationFrame(function() {
                 el.chatScroll.scrollTop = el.chatScroll.scrollHeight;
             });
         }
 
-        /** Фото с сервера: fetch с initData → blob URL (тег img не шлёт auth сам). */
+        /** Server photo: fetch with initData -> blob URL (img tags do not send auth). */
         async function loadAuthedImage(imgEl, imagePath) {
             try {
                 var path = String(imagePath || '').replace(/^\/api\//, '');
@@ -701,6 +703,7 @@
             }
         }
 
+        // Removes the placeholder hint when the chat has no messages yet.
         function clearChatHintIfEmpty() {
             var hint = el.messagesRoot.querySelector('.day-divider');
             if (hint && !el.messagesRoot.querySelector('.row')) {
@@ -708,6 +711,7 @@
             }
         }
 
+        // Builds a chat row DOM node: bubble, photo, prediction meta and feedback buttons.
         function buildMessageRow(m) {
             var row = document.createElement('div');
             row.className = 'row ' + (m.role === 'user' ? 'user' : 'assistant');
@@ -717,7 +721,7 @@
             if (m.image_data_url || m.image_url) {
                 var img = document.createElement('img');
                 img.className = 'attach-preview';
-                img.alt = 'Фото пользователя';
+                img.alt = 'User photo';
                 if (m.image_data_url) {
                     img.src = m.image_data_url;
                 } else {
@@ -762,6 +766,7 @@
             return row;
         }
 
+        // Appends new messages to the chat without re-rendering existing ones.
         function appendMessages(messages) {
             if (!messages || !messages.length) return;
             clearChatHintIfEmpty();
@@ -772,12 +777,13 @@
             scrollToBottom();
         }
 
+        // Re-renders the whole chat, or shows a hint when there are no messages.
         function renderMessages(messages) {
             el.messagesRoot.innerHTML = '';
             if (!messages || !messages.length) {
                 var hint = document.createElement('div');
                 hint.className = 'day-divider';
-                hint.textContent = 'Напишите вопрос или прикрепите фото яблони или листа.';
+                hint.textContent = 'Ask a question or attach a photo of an apple or leaf.';
                 el.messagesRoot.appendChild(hint);
                 updateOnboardingVisibility();
                 return;
@@ -789,6 +795,7 @@
             scrollToBottom();
         }
 
+        // Restores the stored session with history, or creates a new one.
         async function ensureSession() {
             var sid = sessionStorage.getItem(STORAGE_KEY);
             if (sid) {
@@ -824,7 +831,7 @@
             });
             var data = parseApiResponseJson(await res.text());
             if (!res.ok || !data.session_id) {
-                throw new Error(data.error || 'Не удалось создать сессию');
+                throw new Error(data.error || 'Could not create session');
             }
             sessionId = data.session_id;
             if (data.crop_id) {
@@ -837,6 +844,7 @@
             loadOnboarding(cropId);
         }
 
+        // Sets or clears the attached photo and updates the attachment preview.
         function setPendingFile(file) {
             pendingFile = file || null;
             if (pendingObjectUrl) {
@@ -855,6 +863,7 @@
             if (el.photoBetaNotice && el.photoBetaNotice.textContent) el.photoBetaNotice.hidden = false;
         }
 
+        // Toggles input controls and the typing indicator while a request is in flight.
         function setSending(on) {
             sending = on;
             el.sendBtn.disabled = on;
@@ -863,16 +872,17 @@
             el.typingLine.classList.toggle('active', on);
         }
 
+        // Sends the current text/photo: multipart for photos, SSE stream for text.
         async function sendMessage() {
             if (sending) return;
             var text = (el.inputText.value || '').trim();
             if (!text && !pendingFile) {
-                showToast('Введите текст или прикрепите фото');
+                showToast('Enter text or attach a photo');
                 return;
             }
             if (!sessionId) {
                 try { await ensureSession(); } catch (e) {
-                    showToast(e.message || 'Ошибка сессии');
+                    showToast(e.message || 'Session error');
                     return;
                 }
             }
@@ -917,7 +927,7 @@
                         renderMessages(data.messages);
                     }
                     if (!res.ok) {
-                        showToast(data.error || ('Ошибка ' + res.status));
+                        showToast(data.error || ('Error ' + res.status));
                     } else if (data.error) {
                         showToast(data.error);
                     }
@@ -942,7 +952,7 @@
                     renderMessages(data.messages);
                 }
                 if (!res.ok) {
-                    showToast(data.error || ('Ошибка ' + res.status));
+                    showToast(data.error || ('Error ' + res.status));
                 } else if (data.error) {
                     showToast(data.error);
                 }
@@ -951,12 +961,13 @@
                 autoResize();
             } catch (e) {
                 console.error(e);
-                showToast(e.message || 'Ошибка сети');
+                showToast(e.message || 'Network error');
             } finally {
                 setSending(false);
             }
         }
 
+        // Grows the input textarea with content, capped at 120px.
         function autoResize() {
             var ta = el.inputText;
             ta.style.height = 'auto';
@@ -988,5 +999,5 @@
             return loadOnboarding(cropId);
         }).catch(function(e) {
             console.error(e);
-            showToast(e.message || uiText('Не удалось подключиться', 'Connection failed'));
+            showToast(e.message || 'Connection failed');
         });

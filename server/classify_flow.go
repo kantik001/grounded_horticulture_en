@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -11,29 +12,29 @@ import (
 
 const maxUploadImageBytes = 10 * 1024 * 1024
 
-// classifyAndRecommendResult — CV + текст рекомендации для одного фото.
+// classifyAndRecommendResult holds CV output and recommendation text for one photo.
 type classifyAndRecommendResult struct {
 	Classification   *ClassificationResult
 	Recommendation   string
 	UsedLLMTemplate bool
 }
 
-// readUploadImage читает файл из multipart с проверкой размера.
+// readUploadImage reads a multipart file with size check.
 func readUploadImage(file multipart.File, size int64) ([]byte, error) {
 	if size > maxUploadImageBytes {
-		return nil, fmt.Errorf("изображение слишком большое (макс. 10 МБ)")
+		return nil, fmt.Errorf("image too large (max 10 MB)")
 	}
 	data, err := io.ReadAll(io.LimitReader(file, maxUploadImageBytes+1))
 	if err != nil {
-		return nil, fmt.Errorf("не удалось прочитать изображение: %w", err)
+		return nil, fmt.Errorf("could not read image: %w", err)
 	}
 	if len(data) > maxUploadImageBytes {
-		return nil, fmt.Errorf("изображение слишком большое (макс. 10 МБ)")
+		return nil, fmt.Errorf("image too large (max 10 MB)")
 	}
 	return data, nil
 }
 
-// readImageFromFormFile читает поле multipart image через readUploadImage.
+// readImageFromFormFile reads multipart image field via readUploadImage.
 func readImageFromFormFile(c *gin.Context, field string) ([]byte, error) {
 	fh, err := c.FormFile(field)
 	if err != nil || fh == nil {
@@ -41,30 +42,30 @@ func readImageFromFormFile(c *gin.Context, field string) ([]byte, error) {
 	}
 	f, err := fh.Open()
 	if err != nil {
-		return nil, fmt.Errorf("не удалось открыть файл изображения")
+		return nil, fmt.Errorf("could not open image file")
 	}
 	defer f.Close()
 	return readUploadImage(f, fh.Size)
 }
 
-// classifyAndRecommend: Python CV → рекомендация LLM или шаблон из config.
-func classifyAndRecommend(imageData []byte, cropID, caption string, history []Message) (*classifyAndRecommendResult, error) {
+// classifyAndRecommend runs Python CV then LLM recommendation or config template.
+func classifyAndRecommend(ctx context.Context, imageData []byte, cropID, caption string, history []Message) (*classifyAndRecommendResult, error) {
 	if err := requireCVEnabled(cropID); err != nil {
 		return nil, err
 	}
-	classification, err := sendToClassifier(imageData, cropID)
+	classification, err := sendToClassifier(ctx, imageData, cropID)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка классификации: %w", err)
+		return nil, fmt.Errorf("classification error: %w", err)
 	}
 	if classification == nil || !classification.Success {
-		msg := "ошибка классификации"
+		msg := "classification error"
 		if classification != nil && classification.Error != "" {
 			msg = classification.Error
 		}
 		return nil, fmt.Errorf("%s", msg)
 	}
 
-	recommendation, recErr := generatePhotoRecommendation(classification, caption, history, cropID)
+	recommendation, recErr := generatePhotoRecommendation(ctx, classification, caption, history, cropID)
 	usedTemplate := config.LLMAPIKey == "" || recErr != nil
 	if recErr != nil {
 		recommendation = generateTemplateRecommendation(classification)
@@ -78,11 +79,9 @@ func classifyAndRecommend(imageData []byte, cropID, caption string, history []Me
 	}, nil
 }
 
-// appendPhotoBetaNotice добавляет бета-дисклеймер CV в конец рекомендации.
-// Модель распознавания болезней ещё не обучена (ImageNet fallback), поэтому
-// результат помечается как экспериментальный. Текст — из config/branding.json.
+// appendPhotoBetaNotice appends CV beta disclaimer from config/branding.json.
 func appendPhotoBetaNotice(recommendation string) string {
-	notice := strings.TrimSpace(brandingCatalog.PhotoBetaNotice)
+	notice := strings.TrimSpace(currentCatalogs().Branding.PhotoBetaNotice)
 	if notice == "" {
 		return recommendation
 	}
@@ -96,11 +95,11 @@ func appendPhotoBetaNotice(recommendation string) string {
 	return body + "\n\n" + notice
 }
 
-// parseClassifyForm читает image и crop_id из POST /classify.
+// parseClassifyForm reads image and crop_id from POST /classify.
 func parseClassifyForm(c *gin.Context) (imageData []byte, cropID string, filename string, err error) {
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
-		return nil, "", "", fmt.Errorf("не удалось получить файл image")
+		return nil, "", "", fmt.Errorf("could not read image file field")
 	}
 	defer file.Close()
 

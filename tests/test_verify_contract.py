@@ -1,4 +1,4 @@
-"""Контрактный тест: Python verify_answer vs tests/fixtures/rag_verify_contract.json."""
+"""Contract test: Python verify_answer vs tests/fixtures/rag_verify_contract.json."""
 
 import json
 from pathlib import Path
@@ -12,6 +12,7 @@ _FIXTURE = Path(__file__).resolve().parent / "fixtures" / "rag_verify_contract.j
 
 
 def _load_cases():
+    """Load contract cases from the shared JSON fixture."""
     with _FIXTURE.open(encoding="utf-8") as f:
         data = json.load(f)
     return data["cases"]
@@ -19,6 +20,7 @@ def _load_cases():
 
 @pytest.mark.parametrize("case", _load_cases(), ids=lambda c: c["id"])
 def test_verify_contract_python(case):
+    """verify_answer matches the expected pass/fail and reason of each contract case."""
     fragments = [
         Document(page_content=fr["content"], metadata={"filename": fr.get("filename", "test.txt")})
         for fr in case["fragments"]

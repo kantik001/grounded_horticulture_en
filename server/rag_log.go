@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// RAGTrace — метрики одного текстового RAG-запроса (без тела LLM).
+// RAGTrace holds metrics for one text RAG request (without LLM body).
 type RAGTrace struct {
 	CropID        string
 	SessionID     string
@@ -23,6 +23,7 @@ type RAGTrace struct {
 	TotalMs       int64
 }
 
+// truncateRAGQuestion trims the question to 120 runes for log lines.
 func truncateRAGQuestion(q string) string {
 	q = strings.TrimSpace(q)
 	runes := []rune(q)
@@ -32,7 +33,7 @@ func truncateRAGQuestion(q string) string {
 	return q
 }
 
-// logRAGTrace пишет структурированную строку [RAG] для разбора качества и latency.
+// logRAGTrace writes a structured [RAG] line for quality and latency analysis.
 func logRAGTrace(t RAGTrace) {
 	category := strings.TrimSpace(t.Category)
 	if category == "" {
@@ -58,7 +59,7 @@ func logRAGTrace(t RAGTrace) {
 	recordRAGTraceMetrics(t)
 }
 
-// ragTraceAnalyticsPayload — поля latency для analytics_events (event_type rag_answer).
+// ragTraceAnalyticsPayload builds latency fields for analytics_events (event_type rag_answer).
 func ragTraceAnalyticsPayload(t RAGTrace, extra map[string]any) map[string]any {
 	payload := map[string]any{
 		"crop_id":       t.CropID,

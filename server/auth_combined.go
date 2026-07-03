@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// combinedAuthMiddleware: X-API-Key (browser / integrations) или Telegram initData.
+// combinedAuthMiddleware: X-API-Key (browser / integrations) or Telegram initData.
 func combinedAuthMiddleware(cfg *Config) gin.HandlerFunc {
 	tg := telegramAuthMiddleware(cfg)
 	return func(c *gin.Context) {
@@ -17,7 +17,7 @@ func combinedAuthMiddleware(cfg *Config) gin.HandlerFunc {
 			if !ok {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 					"success": false,
-					"error":   "Неверный API-ключ (заголовок X-API-Key).",
+					"error":   "Invalid API key (X-API-Key header).",
 				})
 				return
 			}
@@ -28,7 +28,7 @@ func combinedAuthMiddleware(cfg *Config) gin.HandlerFunc {
 			if !canUseChatAPI(roles) {
 				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 					"success": false,
-					"error":   "API-ключ не имеет доступа к чату.",
+					"error":   "API key does not have chat access.",
 				})
 				return
 			}
@@ -48,6 +48,7 @@ func combinedAuthMiddleware(cfg *Config) gin.HandlerFunc {
 	}
 }
 
+// rateLimitKey picks the rate-limit bucket: API key label, Telegram ID, or anon.
 func rateLimitKey(c *gin.Context) string {
 	if label, ok := c.Get(ctxKeyAPIKeyLabel); ok {
 		if s, ok := label.(string); ok && s != "" {
@@ -62,6 +63,7 @@ func rateLimitKey(c *gin.Context) string {
 	return "anon"
 }
 
+// itoa64 formats an int64 as a decimal string without strconv.
 func itoa64(v int64) string {
 	if v == 0 {
 		return "0"

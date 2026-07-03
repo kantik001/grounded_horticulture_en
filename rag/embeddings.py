@@ -1,11 +1,15 @@
-"""Embeddings для multilingual-e5: обязательные префиксы query:/passage:."""
+"""Embeddings for multilingual-e5: required query:/passage: prefixes."""
+
+import threading
 
 E5_MODEL = "intfloat/multilingual-e5-small"
 
 _embeddings = None
+_embeddings_lock = threading.Lock()
 
 
 def _passage(text: str) -> str:
+    """Prepend the e5 'passage:' prefix if missing."""
     t = (text or "").strip()
     if t.lower().startswith("passage:"):
         return t
@@ -13,6 +17,7 @@ def _passage(text: str) -> str:
 
 
 def _query(text: str) -> str:
+    """Prepend the e5 'query:' prefix if missing."""
     t = (text or "").strip()
     if t.lower().startswith("query:"):
         return t
@@ -20,26 +25,35 @@ def _query(text: str) -> str:
 
 
 def reset_embeddings() -> None:
-    """Сброс кэша (тесты, смена модели)."""
+    """Clear cache (tests, model change)."""
     global _embeddings
     _embeddings = None
 
 
 def get_embeddings():
+    """Lazily load and cache the e5 embeddings model (thread-safe singleton)."""
     global _embeddings
     if _embeddings is not None:
         return _embeddings
 
-    from langchain_huggingface import HuggingFaceEmbeddings
+    # Double-checked locking: model load is slow and must happen once even
+    # when several gunicorn threads hit a cold worker simultaneously.
+    with _embeddings_lock:
+        if _embeddings is not None:
+            return _embeddings
 
-    class E5Embeddings(HuggingFaceEmbeddings):
-        """intfloat/multilingual-e5-small ожидает префиксы при индексации и поиске."""
+        from langchain_huggingface import HuggingFaceEmbeddings
 
-        def embed_documents(self, texts):
-            return super().embed_documents([_passage(t) for t in texts])
+        class E5Embeddings(HuggingFaceEmbeddings):
+            """intfloat/multilingual-e5-small expects prefixes at index and query time."""
 
-        def embed_query(self, text):
-            return super().embed_query(_query(text))
+            def embed_documents(self, texts):
+                """Embed texts with the 'passage:' prefix applied."""
+                return super().embed_documents([_passage(t) for t in texts])
 
-    _embeddings = E5Embeddings(model_name=E5_MODEL)
-    return _embeddings
+            def embed_query(self, text):
+                """Embed a query with the 'query:' prefix applied."""
+                return super().embed_query(_query(text))
+
+        _embeddings = E5Embeddings(model_name=E5_MODEL)
+        return _embeddings

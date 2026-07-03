@@ -9,14 +9,14 @@ from torchvision import models, transforms
 
 from cv.labels_config import default_class_labels_for_crop
 
-# Метки яблони из config/cv_class_labels.json (если в checkpoint нет class_labels).
+# Apple labels from config/cv_class_labels.json (when checkpoint has no class_labels).
 DEFAULT_CLASS_LABELS = default_class_labels_for_crop("apple")
 
 
 class AppleClassifier:
-    """Классификатор болезней яблони на MobileNetV2 (inference по файлу или байтам)."""
+    """Apple disease classifier on MobileNetV2 (inference from file or bytes)."""
 
-    # Инициализирует устройство, метки классов, загружает веса и задаёт преобразования для 224×224.
+    # Initializes device, class labels, loads weights, and sets 224x224 transforms.
     def __init__(
         self,
         model_path: Optional[str] = None,
@@ -45,20 +45,26 @@ class AppleClassifier:
             ]
         )
 
-    # Читает checkpoint .pth с диска; при ошибке или отсутствии пути возвращает None.
+    # Reads a .pth checkpoint from disk; returns None when no path is given.
+    # A corrupt or unreadable checkpoint raises instead of silently falling
+    # back to an untrained classification head.
     def _read_checkpoint(self, model_path: Optional[str]) -> Optional[dict]:
         if not model_path:
             return None
         try:
+            # weights_only=True: refuse to unpickle arbitrary objects from the
+            # checkpoint (only tensors and primitive containers are allowed).
             return torch.load(
                 model_path,
                 map_location=self.device,
-                weights_only=False,
+                weights_only=True,
             )
-        except Exception:
-            return None
+        except Exception as e:
+            raise RuntimeError(
+                f"failed to load model checkpoint {model_path}: {e}"
+            ) from e
 
-    # Собирает MobileNetV2 с головой на num_classes и подставляет state_dict из checkpoint, если есть.
+    # Builds MobileNetV2 with num_classes head and loads checkpoint state_dict when present.
     def _build_model(self, checkpoint: Optional[dict]) -> nn.Module:
         model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
         last_channel = model.classifier[1].in_features
@@ -70,7 +76,7 @@ class AppleClassifier:
             model.load_state_dict(checkpoint["state_dict"])
         return model
 
-    # Классифицирует изображение по пути к файлу; возвращает словарь success/prediction/confidence.
+    # Classifies an image by file path; returns success/prediction/confidence dict.
     def predict(self, image_path: str) -> Dict[str, Any]:
         try:
             image = Image.open(image_path).convert("RGB")
@@ -83,7 +89,7 @@ class AppleClassifier:
                 "image_processed": False,
             }
 
-    # Классифицирует изображение из байтов (HTTP multipart); формат ответа как у predict.
+    # Classifies image bytes (HTTP multipart); same response shape as predict.
     def predict_from_bytes(self, image_bytes: bytes) -> Dict[str, Any]:
         try:
             image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -96,7 +102,7 @@ class AppleClassifier:
                 "image_processed": False,
             }
 
-    # Прогон тензора через модель: softmax, лучший класс и top-3 с уверенностями.
+    # Runs tensor through model: softmax, best class, and top-3 with confidences.
     def _run_inference(self, image_tensor: torch.Tensor) -> Dict[str, Any]:
         with torch.no_grad():
             outputs = self.model(image_tensor)
@@ -107,7 +113,7 @@ class AppleClassifier:
         if pred_idx >= len(self.class_labels):
             return {
                 "success": False,
-                "error": f"индекс класса {pred_idx} вне списка меток",
+                "error": f"class index {pred_idx} out of label range",
                 "image_processed": False,
             }
         top_probs, top_indices = torch.topk(
@@ -131,7 +137,7 @@ class AppleClassifier:
         }
 
 
-# Фабрика: создаёт AppleClassifier с опциональным путём к обученным весам .pth.
+# Factory: creates AppleClassifier with optional path to trained .pth weights.
 def create_classifier(model_path: str = None) -> AppleClassifier:
     return AppleClassifier(model_path=model_path)
 

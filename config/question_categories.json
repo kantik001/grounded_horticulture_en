@@ -4,81 +4,81 @@
     {
       "id": "rootstock",
       "keywords": [
-        "подвой",
-        "подво",
-        "привой",
-        "окулиров",
-        "черенк",
-        "саженц",
-        "питомник",
-        "книп"
+        "rootstock",
+        "rootstoc",
+        "scion",
+        "budding",
+        "graft",
+        "cutting",
+        "seedling",
+        "nursery",
+        "knip"
       ]
     },
     {
       "id": "fertilizer",
       "keywords": [
-        "удобрение",
-        "доза",
-        "грамм",
-        "литр",
-        "подкормк",
-        "азот",
-        "фосфор",
-        "калий",
-        "фертигац",
-        "листов"
+        "fertiliz",
+        "dose",
+        "gram",
+        "liter",
+        "nitrogen",
+        "phosphorus",
+        "potassium",
+        "fertigat",
+        "foliar"
       ]
     },
     {
       "id": "disease",
       "keywords": [
-        "болезн",
-        "парша",
-        "пятна",
-        "гниль",
-        "ржавчин",
-        "мучнист",
-        "лечени",
-        "вредител",
-        "плодожорк",
-        "тля",
-        "марссон",
-        "шарк",
-        "фитосанит"
+        "disease",
+        "scab",
+        "spots",
+        "rot",
+        "rust",
+        "powdery",
+        "treatment",
+        "pest",
+        "codling",
+        "aphid",
+        "marsson",
+        "shark",
+        "phytosanit"
       ]
     },
     {
       "id": "irrigation",
       "keywords": [
-        "полив",
-        "орошен",
-        "капельн",
-        "засух",
-        "влаго"
+        "irrigat",
+        "water",
+        "drip",
+        "drought",
+        "moisture"
       ]
     },
     {
       "id": "relief",
       "keywords": [
-        "склон",
-        "рельеф",
-        "террас",
-        "кбр",
-        "предгор",
+        "slope",
+        "relief",
+        "terrace",
+        "kbr",
+        "foothill",
         "gis"
       ]
     },
     {
       "id": "variety",
       "keywords": [
-        "сорт",
-        "мелба",
-        "голден",
-        "триумф",
-        "президент",
-        "рентабельность",
-        "либерти",
-        "стенлей"
+        "variety",
+        "melba",
+        "golden",
+        "triumph",
+        "president",
+        "profitability",
+        "liberty",
+        "stanley"
       ]
     }
   ]

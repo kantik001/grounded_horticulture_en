@@ -1,4 +1,4 @@
-"""Расширение пользовательского запроса синонимами из agro_glossary.json для BM25/vector."""
+"""Expand user queries with synonyms from agro_glossary.json for BM25/vector."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 @lru_cache(maxsize=1)
 def _load_glossary() -> Dict[str, List[str]]:
+    """Load and normalize agro_glossary.json (cached; empty dict on failure)."""
     path = os.environ.get(
         "AGRO_GLOSSARY_PATH",
         os.path.join(_PROJECT_ROOT, "config", "agro_glossary.json"),
@@ -33,7 +34,7 @@ def _load_glossary() -> Dict[str, List[str]]:
 
 
 def expand_query(query: str) -> str:
-    """Добавляет к запросу синонимы, если в тексте есть ключ глоссария."""
+    """Append synonyms when the query contains a glossary key."""
     q = (query or "").strip()
     if not q:
         return q

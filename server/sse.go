@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// writeSSE отправляет одно Server-Sent Events сообщение клиенту.
+// writeSSE sends one Server-Sent Events message to the client.
 func writeSSE(c *gin.Context, event string, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -25,7 +25,7 @@ func writeSSE(c *gin.Context, event string, payload any) error {
 	return nil
 }
 
-// beginSSEStream задаёт заголовки для потокового ответа.
+// beginSSEStream sets headers for a streaming response.
 func beginSSEStream(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream; charset=utf-8")
 	c.Header("Cache-Control", "no-cache")

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// FeedbackReportItem — одна оценка ответа с контекстом диалога.
+// FeedbackReportItem is one answer rating with dialog context.
 type FeedbackReportItem struct {
 	FeedbackAt  time.Time       `json:"feedback_at"`
 	Rating      int             `json:"rating"`
@@ -19,7 +19,7 @@ type FeedbackReportItem struct {
 	RAG         *FeedbackRAGMeta `json:"rag,omitempty"`
 }
 
-// FeedbackRAGMeta — метрики RAG из analytics_events (event_type rag_answer).
+// FeedbackRAGMeta holds RAG metrics from analytics_events (event_type rag_answer).
 type FeedbackRAGMeta struct {
 	Category      string `json:"category,omitempty"`
 	FragmentCount int    `json:"fragments,omitempty"`
@@ -31,14 +31,14 @@ type FeedbackRAGMeta struct {
 	TotalMs       int64  `json:"total_ms,omitempty"`
 }
 
-// FeedbackSummary — сводка 👍/👎.
+// FeedbackSummary is a thumbs-up/down summary.
 type FeedbackSummary struct {
 	Likes    int `json:"likes"`
 	Dislikes int `json:"dislikes"`
 }
 
-// ListFeedbackReport возвращает оценки с парой вопрос/ответ (последний user перед assistant).
-// ratingFilter: 0 — все, 1 или -1 — только этот рейтинг.
+// ListFeedbackReport returns ratings with question/answer pairs (last user before assistant).
+// ratingFilter: 0 = all, 1 or -1 = that rating only.
 func (st *ChatStore) ListFeedbackReport(ctx context.Context, ratingFilter, limit int) ([]FeedbackReportItem, FeedbackSummary, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
@@ -104,6 +104,7 @@ func (st *ChatStore) ListFeedbackReport(ctx context.Context, ratingFilter, limit
 	return items, summary, rows.Err()
 }
 
+// feedbackSummary counts likes and dislikes across all feedback.
 func (st *ChatStore) feedbackSummary(ctx context.Context) (FeedbackSummary, error) {
 	var s FeedbackSummary
 	err := st.pool.QueryRow(ctx, `
@@ -115,6 +116,7 @@ func (st *ChatStore) feedbackSummary(ctx context.Context) (FeedbackSummary, erro
 	return s, err
 }
 
+// parseFeedbackRAGMeta extracts RAG metrics from a rag_answer payload; nil when empty.
 func parseFeedbackRAGMeta(raw []byte) *FeedbackRAGMeta {
 	if len(raw) == 0 {
 		return nil
@@ -146,6 +148,7 @@ func parseFeedbackRAGMeta(raw []byte) *FeedbackRAGMeta {
 	return meta
 }
 
+// jsonNumber converts a decoded JSON numeric value to int64.
 func jsonNumber(v any) int64 {
 	switch n := v.(type) {
 	case float64:

@@ -1,7 +1,7 @@
 name: RAG Eval
 
-# Полный прогон retrieval eval (reindex + run_rag_eval). Запускайте вручную после
-# смены data/, RAG-кода или перед релизом — не на каждый PR.
+# Full retrieval eval run (reindex + run_rag_eval). Run manually after
+# data/, RAG code changes, or before release — not on every PR.
 on:
   workflow_dispatch:
     inputs:

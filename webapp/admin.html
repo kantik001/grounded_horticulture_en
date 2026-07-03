@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админка — статьи RAG</title>
+    <title>Admin — RAG articles</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -77,77 +77,77 @@
 </head>
 <body>
     <div class="wrap">
-        <h1>🌿 Админка статей</h1>
-        <p class="hint">Статьи RAG, переиндексация и просмотр 👍/👎. Логин: <code>ADMIN_USER</code> / <code>ADMIN_PASSWORD</code>.</p>
+        <h1>🌿 Article admin</h1>
+        <p class="hint">RAG articles, reindexing, and 👍/👎 feedback. Login: <code>ADMIN_USER</code> / <code>ADMIN_PASSWORD</code>.</p>
 
         <div class="card" id="loginCard">
-            <label for="adminUser">Логин</label>
+            <label for="adminUser">Username</label>
             <input type="text" id="adminUser" autocomplete="username">
-            <label for="adminPass">Пароль</label>
+            <label for="adminPass">Password</label>
             <input type="password" id="adminPass" autocomplete="current-password">
-            <button type="button" id="saveLoginBtn">Сохранить и проверить</button>
-            <p class="login-note">Учётные данные хранятся только в sessionStorage этой вкладки.</p>
+            <button type="button" id="saveLoginBtn">Save and verify</button>
+            <p class="login-note">Credentials are stored only in this tab's sessionStorage.</p>
             <div class="status" id="loginStatus"></div>
         </div>
 
         <div id="toolsCard" hidden>
         <div class="tabs">
-            <button type="button" class="active" data-tab="articles">Статьи</button>
-            <button type="button" data-tab="feedback">Обратная связь</button>
+            <button type="button" class="active" data-tab="articles">Articles</button>
+            <button type="button" data-tab="feedback">Feedback</button>
         </div>
 
         <div class="card tab-panel" id="tabArticles">
-            <label for="cropSelect">Культура</label>
+            <label for="cropSelect">Crop</label>
             <select id="cropSelect">
                 <option value="apple">apple</option>
                 <option value="pear">pear</option>
                 <option value="plum">plum</option>
             </select>
 
-            <label>Файлы в data/{crop}</label>
+            <label>Files in data/{crop}</label>
             <ul id="fileList"><li>—</li></ul>
-            <button type="button" class="secondary" id="refreshBtn">Обновить список</button>
+            <button type="button" class="secondary" id="refreshBtn">Refresh list</button>
 
             <hr style="margin:16px 0;border:none;border-top:1px solid #eee">
 
-            <label for="uploadFile">Загрузить .txt (латиница, до 2 МБ)</label>
+            <label for="uploadFile">Upload .txt (Latin filename, up to 2 MB)</label>
             <input type="file" id="uploadFile" accept=".txt,text/plain">
-            <button type="button" id="uploadBtn">Загрузить</button>
+            <button type="button" id="uploadBtn">Upload</button>
 
             <hr style="margin:16px 0;border:none;border-top:1px solid #eee">
 
-            <p class="hint" style="margin-bottom:10px">После загрузки новых статей запустите переиндексацию RAG (может занять несколько минут).</p>
-            <button type="button" id="reindexBtn">Переиндексировать RAG</button>
+            <p class="hint" style="margin-bottom:10px">After uploading new articles, run RAG reindexing (may take several minutes).</p>
+            <button type="button" id="reindexBtn">Reindex RAG</button>
             <div class="status" id="actionStatus"></div>
         </div>
 
         <div class="card tab-panel" id="tabFeedback" hidden>
-            <h2>Оценки ответов</h2>
-            <p class="hint">Дизлайки помогают найти слабые ответы RAG. В логах Docker: <code>docker compose logs server | findstr RAG</code></p>
+            <h2>Answer ratings</h2>
+            <p class="hint">Dislikes help find weak RAG answers. In Docker logs: <code>docker compose logs server | findstr RAG</code></p>
             <div class="row">
-                <label for="fbRating" style="margin:0">Показать</label>
+                <label for="fbRating" style="margin:0">Show</label>
                 <select id="fbRating" style="width:auto;margin:0">
-                    <option value="-1" selected>только 👎</option>
-                    <option value="1">только 👍</option>
-                    <option value="">все</option>
+                    <option value="-1" selected>👎 only</option>
+                    <option value="1">👍 only</option>
+                    <option value="">all</option>
                 </select>
-                <button type="button" class="secondary" id="fbRefreshBtn">Обновить</button>
+                <button type="button" class="secondary" id="fbRefreshBtn">Refresh</button>
             </div>
             <p class="fb-summary" id="fbSummary">—</p>
             <div class="fb-table-wrap">
                 <table class="fb-table">
                     <thead>
                         <tr>
-                            <th>Дата</th>
-                            <th>Оц.</th>
-                            <th>Культура</th>
-                            <th>Вопрос</th>
-                            <th>Ответ</th>
+                            <th>Date</th>
+                            <th>Rating</th>
+                            <th>Crop</th>
+                            <th>Question</th>
+                            <th>Answer</th>
                             <th>ID</th>
                         </tr>
                     </thead>
                     <tbody id="fbTableBody">
-                        <tr><td colspan="6">Нет данных</td></tr>
+                        <tr><td colspan="6">No data</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -182,7 +182,7 @@
 
         async function adminFetch(path, init) {
             var h = authHeader();
-            if (!h) throw new Error('Сначала введите логин и пароль');
+            if (!h) throw new Error('Enter username and password first');
             var opts = init ? Object.assign({}, init) : {};
             opts.headers = Object.assign({}, opts.headers || {}, { 'Authorization': h });
             var res = await fetch('/api/admin' + path, opts);
@@ -196,20 +196,20 @@
         async function checkLogin() {
             var data = await adminFetch('/status', { method: 'GET' });
             document.getElementById('toolsCard').hidden = false;
-            setStatus(document.getElementById('loginStatus'), 'Подключено. data_dir: ' + (data.data_dir || '—'), true);
+            setStatus(document.getElementById('loginStatus'), 'Connected. data_dir: ' + (data.data_dir || '—'), true);
             await refreshFiles();
         }
 
         async function refreshFiles() {
             var crop = document.getElementById('cropSelect').value;
             var list = document.getElementById('fileList');
-            list.innerHTML = '<li>Загрузка…</li>';
+            list.innerHTML = '<li>Loading…</li>';
             try {
                 var data = await adminFetch('/articles?crop_id=' + encodeURIComponent(crop), { method: 'GET' });
                 list.innerHTML = '';
                 var files = data.files || [];
                 if (!files.length) {
-                    list.innerHTML = '<li>(нет файлов)</li>';
+                    list.innerHTML = '<li>(no files)</li>';
                     return;
                 }
                 files.forEach(function(f) {
@@ -218,7 +218,7 @@
                     list.appendChild(li);
                 });
             } catch (e) {
-                list.innerHTML = '<li>Ошибка: ' + e.message + '</li>';
+                list.innerHTML = '<li>Error: ' + e.message + '</li>';
             }
         }
 
@@ -226,11 +226,11 @@
             var user = document.getElementById('adminUser').value.trim();
             var pass = document.getElementById('adminPass').value;
             if (!user || !pass) {
-                setStatus(document.getElementById('loginStatus'), 'Введите логин и пароль', false);
+                setStatus(document.getElementById('loginStatus'), 'Enter username and password', false);
                 return;
             }
             sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ user: user, pass: pass }));
-            setStatus(document.getElementById('loginStatus'), 'Проверка…', true);
+            setStatus(document.getElementById('loginStatus'), 'Verifying…', true);
             checkLogin().catch(function(e) {
                 setStatus(document.getElementById('loginStatus'), e.message, false);
             });
@@ -248,7 +248,7 @@
             var fileInput = document.getElementById('uploadFile');
             var f = fileInput.files && fileInput.files[0];
             if (!f) {
-                setStatus(document.getElementById('actionStatus'), 'Выберите файл .txt', false);
+                setStatus(document.getElementById('actionStatus'), 'Select a .txt file', false);
                 return;
             }
             var fd = new FormData();
@@ -258,7 +258,7 @@
             btn.disabled = true;
             try {
                 var data = await adminFetch('/upload', { method: 'POST', body: fd });
-                setStatus(document.getElementById('actionStatus'), 'Загружено: ' + data.filename, true);
+                setStatus(document.getElementById('actionStatus'), 'Uploaded: ' + data.filename, true);
                 fileInput.value = '';
                 await refreshFiles();
             } catch (e) {
@@ -303,18 +303,18 @@
             var data = await adminFetch(q, { method: 'GET' });
             var sum = data.summary || {};
             document.getElementById('fbSummary').textContent =
-                'Всего: 👍 ' + (sum.likes || 0) + ', 👎 ' + (sum.dislikes || 0);
+                'Total: 👍 ' + (sum.likes || 0) + ', 👎 ' + (sum.dislikes || 0);
             var tbody = document.getElementById('fbTableBody');
             tbody.innerHTML = '';
             var items = data.items || [];
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="6">Пока нет оценок</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6">No ratings yet</td></tr>';
                 setStatus(document.getElementById('fbStatus'), '', true);
                 return;
             }
             items.forEach(function(it) {
                 var tr = document.createElement('tr');
-                var dt = it.feedback_at ? new Date(it.feedback_at).toLocaleString('ru-RU') : '—';
+                var dt = it.feedback_at ? new Date(it.feedback_at).toLocaleString('en-US') : '—';
                 var ratingCls = it.rating === -1 ? 'rating-down' : 'rating-up';
                 var ratingLabel = it.rating === -1 ? '👎' : '👍';
                 tr.innerHTML =
@@ -326,7 +326,7 @@
                     '<td class="fb-meta">msg ' + escHtml(it.message_id) + '<br>sess ' + escHtml(trunc(it.session_id, 12)) + '</td>';
                 tbody.appendChild(tr);
             });
-            setStatus(document.getElementById('fbStatus'), 'Записей: ' + items.length, true);
+            setStatus(document.getElementById('fbStatus'), 'Rows: ' + items.length, true);
         }
 
         document.getElementById('fbRefreshBtn').addEventListener('click', function() {
@@ -338,10 +338,10 @@
         document.getElementById('reindexBtn').addEventListener('click', async function() {
             var btn = document.getElementById('reindexBtn');
             btn.disabled = true;
-            setStatus(document.getElementById('actionStatus'), 'Переиндексация… подождите', true);
+            setStatus(document.getElementById('actionStatus'), 'Reindexing… please wait', true);
             try {
                 var data = await adminFetch('/reindex', { method: 'POST' });
-                setStatus(document.getElementById('actionStatus'), data.message || 'Готово', true);
+                setStatus(document.getElementById('actionStatus'), data.message || 'Done', true);
             } catch (e) {
                 setStatus(document.getElementById('actionStatus'), e.message, false);
             } finally {

@@ -1,4 +1,4 @@
--- Сессия 2: пользователи, чат-сессии, сообщения
+-- Session 2: users, chat sessions, messages
 
 CREATE TABLE IF NOT EXISTS users (
     id              BIGSERIAL PRIMARY KEY,

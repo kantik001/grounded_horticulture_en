@@ -1,13 +1,13 @@
-# Имя проекта Compose (сеть/volumes). Совпадает с Makefile PROJECT_NAME.
-# Продакшен: задайте POSTGRES_PASSWORD, ADMIN_PASSWORD, ADMIN_SECRET, TELEGRAM_BOT_TOKEN в .env.
-# После изменений data/: make docker-reindex-apply (Chroma + BM25 reindex + restart classifier).
+# Compose project name (network/volumes). Matches Makefile PROJECT_NAME.
+# Production: set POSTGRES_PASSWORD, ADMIN_PASSWORD, ADMIN_SECRET, TELEGRAM_BOT_TOKEN in .env.
+# After data/ changes: make docker-reindex-apply (Chroma + BM25 reindex + restart classifier).
 name: union_ai_apple
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: union_ai_apple_postgres
-    # Продакшен: задайте POSTGRES_PASSWORD в .env (не gardener/gardener).
+    # Production: set POSTGRES_PASSWORD in .env (not gardener/gardener).
     environment:
       POSTGRES_USER: gardener
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gardener}
@@ -29,8 +29,11 @@ services:
         HF_TOKEN: ${HF_TOKEN:-}
         SKIP_HF_BAKE: ${SKIP_HF_BAKE:-0}
     container_name: union_ai_apple_classifier
+    # 127.0.0.1 only: the classifier has no auth of its own — reachable from
+    # the host for debugging, never from the network. Go talks to it via the
+    # internal compose network.
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     restart: unless-stopped
     environment:
       - MODEL_PATH=models/apple_classifier.pth
@@ -72,8 +75,10 @@ services:
       context: .
       dockerfile: Dockerfile.server
     container_name: union_ai_apple_server
+    # 127.0.0.1 only: public traffic goes through the webapp nginx proxy
+    # (also keeps /metrics off the network; scrape locally or via ssh tunnel).
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - CLASSIFIER_URL=http://classifier:5000/classify
       - CLASSIFIER_RAG_URL=http://classifier:5000/rag/context
@@ -123,8 +128,9 @@ services:
       context: .
       dockerfile: Dockerfile.webapp
     container_name: union_ai_apple_webapp
+    # Container listens on 8080 (unprivileged nginx, non-root).
     ports:
-      - "80:80"
+      - "80:8080"
     volumes:
       - ./webapp/index.html:/usr/share/nginx/html/index.html:ro
       - ./webapp/app.css:/usr/share/nginx/html/app.css:ro
@@ -136,7 +142,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
       interval: 30s
       timeout: 5s
       retries: 3

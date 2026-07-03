@@ -1,7 +1,7 @@
-Политика отпусков (демо HR, не юридический документ).
+Vacation policy (HR demo, not a legal document).
 
-Основной оплачиваемый ежегодный отпуск составляет 28 календарных дней для штатных сотрудников, принятых по трудовому договору.
+Standard paid annual leave is 28 calendar days for full-time employees under an employment contract.
 
-Отпуск планируется в системе HR Portal не позднее чем за 14 дней до начала. Согласование: непосредственный руководитель, затем HR.
+Leave must be requested in the HR Portal at least 14 days before the start date. Approval: direct manager, then HR.
 
-Перенос отпуска на следующий год возможен не более 14 дней по согласованию с HR.
+Carry-over to the next year is limited to 14 days with HR approval.

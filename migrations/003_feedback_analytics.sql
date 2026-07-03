@@ -1,4 +1,4 @@
--- Сессия 5: обратная связь и аналитика
+-- Session 5: feedback and analytics
 
 CREATE TABLE IF NOT EXISTS message_feedback (
     id          BIGSERIAL PRIMARY KEY,

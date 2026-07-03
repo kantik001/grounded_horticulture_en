@@ -2,6 +2,7 @@ package main
 
 import "testing"
 
+// Verifies that safeFilename accepts plain .txt names and rejects traversal and non-ASCII names.
 func TestSafeFilename(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -11,7 +12,7 @@ func TestSafeFilename(t *testing.T) {
 		{"my-article_v2.txt", true},
 		{"../etc/passwd", false},
 		{"article.txt.exe", false},
-		{"кириллица.txt", false},
+		{"über.txt", false},
 	}
 	for _, tc := range cases {
 		got := safeFilename.MatchString(tc.name)

@@ -1,10 +1,11 @@
-"""BM25-индекс по культурам: строится вместе с Chroma при переиндексации."""
+"""Per-crop BM25 index: built with Chroma during reindexing."""
 
 from __future__ import annotations
 
 import json
 import os
 import pickle
+import threading
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -20,6 +21,7 @@ BM25_INDEX_PATH = os.path.join(BM25_DIR, "index.pkl")
 BM25_VERSION = 1
 
 _indexes: Dict[str, "CropBM25Index"] | None = None
+_indexes_lock = threading.Lock()
 
 
 @dataclass
@@ -31,6 +33,7 @@ class CropBM25Index:
 
     @classmethod
     def from_chunks(cls, chunks: List[Document]) -> "CropBM25Index":
+        """Build a BM25 index from chunk documents (assigns chunk_ids)."""
         chunks = assign_chunk_ids(list(chunks))
         records: Dict[str, Document] = {}
         corpus_tokens: List[List[str]] = []
@@ -46,6 +49,7 @@ class CropBM25Index:
         return cls(chunk_ids=chunk_ids, records=records, corpus_tokens=corpus_tokens, bm25=bm25)
 
     def search(self, query: str, k: int) -> List[str]:
+        """Top-k chunk_ids by BM25 score for the query."""
         if not self.bm25 or not self.chunk_ids:
             return []
         tokens = tokenize(query)
@@ -64,11 +68,13 @@ class CropBM25Index:
 
 
 def reset_bm25_store() -> None:
+    """Clear the in-memory BM25 index cache."""
     global _indexes
     _indexes = None
 
 
 def _serialize_crop(index: CropBM25Index) -> dict:
+    """Convert a crop index to a pickle-friendly dict."""
     return {
         "chunk_ids": index.chunk_ids,
         "corpus_tokens": index.corpus_tokens,
@@ -85,6 +91,7 @@ def _serialize_crop(index: CropBM25Index) -> dict:
 
 
 def _deserialize_crop(data: dict) -> CropBM25Index:
+    """Rebuild a crop index from its serialized dict."""
     records: Dict[str, Document] = {}
     chunk_ids: List[str] = list(data.get("chunk_ids") or [])
     for item in data.get("records") or []:
@@ -96,6 +103,7 @@ def _deserialize_crop(data: dict) -> CropBM25Index:
 
 
 def build_bm25_indexes(chunks: List[Document]) -> Dict[str, CropBM25Index]:
+    """Group chunks by crop_id and build one BM25 index per crop."""
     by_crop: Dict[str, List[Document]] = {}
     for doc in chunks:
         crop_id = doc.metadata.get("crop_id", "apple")
@@ -104,6 +112,7 @@ def build_bm25_indexes(chunks: List[Document]) -> Dict[str, CropBM25Index]:
 
 
 def save_bm25_indexes(indexes: Dict[str, CropBM25Index]) -> None:
+    """Persist indexes to bm25_db/ (pickle + meta.json) and update the cache."""
     os.makedirs(BM25_DIR, exist_ok=True)
     payload = {
         "version": BM25_VERSION,
@@ -125,28 +134,34 @@ def save_bm25_indexes(indexes: Dict[str, CropBM25Index]) -> None:
     global _indexes
     _indexes = indexes
     total = sum(len(idx.chunk_ids) for idx in indexes.values())
-    print(f"BM25 индекс сохранён: {BM25_INDEX_PATH} ({total} фрагментов)")
+    print(f"BM25 index saved: {BM25_INDEX_PATH} ({total} fragments)")
 
 
 def load_bm25_indexes() -> Optional[Dict[str, CropBM25Index]]:
+    """Load indexes from disk once (thread-safe); None if missing or stale version."""
     global _indexes
     if _indexes is not None:
         return _indexes
-    if not os.path.isfile(BM25_INDEX_PATH):
-        return None
-    with open(BM25_INDEX_PATH, "rb") as f:
-        payload = pickle.load(f)
-    if payload.get("version") != BM25_VERSION:
-        print("BM25: устаревшая версия индекса, нужна переиндексация")
-        return None
-    indexes = {
-        crop_id: _deserialize_crop(data) for crop_id, data in (payload.get("crops") or {}).items()
-    }
-    _indexes = indexes
-    return indexes
+    with _indexes_lock:
+        if _indexes is not None:
+            return _indexes
+        if not os.path.isfile(BM25_INDEX_PATH):
+            return None
+        with open(BM25_INDEX_PATH, "rb") as f:
+            payload = pickle.load(f)
+        if payload.get("version") != BM25_VERSION:
+            print("BM25: stale index version, reindex required")
+            return None
+        indexes = {
+            crop_id: _deserialize_crop(data)
+            for crop_id, data in (payload.get("crops") or {}).items()
+        }
+        _indexes = indexes
+        return indexes
 
 
 def get_crop_index(crop_id: str) -> Optional[CropBM25Index]:
+    """BM25 index for one crop, or None if not indexed."""
     indexes = load_bm25_indexes()
     if not indexes:
         return None
@@ -154,6 +169,7 @@ def get_crop_index(crop_id: str) -> Optional[CropBM25Index]:
 
 
 def bm25_search(query: str, crop_id: str, k: int) -> List[str]:
+    """Top-k chunk_ids for a query within one crop's index."""
     index = get_crop_index(crop_id)
     if index is None:
         return []
@@ -161,6 +177,7 @@ def bm25_search(query: str, crop_id: str, k: int) -> List[str]:
 
 
 def get_chunk_document(chunk_id: str, crop_id: str) -> Optional[Document]:
+    """Fetch the stored Document for a chunk_id from the crop's index."""
     index = get_crop_index(crop_id)
     if index is None:
         return None
@@ -168,6 +185,7 @@ def get_chunk_document(chunk_id: str, crop_id: str) -> Optional[Document]:
 
 
 def rebuild_bm25_from_documents(documents: List[Document]) -> Dict[str, CropBM25Index]:
+    """Split raw documents, rebuild all BM25 indexes, and save them."""
     chunks = assign_chunk_ids(split_documents(documents))
     indexes = build_bm25_indexes(chunks)
     save_bm25_indexes(indexes)
@@ -175,6 +193,7 @@ def rebuild_bm25_from_documents(documents: List[Document]) -> Dict[str, CropBM25
 
 
 def remove_bm25_index() -> None:
+    """Delete bm25_db/ from disk and clear the cache."""
     import shutil
 
     reset_bm25_store()

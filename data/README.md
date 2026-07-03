@@ -1,17 +1,17 @@
-# База знаний RAG (`data/`)
+# RAG knowledge base (`data/`)
 
-## Публичный репозиторий
+## Public repository
 
-В git **не включён** полный корпус статей журнала ПВЮР (~500 файлов) — только:
+The full journal corpus (~500 files) is **not** in git — only:
 
-| Каталог | В репо | Назначение |
-|---------|--------|------------|
-| `demo_hr/` | ✅ | Sandbox платформы (HR-политики) |
-| `apple/sample_*.txt` | ✅ | Демо-статьи для быстрого старта |
-| `pear/`, `plum/` | README | Добавьте свои `.txt` локально |
-| `apple/*.txt` (кроме sample) | ❌ gitignore | Положите локально для полного RAG |
+| Directory | In repo | Purpose |
+|-----------|---------|---------|
+| `demo_hr/` | ✅ | Platform sandbox (HR policies) |
+| `apple/sample_*.txt` | ✅ | Demo articles for quick start |
+| `pear/`, `plum/` | README only | Add your own `.txt` locally |
+| `apple/*.txt` (except sample) | ❌ gitignore | Place locally for full RAG |
 
-После добавления статей:
+After adding articles:
 
 ```bash
 docker compose -p union_ai_apple stop classifier
@@ -19,21 +19,21 @@ docker compose -p union_ai_apple run --rm -e FORCE_RAG_REINDEX=true classifier p
 docker compose -p union_ai_apple start classifier
 ```
 
-Полный eval (`python scripts/run_rag_eval.py --suite all`) рассчитан на полный корпус — на демо-данных пройдёт только часть вопросов.
+Full eval (`python scripts/run_rag_eval.py --suite all`) expects the full corpus — on demo data only a subset of questions will pass.
 
-## Формат файла `.txt`
+## `.txt` file format
 
-Каждая статья — отдельный файл в `data/{crop_id}/`. Рекомендуемая структура:
+Each article is a separate file under `data/{crop_id}/`. Recommended structure:
 
 ```
-Метаданные источника:
-- Заголовок: ...
-- URL: ... (опционально)
+Source metadata:
+- Title: ...
+- URL: ... (optional)
 
-Основной текст статьи...
+Main article text...
 ```
 
-## Права на контент
+## Content rights
 
-Не публикуйте в открытый git чужие тексты без разрешения правообладателя.  
-См. [DATA_LICENSE.md](../DATA_LICENSE.md).
+Do not publish third-party texts in a public git repo without permission.  
+See [DATA_LICENSE.md](../DATA_LICENSE.md).

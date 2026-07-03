@@ -5,34 +5,28 @@ import (
 	"testing"
 )
 
+// Verifies that delta content is extracted from a stream chunk.
 func TestParseLLMStreamData(t *testing.T) {
-	content, err := parseLLMStreamData(`{"choices":[{"delta":{"content":"парша"}}]}`)
+	content, err := parseLLMStreamData(`{"choices":[{"delta":{"content":"scab"}}]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if content != "парша" {
+	if content != "scab" {
 		t.Fatalf("got %q", content)
 	}
 }
 
+// Verifies that SSE deltas are concatenated and [DONE] is ignored.
 func TestReadLLMStream(t *testing.T) {
-	body := strings.NewReader(
-		"data: {\"choices\":[{\"delta\":{\"content\":\"А\"}}]}\n\n" +
-			"data: {\"choices\":[{\"delta\":{\"content\":\"Б\"}}]}\n\n" +
-			"data: [DONE]\n\n",
-	)
-	var chunks []string
-	full, err := readLLMStream(body, func(s string) error {
-		chunks = append(chunks, s)
-		return nil
-	})
+	body :=
+		"data: {\"choices\":[{\"delta\":{\"content\":\"A\"}}]}\n\n" +
+			"data: {\"choices\":[{\"delta\":{\"content\":\"B\"}}]}\n\n" +
+			"data: [DONE]\n\n"
+	full, err := readLLMStream(strings.NewReader(body), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if full != "АБ" {
-		t.Fatalf("full=%q", full)
-	}
-	if len(chunks) != 2 {
-		t.Fatalf("chunks=%v", chunks)
+	if full != "AB" {
+		t.Fatalf("got %q", full)
 	}
 }

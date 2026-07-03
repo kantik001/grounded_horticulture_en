@@ -1,4 +1,4 @@
-"""Прогрев RAG при старте classifier: индексы, e5, reranker, пробный поиск."""
+"""Warm up RAG at classifier startup: indexes, e5, reranker, probe search."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import time
 
 
 def _warmup_enabled() -> bool:
+    """True unless RAG_WARMUP_ENABLED is explicitly off."""
     return os.environ.get("RAG_WARMUP_ENABLED", "true").lower() not in (
         "0",
         "false",
@@ -15,17 +16,17 @@ def _warmup_enabled() -> bool:
 
 
 def warmup_rag(crop_id: str = "apple") -> None:
-    """Загружает Chroma/BM25, embeddings, reranker и выполняет тестовый запрос."""
+    """Load Chroma/BM25, embeddings, reranker, and run a probe query."""
     if not _warmup_enabled():
-        print("RAG warmup: отключён (RAG_WARMUP_ENABLED=false)")
+        print("RAG warmup: disabled (RAG_WARMUP_ENABLED=false)")
         return
 
     from rag.crops_config import normalize_crop_id
 
     crop_id = normalize_crop_id(crop_id)
-    query = os.environ.get("RAG_WARMUP_QUERY", "парша яблони признаки листья")
+    query = os.environ.get("RAG_WARMUP_QUERY", "apple scab leaf symptoms")
     started = time.perf_counter()
-    print(f"RAG warmup: старт (crop_id={crop_id})…")
+    print(f"RAG warmup: starting (crop_id={crop_id})…")
 
     try:
         from rag.embeddings import get_embeddings
@@ -40,12 +41,12 @@ def warmup_rag(crop_id: str = "apple") -> None:
         fragments = len(payload.get("fragments") or [])
         elapsed = time.perf_counter() - started
         if payload.get("success"):
-            print(f"RAG warmup: готово за {elapsed:.1f}s, фрагментов={fragments}")
+            print(f"RAG warmup: ready in {elapsed:.1f}s, fragments={fragments}")
         else:
             print(
-                f"RAG warmup: завершено за {elapsed:.1f}s без контекста "
-                f"({payload.get('error', 'нет фрагментов')})"
+                f"RAG warmup: finished in {elapsed:.1f}s without context "
+                f"({payload.get('error', 'no fragments')})"
             )
     except Exception as exc:
         elapsed = time.perf_counter() - started
-        print(f"RAG warmup: ошибка за {elapsed:.1f}s — {exc}")
+        print(f"RAG warmup: error after {elapsed:.1f}s — {exc}")

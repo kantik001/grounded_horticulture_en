@@ -1,17 +1,19 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
+// Verifies that a RAG 422 response is a soft miss, not a transport error.
 func TestFetchRAGContext422IsSoftMiss(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = w.Write([]byte(`{"success":false,"error":"Не нашёл информации в статьях"}`))
+		_, _ = w.Write([]byte(`{"success":false,"error":"No information found in articles."}`))
 	}))
 	defer srv.Close()
 
@@ -19,7 +21,7 @@ func TestFetchRAGContext422IsSoftMiss(t *testing.T) {
 	config = &Config{PythonRAGURL: srv.URL}
 	defer func() { config = old }()
 
-	out, err := fetchRAGContext("тест", "apple")
+	out, err := fetchRAGContext(context.Background(), "test", "apple")
 	if err != nil {
 		t.Fatalf("422 soft miss should not return transport error: %v", err)
 	}
@@ -31,8 +33,9 @@ func TestFetchRAGContext422IsSoftMiss(t *testing.T) {
 	}
 }
 
+// Verifies that decimal numbers are extracted from answer text.
 func TestExtractNumbersFromText(t *testing.T) {
-	nums := extractNumbersFromText("Прирост 748,5 см и 31.8%")
+	nums := extractNumbersFromText("Growth 748.5 cm and 31.8%")
 	if len(nums) != 2 {
 		t.Fatalf("expected 2 numbers, got %v", nums)
 	}
@@ -41,27 +44,30 @@ func TestExtractNumbersFromText(t *testing.T) {
 	}
 }
 
+// Verifies that answers without numbers pass verification.
 func TestVerifyRAGAnswer_NoNumbersOK(t *testing.T) {
-	fragments := []RAGFragment{{Filename: "Статья", Content: "Парша проявляется пятнами."}}
-	answer := appendRAGDisclaimer("Парша проявляется пятнами на листьях.")
+	fragments := []RAGFragment{{Filename: "Article", Content: "Scab appears as spots on leaves."}}
+	answer := appendRAGDisclaimer("Scab appears as spots on leaves.")
 	ok, reason := verifyRAGAnswer(answer, fragments)
 	if !ok {
 		t.Fatalf("expected pass, got: %s", reason)
 	}
 }
 
+// Verifies that numbers present in the source fragments pass verification.
 func TestVerifyRAGAnswer_NumberInContextOK(t *testing.T) {
-	fragments := []RAGFragment{{Filename: "Таблица", Content: "Среднее значение 77 и повторность 3-72."}}
-	answer := appendRAGDisclaimer("Среднее 77.")
+	fragments := []RAGFragment{{Filename: "Table", Content: "Mean value 77 and replication 3-72."}}
+	answer := appendRAGDisclaimer("Mean 77.")
 	ok, reason := verifyRAGAnswer(answer, fragments)
 	if !ok {
 		t.Fatalf("expected pass, got: %s", reason)
 	}
 }
 
+// Verifies that a number missing from the sources fails verification.
 func TestVerifyRAGAnswer_HallucinatedNumberFails(t *testing.T) {
-	fragments := []RAGFragment{{Filename: "Статья", Content: "Без цифр в тексте."}}
-	answer := appendRAGDisclaimer("Рентабельность 72%.")
+	fragments := []RAGFragment{{Filename: "Article", Content: "No numbers in the text."}}
+	answer := appendRAGDisclaimer("Profitability 72%.")
 	ok, reason := verifyRAGAnswer(answer, fragments)
 	if ok {
 		t.Fatal("expected verification to fail for hallucinated number")
@@ -71,23 +77,25 @@ func TestVerifyRAGAnswer_HallucinatedNumberFails(t *testing.T) {
 	}
 }
 
+// Verifies that source attributions are stripped and the disclaimer is appended.
 func TestAppendRAGDisclaimer_StripsSourceAndAddsDisclaimer(t *testing.T) {
-	raw := "Ответ по теме.\n\nИсточник: \"Секретная статья\""
+	raw := "Answer on topic.\n\nSource: \"Secret article\""
 	out := appendRAGDisclaimer(raw)
-	if strings.Contains(out, "Источник:") || strings.Contains(out, "Секретная статья") {
+	if strings.Contains(out, "Source:") || strings.Contains(out, "Secret article") {
 		t.Fatalf("source attribution should be removed: %q", out)
 	}
-	if !strings.Contains(out, "Не заменяет очный осмотр агронома") {
+	if !strings.Contains(out, "Does not replace an on-site agronomist") {
 		t.Fatalf("expected disclaimer, got: %q", out)
 	}
 }
 
+// Verifies that filler intro phrases are removed from the answer.
 func TestCleanRAGAnswer_StripsIntroPhrase(t *testing.T) {
-	out := cleanRAGAnswer("Я думаю, что парша опасна для урожая.")
-	if strings.Contains(out, "Я думаю") {
+	out := cleanRAGAnswer("I think apple scab is dangerous for the harvest.")
+	if strings.Contains(out, "I think") {
 		t.Fatalf("intro should be stripped, got: %q", out)
 	}
-	if !strings.Contains(out, "парша") {
+	if !strings.Contains(out, "scab") {
 		t.Fatalf("got %q", out)
 	}
 }

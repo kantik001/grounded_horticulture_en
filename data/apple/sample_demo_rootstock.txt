@@ -1,13 +1,13 @@
-Метаданные источника:
-- Заголовок: Демо — подвои яблони (синтетический текст для портфолио)
-- Культура (RAG): apple
+Source metadata:
+- Title: Demo — apple rootstocks (synthetic portfolio text)
+- Crop (RAG): apple
 
-Кратко для садовода:
-Карликовые подвои СК 4 и М 9 удобны для интенсивных садов: деревья ниже, посадка гуще, урожай наступает раньше. СК 4 хорошо переносит засушливые условия юга. М 9 даёт компактную крону, но требует опоры и регулярного полива.
+Brief for the grower:
+Dwarf rootstocks SK 4 and M 9 suit intensive orchards: shorter trees, denser planting, earlier cropping. SK 4 tolerates southern drought well. M 9 gives a compact canopy but needs support and regular irrigation.
 
-Основные результаты:
-При выборе подвоя учитывают тип почвы, орошение и желаемую высоту дерева. Для склоновых участков предпочтительны устойчивые клоновые подвои с развитой корневой системой. Совместимость привоя и подвоя проверяют по каталогу сортов и подвоев.
+Main findings:
+Rootstock choice depends on soil type, irrigation, and desired tree height. For sloped sites, stable clonal rootstocks with developed root systems are preferred. Scion–rootstock compatibility should be checked in variety catalogs.
 
-Цифры из текста:
-- Схема посадки на карликовых подвоях часто 4 × 1,2–1,5 м.
-- СК 4 рекомендуют для регионов с периодическими засухами.
+Figures from the text:
+- Planting density on dwarf rootstocks is often 4 × 1.2–1.5 m.
+- SK 4 is recommended for regions with periodic drought.

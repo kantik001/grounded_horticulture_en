@@ -1,4 +1,4 @@
-"""Чанкование статей для Chroma и BM25 (одинаковые фрагменты)."""
+"""Chunk articles for Chroma and BM25 (identical fragments)."""
 
 import hashlib
 import os
@@ -11,9 +11,9 @@ CHUNK_SIZE = 650
 CHUNK_OVERLAP = 80
 
 _SECTION_SEPARATORS = [
-    "\n\nКратко для садовода:",
-    "\n\nПрактические выводы:",
-    "\n\nЦифры из текста и таблиц",
+    "\n\nBrief for the grower:",
+    "\n\nMain findings:",
+    "\n\nFigures from the text:",
     "\n\n---\n\n",
     "\n\n",
     "\n",
@@ -23,6 +23,7 @@ _SECTION_SEPARATORS = [
 
 
 def get_text_splitter() -> RecursiveCharacterTextSplitter:
+    """Splitter tuned to article section separators (650 chars, 80 overlap)."""
     return RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
@@ -31,10 +32,12 @@ def get_text_splitter() -> RecursiveCharacterTextSplitter:
 
 
 def split_documents(documents: list[Document]) -> list[Document]:
+    """Split documents into chunks with the shared splitter."""
     return get_text_splitter().split_documents(documents)
 
 
 def chunk_id_for(doc: Document) -> str:
+    """Deterministic chunk id: crop:source_file:content-md5."""
     crop = doc.metadata.get("crop_id", "")
     src = doc.metadata.get("source_file") or doc.metadata.get("filename") or ""
     digest = hashlib.md5(doc.page_content.encode("utf-8")).hexdigest()[:12]
@@ -42,6 +45,7 @@ def chunk_id_for(doc: Document) -> str:
 
 
 def assign_chunk_ids(chunks: list[Document]) -> list[Document]:
+    """Write a unique chunk_id into each chunk's metadata (suffix on collisions)."""
     seen: dict[str, int] = {}
     for doc in chunks:
         base = chunk_id_for(doc)
@@ -55,6 +59,7 @@ def assign_chunk_ids(chunks: list[Document]) -> list[Document]:
 
 
 def slug_from_chunk_id(chunk_id: str) -> str:
+    """Sanitize a chunk_id into a filesystem-safe slug."""
     return re.sub(r"[^\w\-:.]", "_", chunk_id)
 
 
@@ -62,7 +67,7 @@ MAX_CHUNKS_PER_SOURCE = int(os.environ.get("RAG_MAX_CHUNKS_PER_SOURCE", "2"))
 
 
 def diversify_fragments(docs, limit: int, max_per_source: int = MAX_CHUNKS_PER_SOURCE):
-    """Не более max_per_source чанков с одной статьи; сохраняет порядок релевантности."""
+    """At most max_per_source chunks per article; preserves relevance order."""
     if max_per_source <= 0:
         return docs[:limit]
     picked = []

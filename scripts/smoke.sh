@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke-тест API. TELEGRAM_AUTH_DISABLED=true для POST /api/session без initData.
+# API smoke test. TELEGRAM_AUTH_DISABLED=true for POST /api/session without initData.
 set -euo pipefail
 
 BASE_URL="${1:-http://localhost:8080}"

@@ -1,29 +1,29 @@
 {
   "apple": {
-    "rootstock": "Пример вопроса: \"Какие подвои СК подходят для юга?\"\nПример ответа: Для юга России в материалах выделяют подвои серии СК с умеренной силой роста; конкретный выбор зависит от почвы и схемы посадки — см. цифры в контексте.",
-    "fertilizer": "Пример вопроса: \"Как удобрения влияют на рост сорта Триумф?\"\nПример ответа: Удобрения значительно влияют на вегетативный рост сорта Триумф. При варианте 1 (норма) прирост побегов составил 748,5 см, при варианте 2 (удвоение) – 660,5 см, при варианте 3 (половинная доза) – 560,6 см.",
-    "disease": "Пример вопроса: \"Какие признаки парши на листьях яблони?\"\nПример ответа: Парша проявляется бархатистыми оливково-зелёными пятнами на листьях. Схему защиты и препараты указывайте только из контекста статей.",
-    "irrigation": "Пример вопроса: \"Зачем капельный полив в засуху?\"\nПример ответа: Капельный полив поддерживает влажность корнеобитаемого слоя и снижает стресс в жаркое лето — конкретные нормы берите из контекста.",
-    "relief": "Пример вопроса: \"Как склон влияет на яблоню в КБР?\"\nПример ответа: Экспозиция и рельеф меняют микроклимат и урожай; в контексте приведены сравнения по склонам и террасам.",
-    "variety": "Пример вопроса: \"Какой сорт показал максимальную рентабельность на северном склоне?\"\nПример ответа: На северном склоне максимальную рентабельность (496,0%) показал летний сорт «Ред Фри».",
-    "general": "Пример вопроса: \"Что делать при появлении пятен на листьях?\"\nПример ответа: Опирайтесь на признаки и рекомендации из контекста; при нехватке данных предложите уточнить симптомы или отправить фото."
+    "rootstock": "Example question: \"Which SK rootstocks suit the south?\"\nExample answer: For southern regions the materials highlight SK-series rootstocks with moderate vigor; the exact choice depends on soil and planting density — see figures in the context.",
+    "fertilizer": "Example question: \"How do fertilizers affect Triumph variety growth?\"\nExample answer: Fertilizers significantly affect vegetative growth of Triumph. Under option 1 (standard rate) shoot growth was 748.5 cm, under option 2 (double) 660.5 cm, under option 3 (half dose) 560.6 cm.",
+    "disease": "Example question: \"What are signs of scab on apple leaves?\"\nExample answer: Scab appears as velvety olive-green spots on leaves. List protection schedules and products only from the article context.",
+    "irrigation": "Example question: \"Why use drip irrigation during drought?\"\nExample answer: Drip irrigation keeps the root zone moist and reduces heat stress — take specific rates from the context.",
+    "relief": "Example question: \"How does slope exposure affect apple in mountainous regions?\"\nExample answer: Exposure and terrain change microclimate and yield; the context compares slopes and terraces.",
+    "variety": "Example question: \"Which variety showed maximum profitability on a north-facing slope?\"\nExample answer: On the north slope the summer variety Red Free showed maximum profitability (496.0%).",
+    "general": "Example question: \"What to do when spots appear on leaves?\"\nExample answer: Rely on signs and recommendations from the context; if data is insufficient, ask the user to clarify symptoms or send a photo."
   },
   "pear": {
-    "rootstock": "Пример вопроса: \"Какие подвои груши на Ставрополье?\"\nПример ответа: В статьях по груше на Ставрополье сравнивают сорта и подвои — перечислите найденные в контексте комбинации с цифрами.",
-    "fertilizer": "Пример вопроса: \"Зачем хелатные подкормки груши?\"\nПример ответа: Некорневые хелатные удобрения повышают усвоение микроэлементов — дозы и сроки только из контекста.",
-    "disease": "Пример вопроса: \"Как защитить грушу от болезней?\"\nПример ответа: Опишите меры из контекста; препараты не называйте, если их нет в статьях.",
-    "variety": "Пример вопроса: \"Какие сорта груши на юге?\"\nПример ответа: Перечислите сорта и показатели, указанные в контексте, с регионом испытаний.",
-    "general": "Пример вопроса: \"Когда обрезать грушу?\"\nПример ответа: Сроки и приёмы обрезки берите из контекста; если данных нет — скажите об этом прямо."
+    "rootstock": "Example question: \"Which pear rootstocks for Stavropol?\"\nExample answer: Pear articles for Stavropol compare varieties and rootstocks — list combinations with figures found in the context.",
+    "fertilizer": "Example question: \"Why chelated foliar feeds for pear?\"\nExample answer: Chelated foliar feeds improve micronutrient uptake — doses and timing only from the context.",
+    "disease": "Example question: \"How to protect pear from diseases?\"\nExample answer: Describe measures from the context; do not name products absent from the articles.",
+    "variety": "Example question: \"Which pear varieties in the south?\"\nExample answer: List varieties and metrics from the context with trial region.",
+    "general": "Example question: \"When to prune pear?\"\nExample answer: Take pruning timing and methods from the context; if missing, say so clearly."
   },
   "plum": {
-    "rootstock": "Пример вопроса: \"Какие подвои сливы для юга?\"\nПример ответа: В контексте перечислены адаптивные подвои (например ПК СК-1, ПК СК-2) — укажите их с цифрами укоренения из статей.",
-    "fertilizer": "Пример вопроса: \"Чем подкормить сливу весной?\"\nПример ответа: Весной применяют подкормки по анализу почвы — конкретные нормы только из контекста.",
-    "disease": "Пример вопроса: \"Что такое шарка сливы?\"\nПример ответа: Шарка — вирусное заболевание; симптомы и диагностику описывайте по контексту (ПЦР, признаки на подвоях).",
-    "relief": "Пример вопроса: \"Какая экспозиция склона для сливы в КБР?\"\nПример ответа: Сравните показатели по экспозициям, приведённые в контексте.",
-    "variety": "Пример вопроса: \"Как ведёт себя Стенлей на подвоях?\"\nПример ответа: Приведите урожайность и состояние насаждений из контекста.",
-    "general": "Пример вопроса: \"Как ухаживать за сливой?\"\nПример ответа: Соберите рекомендации из контекста; не добавляйте фактов вне статей."
+    "rootstock": "Example question: \"Which plum rootstocks for the south?\"\nExample answer: The context lists adaptive rootstocks (e.g. PK SK-1, PK SK-2) — cite rooting figures from the articles.",
+    "fertilizer": "Example question: \"What to feed plum in spring?\"\nExample answer: Spring feeding follows soil analysis — specific rates only from the context.",
+    "disease": "Example question: \"What is plum pox?\"\nExample answer: Plum pox is a viral disease; describe symptoms and diagnosis from the context (PCR, rootstock signs).",
+    "relief": "Example question: \"Which slope exposure for plum in mountainous regions?\"\nExample answer: Compare metrics by exposure given in the context.",
+    "variety": "Example question: \"How does Stanley perform on rootstocks?\"\nExample answer: Cite yield and orchard condition from the context.",
+    "general": "Example question: \"How to care for plum?\"\nExample answer: Compile recommendations from the context; do not add facts outside the articles."
   },
   "demo_hr": {
-    "general": "Пример вопроса: \"Сколько дней отпуска?\"\nПример ответа: Основной оплачиваемый отпуск — 28 календарных дней для штатных сотрудников."
+    "general": "Example question: \"How many vacation days?\"\nExample answer: Standard paid vacation is 28 calendar days for full-time employees."
   }
 }

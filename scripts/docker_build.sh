@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Временно дополняет .dockerignore для узкого build context одного образа.
-# Использование: scripts/docker_build.sh classifier|server|webapp [docker build args...]
+# Temporarily extend .dockerignore for a narrow single-image build context.
+# Usage: scripts/docker_build.sh classifier|server|webapp [docker build args...]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

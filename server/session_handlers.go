@@ -14,7 +14,7 @@ type newSessionRequest struct {
 	CropID string `json:"crop_id"`
 }
 
-// handleNewSession создаёт новую сессию переписки для текущего Telegram-пользователя.
+// handleNewSession creates a new chat session for the current Telegram user.
 func handleNewSession(c *gin.Context) {
 	tgUser, err := ctxTelegramUser(c)
 	if err != nil {
@@ -39,13 +39,13 @@ func handleNewSession(c *gin.Context) {
 	userID, err := chatStore.UpsertUser(ctx, tgUser)
 	if err != nil {
 		log.Printf("UpsertUser: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка базы данных"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Database error"})
 		return
 	}
 	sid, err := chatStore.CreateSession(ctx, userID, cropID)
 	if err != nil {
 		log.Printf("CreateSession: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Не удалось создать сессию"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Could not create session"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -56,11 +56,11 @@ func handleNewSession(c *gin.Context) {
 	})
 }
 
-// handleHistory возвращает сохранённую историю по session_id.
+// handleHistory returns saved history for session_id.
 func handleHistory(c *gin.Context) {
 	id := strings.TrimSpace(c.Query("session_id"))
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Нужен параметр session_id"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "session_id parameter required"})
 		return
 	}
 	tgUser, err := ctxTelegramUser(c)
@@ -71,11 +71,11 @@ func handleHistory(c *gin.Context) {
 	msgs, err := chatStore.ListMessages(c.Request.Context(), id, tgUser.ID)
 	if err != nil {
 		if err == errSessionNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Сессия не найдена"})
+			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Session not found"})
 			return
 		}
 		log.Printf("ListMessages: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка базы данных"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Database error"})
 		return
 	}
 	cropID, _ := chatStore.SessionCropID(c.Request.Context(), id, tgUser.ID)
@@ -87,7 +87,7 @@ func handleHistory(c *gin.Context) {
 	})
 }
 
-// handleMedia отдаёт фото по token (только владельцу сессии).
+// handleMedia serves a photo by token (session owner only).
 func handleMedia(c *gin.Context) {
 	token := strings.TrimSpace(c.Param("token"))
 	tgUser, err := ctxTelegramUser(c)
@@ -97,12 +97,12 @@ func handleMedia(c *gin.Context) {
 	}
 	ok, err := chatStore.UserCanAccessImage(c.Request.Context(), token, tgUser.ID)
 	if err != nil || !ok {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Файл не найден"})
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "File not found"})
 		return
 	}
 	data, err := chatStore.ReadImage(token)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Файл не найден"})
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "File not found"})
 		return
 	}
 	c.Data(http.StatusOK, "application/octet-stream", data)

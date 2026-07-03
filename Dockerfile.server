@@ -1,35 +1,43 @@
-# Этап сборки
+# Build stage
 FROM golang:1.23-alpine AS builder
 
 WORKDIR /build
 
-# Установка зависимостей для сборки
+# Build dependencies
 RUN apk add --no-cache git
 
-# Копирование go модулей
+# Go modules
 COPY server/go.mod server/go.sum ./
 RUN go mod download
 
-# Копирование исходного кода
+# Source code
 COPY server/ .
 
-# Подтянуть go.sum (новые зависимости, напр. pgx)
+# Refresh go.sum (new dependencies, e.g. pgx)
 RUN go mod tidy
 
-# Сборка бинарного файла
+# Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
-# Финальный образ
+# Final image
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates curl
 
-WORKDIR /root/
+# Non-root runtime user. UID 1000 matches the default first user on most
+# Linux hosts, so bind mounts (./data) stay writable for admin upload.
+RUN addgroup -g 1000 app && adduser -D -u 1000 -G app app \
+    && mkdir -p /data/uploads /app/data \
+    && chown -R app:app /data/uploads /app/data
 
-# Копирование бинарного файла из этапа сборки
+WORKDIR /app
+
+# Binary from build stage
 COPY --from=builder /build/main .
 COPY migrations /migrations
 COPY config /config
+
+USER app
 
 EXPOSE 8080
 

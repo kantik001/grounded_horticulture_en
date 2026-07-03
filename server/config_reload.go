@@ -9,28 +9,18 @@ import (
 	"time"
 )
 
-// reloadRuntimeConfig перечитывает JSON-конфиги без перезапуска процесса.
+// reloadRuntimeConfig reloads JSON configs without restarting the process.
+// All catalogs are swapped in a single atomic operation (see catalogs.go),
+// so concurrent request handlers never see a partially reloaded state.
 func reloadRuntimeConfig() error {
-	if err := loadCropCatalog(); err != nil {
+	if err := loadRuntimeCatalogs(); err != nil {
 		return err
 	}
-	if err := loadPromptCatalog(); err != nil {
-		return err
-	}
-	if err := loadOnboardingConfig(); err != nil {
-		return err
-	}
-	if err := loadPhotoTemplates(); err != nil {
-		return err
-	}
-	if err := loadBrandingConfig(); err != nil {
-		return err
-	}
-	log.Printf("Config reloaded: crops=%d", len(cropCatalog.Crops))
+	log.Printf("Config reloaded: crops=%d", len(currentCatalogs().Crops.Crops))
 	return nil
 }
 
-// startConfigReloadWatcher: SIGHUP и опциональный опрос по интервалу (CONFIG_RELOAD_INTERVAL_SEC).
+// startConfigReloadWatcher handles SIGHUP and optional polling (CONFIG_RELOAD_INTERVAL_SEC).
 func startConfigReloadWatcher() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP)

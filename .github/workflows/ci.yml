@@ -27,10 +27,29 @@ jobs:
       - name: Go mod tidy
         run: go mod tidy
 
-      - name: Go test
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Go test (race detector)
         env:
           CROPS_CONFIG_PATH: ${{ github.workspace }}/config/crops.json
-        run: go test -v -count=1 ./...
+        run: go test -v -race -count=1 ./...
+
+  go-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: server/go.sum
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          working-directory: server
 
   python-test:
     runs-on: ubuntu-latest
@@ -51,9 +70,24 @@ jobs:
           CROPS_CONFIG_PATH: config/crops.json
         run: pytest tests/ -v --tb=short
 
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Ruff check
+        run: ruff check api rag cv scripts tests
+
   docker-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -82,5 +116,28 @@ jobs:
           print('torch', torch.__version__, 'cuda_built', torch.backends.cuda.is_built(), 'docs', len(load_all_documents()))
           "
 
-  # RAG retrieval eval — только вручную: Actions → RAG Eval → Run workflow
-  # (reindex + embeddings на CPU в PR слишком долгие для каждого push).
+      # End-to-end smoke: full compose stack (postgres + classifier + server + webapp)
+      # without HF model bake and RAG warmup — checks wiring, not retrieval quality.
+      - name: Compose up
+        env:
+          SKIP_HF_BAKE: "1"
+          TELEGRAM_AUTH_DISABLED: "true"
+          RAG_WARMUP_ENABLED: "false"
+          POSTGRES_PASSWORD: ci-postgres
+          ADMIN_PASSWORD: ci-admin-password
+          ADMIN_SECRET: ci-admin-secret
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: API smoke test
+        run: bash scripts/smoke.sh http://localhost:8080
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose logs --tail 100
+
+      - name: Compose down
+        if: always()
+        run: docker compose down -v
+
+  # RAG retrieval eval — manual only: Actions → RAG Eval → Run workflow
+  # (reindex + embeddings on CPU in PR is too slow for every push).

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,7 +10,7 @@ import (
 	"net/http"
 )
 
-// ClassificationResult — ответ Python /classify.
+// ClassificationResult is the Python /classify response.
 type ClassificationResult struct {
 	Success        bool                  `json:"success"`
 	Prediction     string                `json:"prediction"`
@@ -18,14 +19,14 @@ type ClassificationResult struct {
 	Error          string                `json:"error,omitempty"`
 }
 
-// PredictionCandidate — один вариант из top-k классификации.
+// PredictionCandidate is one top-k classification candidate.
 type PredictionCandidate struct {
 	Label      string  `json:"label"`
 	Confidence float64 `json:"confidence"`
 }
 
-// POST multipart с фото и crop_id в Python-сервис классификации.
-func sendToClassifier(imageData []byte, cropID string) (*ClassificationResult, error) {
+// POST multipart with photo and crop_id to the Python classification service.
+func sendToClassifier(ctx context.Context, imageData []byte, cropID string) (*ClassificationResult, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -43,7 +44,7 @@ func sendToClassifier(imageData []byte, cropID string) (*ClassificationResult, e
 		return nil, fmt.Errorf("failed to close writer: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", config.PythonServiceURL, body)
+	req, err := http.NewRequestWithContext(ctx, "POST", config.PythonServiceURL, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}

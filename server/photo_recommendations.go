@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
 
-// RecommendationResponse — ответ POST /classify (CV + текст рекомендации).
+// RecommendationResponse is the POST /classify response (CV + recommendation text).
 type RecommendationResponse struct {
 	Success bool `json:"success"`
 	ClassificationResult
@@ -13,7 +14,7 @@ type RecommendationResponse struct {
 	Error          string `json:"error,omitempty"`
 }
 
-// buildPhotoUserPrompt собирает user-промпт для LLM по результату CV.
+// buildPhotoUserPrompt builds the LLM user prompt from CV results.
 func buildPhotoUserPrompt(classification *ClassificationResult, caption string, prompts cropPrompts) string {
 	body := fmt.Sprintf(
 		prompts.PhotoUserBody,
@@ -26,14 +27,15 @@ func buildPhotoUserPrompt(classification *ClassificationResult, caption string, 
 	b.WriteString("\n\n")
 	b.WriteString(body)
 	if t := strings.TrimSpace(caption); t != "" {
-		b.WriteString("\n\nПодпись пользователя к фото: ")
+		b.WriteString("\n\nUser photo caption: ")
 		b.WriteString(t)
 	}
 	return b.String()
 }
 
-// generatePhotoRecommendation — единая точка: LLM с историей или без.
+// generatePhotoRecommendation is the single entry point: LLM with or without history.
 func generatePhotoRecommendation(
+	ctx context.Context,
 	classification *ClassificationResult,
 	caption string,
 	history []Message,
@@ -48,14 +50,15 @@ func generatePhotoRecommendation(
 	msgs = append(msgs, Message{Role: "system", Content: prompts.PhotoSystem})
 	msgs = append(msgs, history...)
 	msgs = append(msgs, Message{Role: "user", Content: userPrompt})
-	return callLLMCompletion(msgs)
+	return callLLMCompletion(ctx, msgs)
 }
 
-// generateTemplateRecommendation — статичный текст, если LLM недоступен.
+// generateTemplateRecommendation returns static text when the LLM is unavailable.
 func generateTemplateRecommendation(classification *ClassificationResult) string {
-	rec, exists := photoTemplateCatalog[classification.Prediction]
+	templates := currentCatalogs().PhotoTemplates
+	rec, exists := templates[classification.Prediction]
 	if !exists {
-		rec = photoTemplateCatalog["default"]
+		rec = templates["default"]
 		rec = replacePlaceholder(rec, "{{PREDICTION}}", classification.Prediction)
 		confStr := fmt.Sprintf("%.1f", classification.Confidence*100)
 		rec = replacePlaceholder(rec, "{{CONFIDENCE}}", confStr)
@@ -63,6 +66,7 @@ func generateTemplateRecommendation(classification *ClassificationResult) string
 	return rec
 }
 
+// replacePlaceholder substitutes a template placeholder with a value.
 func replacePlaceholder(str, placeholder, value string) string {
 	return strings.ReplaceAll(str, placeholder, value)
 }

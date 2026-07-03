@@ -1,0 +1,12 @@
+# Ruff config for CI lint (ruff check api rag cv scripts tests).
+line-length = 110
+
+[lint]
+# Defaults (E4/E7/E9, F) plus warnings.
+extend-select = ["W"]
+
+[lint.per-file-ignores]
+# Imports intentionally follow sys.path / dotenv / stdout-encoding setup.
+"api/app.py" = ["E402"]
+"rag/vector_store.py" = ["E402"]
+"scripts/*.py" = ["E402"]

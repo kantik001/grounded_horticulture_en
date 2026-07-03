@@ -1,27 +1,27 @@
-# Разбор: миграции PostgreSQL (`migrations/*.sql`)
+# Walkthrough: PostgreSQL migrations (`migrations/*.sql`)
 
-**Папка:** `migrations/`  
-**Файлы:** `001_init.sql`, `002_crop_id.sql`, `003_feedback_analytics.sql`  
-**Кто применяет:** Go-сервер при старте (`server/postgres_store.go` → `runAllMigrations`)  
-**СУБД:** PostgreSQL 16 (контейнер `postgres` в `docker-compose.yml`)
-
----
-
-## Что такое миграция простыми словами
-
-**Миграция** — SQL-скрипт, который **меняет структуру базы данных** (таблицы, колонки, индексы).
-
-Зачем не править БД руками в pgAdmin:
-
-- одна и та же схема у вас, у коллеги и на сервере;
-- изменения в Git — видно историю («сессия 2 добавила messages»);
-- при новом деплое сервер сам накатывает скрипты.
-
-У вас **три файла по порядку номера** — это эволюция схемы, а не три разные базы.
+**Folder:** `migrations/`  
+**Files:** `001_init.sql`, `002_crop_id.sql`, `003_feedback_analytics.sql`  
+**Applied by:** Go server on startup (`server/postgres_store.go` → `runAllMigrations`)  
+**DB:** PostgreSQL 16 (container `postgres` in `docker-compose.yml`)
 
 ---
 
-## Как миграции запускаются в этом проекте
+## What is a migration in simple terms
+
+A **migration** is an SQL script that **changes database structure** (tables, columns, indexes).
+
+Why not edit DB manually in pgAdmin:
+
+- same schema for you, colleagues, and server;
+- changes in Git — visible history (“session 2 added messages”);
+- on new deploy server applies scripts automatically.
+
+You have **three numbered files** — schema evolution, not three different databases.
+
+---
+
+## How migrations run in this project
 
 ```mermaid
 sequenceDiagram
@@ -29,64 +29,64 @@ sequenceDiagram
     participant Go as server (main.go + postgres_store.go)
     participant PG as PostgreSQL
 
-    DC->>Go: старт контейнера
-    Go->>PG: подключение DATABASE_URL
-    Go->>Go: findMigrationsDir → /migrations
-    Go->>Go: sort 001, 002, 003
-    loop каждый .sql
-        Go->>PG: выполнить весь файл целиком
+    DC->>Go: start container
+    Go->>PG: connect DATABASE_URL
+    Go->>PG: CREATE TABLE IF NOT EXISTS schema_migrations
+    Go->>PG: SELECT filename FROM schema_migrations
+    Go->>Go: findMigrationsDir → /migrations, sort 001, 002, 003
+    loop each pending .sql
+        Go->>PG: BEGIN; execute file; INSERT INTO schema_migrations; COMMIT
     end
-    Go->>Go: API готов
+    Go->>Go: API ready
 ```
 
-### Важные детали (не как в «большом» DevOps)
+### Important details
 
-1. **Нет таблицы `schema_migrations`** — проект **не запоминает**, какие файлы уже применялись.
-2. При **каждом старте** server снова выполняет **все** `.sql` по алфавиту (`001` → `002` → `003`).
-3. Поэтому везде используют **`IF NOT EXISTS`** / **`ADD COLUMN IF NOT EXISTS`** — повторный запуск не падает.
+1. **`schema_migrations` ledger table** records which files were applied (`filename`, `applied_at`).
+2. On startup the server applies only **pending** `.sql` files in alphabetical order; already-recorded ones are skipped.
+3. Each migration runs in a **transaction** together with its ledger insert — a failed migration is not recorded as applied.
+4. Existing files still use `IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` (they predate the ledger, and an existing DB will have all three re-recorded as applied on first run under the new scheme without failing). New migrations do not have to be idempotent.
 
-Это проще для обучения, но для продакшена с сотней миграций обычно добавляют учёт версий (Flyway, golang-migrate). Пока у вас 3 файла — схема работает.
-
-### Где лежат файлы в Docker
+### Where files live in Docker
 
 - `Dockerfile.server`: `COPY migrations /migrations`
 - `docker-compose.yml`: `MIGRATIONS_DIR=/migrations`
 
-Локально без Docker Go ищет папку `migrations` или `../migrations`.
+Locally without Docker Go looks for `migrations` or `../migrations`.
 
 ---
 
-## Базовый синтаксис SQL (шпаргалка)
+## Basic SQL cheat sheet
 
-### Комментарии
+### Comments
 
 ```sql
--- одна строка
+-- single line
 ```
 
-### Типы данных (что встречается у вас)
+### Data types (used here)
 
-| Тип | Смысл |
-|-----|--------|
-| `BIGSERIAL` | целое auto-increment (id сообщения, пользователя) |
-| `BIGINT` | большое целое (telegram_id) |
-| `TEXT` | строка произвольной длины |
-| `TIMESTAMPTZ` | дата+время с часовым поясом |
-| `DOUBLE PRECISION` | дробное (confidence CV) |
-| `SMALLINT` | малое целое (-1, 1 для лайка) |
-| `JSONB` | JSON в бинарном виде (аналитика) |
+| Type | Meaning |
+|------|---------|
+| `BIGSERIAL` | auto-increment integer (message id, user id) |
+| `BIGINT` | large integer (telegram_id) |
+| `TEXT` | arbitrary-length string |
+| `TIMESTAMPTZ` | date+time with timezone |
+| `DOUBLE PRECISION` | float (CV confidence) |
+| `SMALLINT` | small integer (-1, 1 for like) |
+| `JSONB` | JSON in binary form (analytics) |
 
 ### `PRIMARY KEY`
 
-Уникальный идентификатор строки. Одна строка — один id.
+Unique row identifier. One row — one id.
 
 ### `NOT NULL`
 
-Поле обязательно (нельзя пустое).
+Field required (cannot be empty).
 
 ### `DEFAULT`
 
-Значение по умолчанию при вставке, если не указали:
+Default value on insert if not specified:
 
 ```sql
 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -95,20 +95,20 @@ crop_id TEXT NOT NULL DEFAULT 'apple'
 
 ### `UNIQUE`
 
-Значение не повторяется в таблице (у вас `telegram_id` у пользователя).
+Value does not repeat in table (e.g. user `telegram_id`).
 
 ### `REFERENCES ... ON DELETE CASCADE`
 
-**Внешний ключ:** строка ссылается на другую таблицу.
+**Foreign key:** row references another table.
 
 - `messages.session_id` → `chat_sessions.id`
-- При удалении сессии **каскадом** удаляются все её сообщения.
+- On session delete **cascade** deletes all its messages.
 
-`ON DELETE SET NULL` (в analytics): при удалении user поле `user_id` станет NULL, событие останется.
+`ON DELETE SET NULL` (in analytics): on user delete `user_id` becomes NULL, event remains.
 
 ### `CHECK`
 
-Ограничение на допустимые значения:
+Constraint on allowed values:
 
 ```sql
 CHECK (role IN ('user', 'assistant'))
@@ -117,7 +117,7 @@ CHECK (rating IN (-1, 1))
 
 ### `CREATE INDEX`
 
-Ускоряет поиск/сортировку по колонке (цена — место на диске и чуть медленнее INSERT).
+Speeds search/sort on column (cost — disk space and slightly slower INSERT).
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_messages_session_created
@@ -126,53 +126,53 @@ CREATE INDEX IF NOT EXISTS idx_messages_session_created
 
 ### `CREATE TABLE IF NOT EXISTS`
 
-Создать таблицу только если её ещё нет — безопасно при повторном запуске миграции.
+Create table only if missing — safe on migration rerun.
 
 ### `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
 
-Добавить колонку в существующую таблицу (миграция 002), не ломая старые данные.
+Add column to existing table (migration 002), without breaking old data.
 
 ---
 
-## Файл `001_init.sql` — фундамент (сессия 2)
+## File `001_init.sql` — foundation (session 2)
 
-Три таблицы + связи.
+Three tables + relations.
 
-### `users` — кто пишет в чат
+### `users` — who chats
 
-| Колонка | Назначение |
-|---------|------------|
-| `id` | внутренний id в БД |
-| `telegram_id` | id из Telegram, **UNIQUE** |
-| `username`, `first_name`, `last_name` | профиль |
-| `created_at`, `updated_at` | метки времени |
+| Column | Purpose |
+|--------|---------|
+| `id` | internal DB id |
+| `telegram_id` | Telegram id, **UNIQUE** |
+| `username`, `first_name`, `last_name` | profile |
+| `created_at`, `updated_at` | timestamps |
 
-### `chat_sessions` — один «диалог»
+### `chat_sessions` — one “dialog”
 
-| Колонка | Назначение |
-|---------|------------|
-| `id` | TEXT (случайный hex из Go), не auto-increment |
-| `user_id` | → `users.id`, CASCADE при удалении user |
-| `created_at`, `updated_at` | когда открыли/обновили сессию |
+| Column | Purpose |
+|--------|---------|
+| `id` | TEXT (random hex from Go), not auto-increment |
+| `user_id` | → `users.id`, CASCADE on user delete |
+| `created_at`, `updated_at` | session open/update time |
 
-Индекс `idx_chat_sessions_user_id` — быстро найти все сессии пользователя.
+Index `idx_chat_sessions_user_id` — fast lookup of user sessions.
 
-### `messages` — сообщения в сессии
+### `messages` — messages in session
 
-| Колонка | Назначение |
-|---------|------------|
+| Column | Purpose |
+|--------|---------|
 | `id` | BIGSERIAL |
 | `session_id` | → `chat_sessions.id` |
-| `role` | `user` или `assistant` |
-| `content` | текст |
-| `kind` | тип (текст/фото и т.д. — логика в Go) |
-| `image_token` | ссылка на файл фото на диске, не base64 в БД |
-| `class_prediction`, `class_confidence` | результат CV |
-| `created_at` | порядок в чате |
+| `role` | `user` or `assistant` |
+| `content` | text |
+| `kind` | type (text/photo etc. — logic in Go) |
+| `image_token` | photo file reference on disk, not base64 in DB |
+| `class_prediction`, `class_confidence` | CV result |
+| `created_at` | chat order |
 
-Индекс `(session_id, created_at)` — история чата по времени.
+Index `(session_id, created_at)` — history by time.
 
-### Схема связей
+### Relation diagram
 
 ```
 users (1) ──< chat_sessions (N) ──< messages (N)
@@ -180,49 +180,49 @@ users (1) ──< chat_sessions (N) ──< messages (N)
 
 ---
 
-## Файл `002_crop_id.sql` — мультикультура (сессия 3)
+## File `002_crop_id.sql` — multi-crop (session 3)
 
-Не создаёт новую таблицу, **расширяет** `chat_sessions`:
+Does not create a new table, **extends** `chat_sessions`:
 
 ```sql
 ALTER TABLE chat_sessions
     ADD COLUMN IF NOT EXISTS crop_id TEXT NOT NULL DEFAULT 'apple';
 ```
 
-- Каждая сессия помнит выбранную культуру (яблоня, груша…).
-- Старые сессии без колонки получат `'apple'` по DEFAULT.
-- Индекс по `crop_id` — если понадобится аналитика по культурам.
+- Each session remembers selected crop (apple, pear…).
+- Old sessions without column get `'apple'` via DEFAULT.
+- Index on `crop_id` — if crop analytics needed.
 
-Порядок файлов важен: **002 только после 001**, иначе таблицы `chat_sessions` ещё нет.
+File order matters: **002 only after 001**, otherwise `chat_sessions` does not exist.
 
 ---
 
-## Файл `003_feedback_analytics.sql` — UX и метрики (сессия 5)
+## File `003_feedback_analytics.sql` — UX and metrics (session 5)
 
 ### `message_feedback` — 👍 / 👎
 
-| Колонка | Назначение |
-|---------|------------|
+| Column | Purpose |
+|--------|---------|
 | `message_id` | → `messages.id`, CASCADE |
 | `user_id` | → `users.id` |
-| `rating` | `-1` или `1` |
-| `UNIQUE (message_id, user_id)` | один голос пользователя на сообщение |
+| `rating` | `-1` or `1` |
+| `UNIQUE (message_id, user_id)` | one vote per user per message |
 
-### `analytics_events` — события для статистики
+### `analytics_events` — statistics events
 
-| Колонка | Назначение |
-|---------|------------|
-| `event_type` | строка-код события (onboarding, и т.д.) |
-| `payload` | JSONB — произвольные поля |
-| `user_id` | опционально, SET NULL если user удалён |
+| Column | Purpose |
+|--------|---------|
+| `event_type` | event code string (onboarding, etc.) |
+| `payload` | JSONB — arbitrary fields |
+| `user_id` | optional, SET NULL if user deleted |
 
-Индекс `(event_type, created_at DESC)` — выборка «последние события типа X».
+Index `(event_type, created_at DESC)` — “latest events of type X”.
 
-Зависит от **001**: нужны `users` и `messages`.
+Depends on **001**: needs `users` and `messages`.
 
 ---
 
-## Порядок и именование файлов
+## Order and file naming
 
 ```
 001_init.sql
@@ -230,65 +230,65 @@ ALTER TABLE chat_sessions
 003_feedback_analytics.sql
 ```
 
-Go делает `sort.Strings` → порядок по имени. Префикс `001_`, `002_` — **договорённость команды**, не магия PostgreSQL.
+Go does `sort.Strings` → order by name. Prefix `001_`, `002_` — **team convention**, not PostgreSQL magic.
 
-**Новая миграция:** `004_что_то.sql`, не менять старые файлы после merge в prod (только добавлять новые).
+**New migration:** `004_something.sql`, do not change old files after merge to prod (only add new ones).
 
 ---
 
-## Как Go использует эти таблицы (куда смотреть код)
+## How Go uses these tables (where to look)
 
-| Таблица | Пример в коде |
-|---------|----------------|
-| `users` | `UpsertUser` в `postgres_store.go` |
-| `chat_sessions` | создание сессии, `crop_id` |
-| `messages` | сохранение чата, CV-поля |
+| Table | Code example |
+|-------|--------------|
+| `users` | `UpsertUser` in `postgres_store.go` |
+| `chat_sessions` | session creation, `crop_id` |
+| `messages` | chat save, CV fields |
 | `message_feedback` | `server/feedback.go` |
 | `analytics_events` | `server/analytics_store.go` |
 
 ---
 
-## Практика: проверить БД вручную
+## Practice: check DB manually
 
 ```bash
 docker compose exec postgres psql -U gardener -d gardener
 ```
 
 ```sql
-\dt                    -- список таблиц
-\d messages            -- структура таблицы
+\dt                    -- list tables
+\d messages            -- table structure
 SELECT COUNT(*) FROM messages;
 SELECT rating, COUNT(*) FROM message_feedback GROUP BY rating;
 ```
 
 ---
 
-## Частые вопросы
+## FAQ
 
-### Удалил volume postgres — что будет?
+### Deleted postgres volume — what happens?
 
-Пустая БД. При старте server снова выполнит 001→002→003, таблицы создадутся заново. **Данные чата пропадут** (если volume не бэкапили).
+Empty DB. On server start 001→002→003 run again, tables recreated. **Chat data lost** (unless volume was backed up).
 
-### Можно ли изменить `001_init.sql` после деплоя?
+### Can I change `001_init.sql` after deploy?
 
-На уже существующей БД — **опасно**: `CREATE TABLE IF NOT EXISTS` не обновит старую схему. Правильно: новый файл `004_...sql` с `ALTER TABLE`.
+On existing DB — **risky**: `CREATE TABLE IF NOT EXISTS` does not update old schema. Correct: new file `004_...sql` with `ALTER TABLE`.
 
-### Почему `session_id` TEXT, а не число?
+### Why is `session_id` TEXT, not integer?
 
-Go генерирует случайный hex (`newSessionID`) — удобно отдавать в API без sequential id.
+Go generates random hex (`newSessionID`) — convenient for API without sequential id.
 
-### Миграции и RAG/Chroma
+### Migrations and RAG/Chroma
 
-**Не связаны.** Статьи — файлы + индексы RAG (Chroma, BM25); миграции — только PostgreSQL (чат, пользователи, feedback).
+**Unrelated.** Articles — files + RAG indexes (Chroma, BM25); migrations — PostgreSQL only (chat, users, feedback).
 
 ---
 
-## Краткий итог
+## Brief summary
 
-| Файл | Что добавляет |
-|------|----------------|
-| **001** | users, chat_sessions, messages + индексы |
-| **002** | колонка `crop_id` в сессии |
+| File | Adds |
+|------|------|
+| **001** | users, chat_sessions, messages + indexes |
+| **002** | `crop_id` column on session |
 | **003** | message_feedback, analytics_events |
 
-Миграции — это **версионированная схема БД на SQL**. В проекте их применяет Go при каждом старте, безопасно за счёт `IF NOT EXISTS`. Понимание синтаксиса `CREATE`, `ALTER`, `REFERENCES`, `CHECK`, `INDEX` — база для чтения любого нового `00N_*.sql`.
+Migrations are **versioned DB schema in SQL**. Go applies pending ones on startup and records them in `schema_migrations` (transaction per file). Understanding `CREATE`, `ALTER`, `REFERENCES`, `CHECK`, `INDEX` — base for reading any new `00N_*.sql`.

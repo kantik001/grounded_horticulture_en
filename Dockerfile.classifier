@@ -8,13 +8,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY cv/requirements.txt cv/requirements-docker.txt .
-# CPU-only PyTorch (без CUDA): сначала torch с официального CPU index, затем остальное.
+# CPU-only PyTorch (no CUDA): install torch from the official CPU index, then the rest.
 RUN pip install --no-cache-dir \
         torch==2.5.1 torchvision==0.20.1 \
         --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir -r requirements-docker.txt
 
-# Предзагрузка e5 + reranker в слой образа (без сети при старте контейнера).
+# Non-root runtime user (UID 1000 — matches the default host user for bind
+# mounts like ./eval). Writable dirs are created and owned up front; the HF
+# bake below runs as this user so hf_cache does not need a costly chown -R.
+RUN useradd --create-home --uid 1000 app \
+    && mkdir -p /app/hf_cache /app/chroma_db /app/bm25_db /app/models \
+    && chown app:app /app/hf_cache /app/chroma_db /app/bm25_db /app/models
+
+# Preload e5 + reranker into the image layer (no network at container startup).
 COPY rag/ rag/
 COPY scripts/download_hf_models.py scripts/download_hf_models.py
 
@@ -25,8 +32,10 @@ ENV HF_TOKEN=${HF_TOKEN}
 ENV TORCH_CUDA_ARCH_LIST=
 ENV CUDA_VISIBLE_DEVICES=
 
+USER app
 RUN if [ "$SKIP_HF_BAKE" != "1" ]; then python scripts/download_hf_models.py; fi
 
+# Code is root-owned and world-readable — the app only writes to the dirs above.
 COPY api/ api/
 COPY cv/ cv/
 COPY scripts/ scripts/

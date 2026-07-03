@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// buildTestInitData собирает подписанный initData для unit-тестов (как Telegram).
+// buildTestInitData builds signed initData for unit tests (like Telegram).
 func buildTestInitData(botToken string, authDate int64, userJSON string) string {
 	vals := url.Values{}
 	vals.Set("auth_date", strconv.FormatInt(authDate, 10))
@@ -36,6 +36,7 @@ func buildTestInitData(botToken string, authDate int64, userJSON string) string 
 	return vals.Encode()
 }
 
+// Verifies that correctly signed initData is accepted and the user is parsed.
 func TestValidateTelegramInitData_OK(t *testing.T) {
 	token := "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
 	user := `{"id":42,"first_name":"Test"}`
@@ -50,6 +51,7 @@ func TestValidateTelegramInitData_OK(t *testing.T) {
 	}
 }
 
+// Verifies that initData with a wrong hash is rejected.
 func TestValidateTelegramInitData_BadHash(t *testing.T) {
 	_, err := validateTelegramInitData("auth_date=1&hash=deadbeef&user=%7B%22id%22%3A1%7D", "token", time.Hour)
 	if err == nil {

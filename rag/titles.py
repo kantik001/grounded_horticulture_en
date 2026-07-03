@@ -1,4 +1,4 @@
-"""Человекочитаемые заголовки статей (без зависимости от Chroma)."""
+"""Human-readable article titles (no Chroma dependency)."""
 
 import json
 import os
@@ -9,6 +9,7 @@ _titles_cache = None
 
 
 def _titles_map() -> dict:
+    """Load config/article_titles.json once (empty dict if missing)."""
     global _titles_cache
     if _titles_cache is not None:
         return _titles_cache
@@ -22,6 +23,7 @@ def _titles_map() -> dict:
 
 
 def title_from_slug(filename: str) -> str:
+    """Title from an articleN_snake_case filename (capitalized words)."""
     stem = filename.replace(".txt", "")
     m = re.match(r"article\d+_(.+)", stem, re.I)
     if not m:
@@ -33,11 +35,12 @@ def title_from_slug(filename: str) -> str:
 
 
 def _title_from_file_metadata(file_path: str) -> str | None:
+    """Title from a '- Title:' line in the file header, or None."""
     try:
         with open(file_path, encoding="utf-8") as f:
             for _ in range(20):
                 line = f.readline()
-                if not line.startswith("- Заголовок:"):
+                if not line.startswith("- Title:"):
                     continue
                 title = line.split(":", 1)[1].strip()
                 if len(title) >= 12 and not title.endswith("…"):
@@ -48,6 +51,7 @@ def _title_from_file_metadata(file_path: str) -> str | None:
 
 
 def get_pretty_title(crop_id: str, filename: str, file_path: str | None = None) -> str:
+    """Best title: titles map, then file metadata, then slug, then filename."""
     mapped = _titles_map().get(crop_id, {}).get(filename)
     if mapped:
         return mapped

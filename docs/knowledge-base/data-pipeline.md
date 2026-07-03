@@ -1,103 +1,102 @@
-﻿# Пайплайн данных: статьи RAG и модель CV
+﻿# Data pipeline: RAG articles and CV model
 
-**Цель:** как пополнять знания для чата и (отдельно) обучать распознавание фото.  
-**Связь с roadmap:** фаза 3 (статьи), фаза 4 (CV) — [../ROADMAP.md](../ROADMAP.md)
-
----
-
-## Два разных контура
-
-| Контур | Формат | Куда | Для чего |
-|--------|--------|------|----------|
-| **RAG (текст)** | `.txt` UTF-8 | `data/{crop_id}/` | ответы в чате по статьям |
-| **CV (фото)** | папки с `.jpg`/`.png` | датасет локально | `train_classifier.py` → `.pth` |
-
-**Не путать:** в админку загружают только **`.txt`**, не фото для обучения и не `.pth`.
+**Goal:** how to add knowledge for chat and (separately) train photo recognition.
 
 ---
 
-## RAG: от статьи до ответа в чате
+## Two separate pipelines
+
+| Pipeline | Format | Destination | Purpose |
+|----------|--------|-------------|---------|
+| **RAG (text)** | `.txt` UTF-8 | `data/{crop_id}/` | chat answers from articles |
+| **CV (photos)** | folders with `.jpg`/`.png` | dataset locally | `train_classifier.py` → `.pth` |
+
+**Do not confuse:** admin upload accepts only **`.txt`**, not training photos or `.pth`.
+
+---
+
+## RAG: from article to chat answer
 
 ```mermaid
 flowchart LR
-    A[Статья .txt] --> B[data/crop/]
+    A[Article .txt] --> B[data/crop/]
     B --> C[reindex]
     C --> D[chroma_db + bm25_db]
-    D --> E[hybrid search при вопросе]
+    D --> E[hybrid search on question]
     E --> F[Go + LLM]
-    F --> G[Пользователь]
+    F --> G[User]
 ```
 
-### Шаг 1 — подготовить текст
+### Step 1 — prepare text
 
-- Один файл = одна статья или большой фрагмент.
-- Кодировка **UTF-8**.
-- Имя файла: **латиница**, `article_n.txt` (правила admin — [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)).
-- Опционально: красивое название в [config/article_titles.json](./config-overview.md).
+- One file = one article or large fragment.
+- Encoding **UTF-8**.
+- Filename: **Latin**, `article_n.txt` (admin rules — [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)).
+- Optional: display title in [config/article_titles.json](./config-overview.md).
 
-В **публичном** git: `data/demo_hr/`, `data/apple/sample_*.txt` и README в каталогах культур.  
-Полный корпус (~344 apple, ~42 pear, ~108 plum) — **локально**, не в открытом репозитории ([DATA_LICENSE.md](../../DATA_LICENSE.md), [data/README.md](../../data/README.md)).
+In **public** git: `data/demo_hr/`, `data/apple/sample_*.txt` and README in crop folders.  
+Full corpus (~344 apple, ~42 pear, ~108 plum) — **local**, not in open repo ([DATA_LICENSE.md](../../DATA_LICENSE.md), [data/README.md](../../data/README.md)).
 
-### Шаг 2 — положить в репозиторий или upload
+### Step 2 — put in repo or upload
 
-**Вариант A — Git / папка:**
+**Option A — Git / folder:**
 
 ```
 data/apple/my_article.txt
 ```
 
-На хосте с Docker `data` смонтирован в classifier (read-only) и server (read-write для admin).
+On Docker host `data` is mounted in classifier (read-only) and server (read-write for admin).
 
-**Вариант B — админка:**
+**Option B — admin UI:**
 
 1. http://localhost/admin.html  
 2. Basic auth (`ADMIN_USER` / `ADMIN_PASSWORD`)  
-3. Upload → файл в `DATA_DIR/{crop_id}/` (в compose `DATA_DIR=/app/data`)
+3. Upload → file in `DATA_DIR/{crop_id}/` (in compose `DATA_DIR=/app/data`)
 
-### Шаг 3 — переиндексация (обязательно)
+### Step 3 — reindex (required)
 
-Без reindex Chroma и BM25 **не видят** новые файлы.
+Without reindex Chroma and BM25 **do not see** new files.
 
-| Способ | Команда / действие |
-|--------|-------------------|
-| Админка | кнопка «Переиндексировать RAG» |
-| Скрипт на хосте | `python scripts/reindex_rag.py` (нужен Python + deps) |
+| Method | Command / action |
+|--------|------------------|
+| Admin UI | “Reindex RAG” button |
+| Host script | `python scripts/reindex_rag.py` (needs Python + deps) |
 | Env | `FORCE_RAG_REINDEX=true` + restart classifier |
 | API | `POST /admin/reindex` + `X-Admin-Secret` |
 
-Подробно: [rag-vector_store.md](./rag-vector_store.md), [scripts-overview.md](./scripts-overview.md).
+Details: [rag-vector_store.md](./rag-vector_store.md), [scripts-overview.md](./scripts-overview.md).
 
-Ожидайте **минуты** при первом запуске (embeddings `multilingual-e5-small` + BM25 по всему корпусу). Первый **запрос** после старта может дополнительно грузить reranker (`BAAI/bge-reranker-base`).
+Expect **minutes** on first run (embeddings `multilingual-e5-small` + BM25 over full corpus). First **query** after startup may additionally load reranker (`BAAI/bge-reranker-base`).
 
-**Docker:** после `reindex_rag.py` или admin reindex перезапустите classifier, иначе в памяти останется старый кэш Chroma и поиск даст `Error finding id`:
+**Docker:** after `reindex_rag.py` or admin reindex restart classifier, otherwise in-memory Chroma cache is stale and search returns `Error finding id`:
 
 ```bash
 docker compose exec classifier python scripts/reindex_rag.py
 docker compose restart classifier
 ```
 
-### Шаг 4 — проверка
+### Step 4 — verification
 
-1. Логи classifier: `Фрагментов: N`, без «Нет статей».
-2. `python scripts/run_rag_eval.py --suite apple` (retrieval) — см. [eval/README.md](../../eval/README.md).
-3. Чат: вопрос по теме статьи (культура **apple**); в логах server — строки `[RAG]`.
-4. При ошибке verify — числа в ответе должны быть в тексте статей.
+1. Classifier logs: `Fragments: N`, no “No articles”.
+2. `python scripts/run_rag_eval.py --suite apple` (retrieval) — see [eval/README.md](../../eval/README.md).
+3. Chat: question on article topic (crop **apple**); in server logs — `[RAG]` lines.
+4. On verify error — numbers in answer must appear in article text.
 
-### Шаг 5 — обслуживание
+### Step 5 — maintenance
 
-- Правка `.txt` → снова **reindex**.
-- Удаление статьи → удалить файл + reindex.
-- Backup: volumes `chroma_data` + `bm25_data` (Docker) или папки `chroma_db/` + `bm25_db/` локально.
+- Edit `.txt` → **reindex** again.
+- Delete article → remove file + reindex.
+- Backup: volumes `chroma_data` + `bm25_data` (Docker) or folders `chroma_db/` + `bm25_db/` locally.
 
 ---
 
-## CV: от датасета до `.pth`
+## CV: from dataset to `.pth`
 
-Отдельный процесс, **не** через Web App.
+Separate process, **not** through Web App.
 
-### Шаг 1 — датасет
+### Step 1 — dataset
 
-Структура для `train_classifier.py`:
+Structure for `train_classifier.py`:
 
 ```
 dataset/train/
@@ -108,63 +107,63 @@ dataset/val/
   ...
 ```
 
-Папки датасета должны называться как метки в **`DEFAULT_CLASS_LABELS`** — см. [cv-train_classifier.md](./cv-train_classifier.md).
+Dataset folders must match labels in **`DEFAULT_CLASS_LABELS`** — see [cv-train_classifier.md](./cv-train_classifier.md).
 
-### Шаг 2 — обучение
+### Step 2 — training
 
 ```bash
 cd cv
 pip install -r requirements.txt
-# раскомментировать train_model(...) в train_classifier.py
+# uncomment train_model(...) in train_classifier.py
 python train_classifier.py
 ```
 
-Результат: `apple_classifier.pth` (или путь из `save_path`).
+Result: `apple_classifier.pth` (or path from `save_path`).
 
-### Шаг 3 — подключить к Docker
+### Step 3 — connect to Docker
 
-1. Скопировать веса туда, откуда читает classifier:
-   - в **volume** `models` (через временный контейнер или изменить compose на `./models:/app/models`), **или**
-2. В `.env` / compose: `MODEL_PATH=models/apple_classifier.pth`
+1. Copy weights where classifier reads them:
+   - into **volume** `models` (via temp container or change compose to `./models:/app/models`), **or**
+2. In `.env` / compose: `MODEL_PATH=models/apple_classifier.pth`
 
 3. `docker compose up -d --force-recreate classifier`
 
-4. Лог: `[CV:apple] Загрузка весов: ...`
+4. Log: `[CV:apple] Loading weights: ...`
 
-### Шаг 4 — проверка
+### Step 4 — verification
 
-- Отправить фото в чат (культура apple).
-- Смотреть `prediction`, `confidence` в ответе / БД.
-- Порог confidence — в roadmap фазы 4 (пока не в коде).
+- Send photo in chat (crop apple).
+- Check `prediction`, `confidence` in response / DB.
+- Confidence threshold — in roadmap phase 4 (not in code yet).
 
 ---
 
-## Чеклист сессии 4 (контент)
+## Session 4 content checklist
 
-- [x] Корпус ПВЮР в `data/` (~344 apple, ~42 pear, ~108 plum)
+- [x] PVYUR corpus in `data/` (~344 apple, ~42 pear, ~108 plum)
 - [x] `run_rag_eval.py` + `eval/rag_apple_baseline.jsonl`
-- [ ] reindex после пачки
-- [ ] 5–10 тестовых вопросов вручную
-- [ ] Датасет фото собран
-- [ ] `apple_classifier.pth` обучен и подключён
-- [ ] Smoke: `make smoke` после `compose up`
+- [ ] reindex after batch upload
+- [ ] 5–10 manual test questions
+- [ ] photo dataset collected
+- [ ] `apple_classifier.pth` trained and connected
+- [ ] Smoke: `make smoke` after `compose up`
 
 ---
 
-## Частые ошибки
+## Common mistakes
 
-| Ошибка | Причина |
-|--------|---------|
-| «Не нашёл информации в статьях» | нет reindex или пустой `data/apple/` |
-| Ответ без связи со статьёй | мало чанков / нерелевантный вопрос |
-| Upload OK, RAG пустой | reindex не нажали |
-| CV всегда «случайный» класс | нет `.pth` в volume models |
-| reindex на хосте, Docker пустой | индексы на хосте ≠ volumes `chroma_data` / `bm25_data` |
-| Hybrid отключился после restart | нет `bm25_data` volume или не было reindex |
-| `Error finding id` после reindex | не перезапущен classifier — `docker compose restart classifier` |
+| Error | Cause |
+|-------|-------|
+| “Could not find information in articles” | no reindex or empty `data/apple/` |
+| Answer unrelated to article | few chunks / irrelevant question |
+| Upload OK, RAG empty | reindex not run |
+| CV always “random” class | no `.pth` in models volume |
+| reindex on host, Docker empty | host indexes ≠ volumes `chroma_data` / `bm25_data` |
+| Hybrid off after restart | no `bm25_data` volume or no reindex |
+| `Error finding id` after reindex | classifier not restarted — `docker compose restart classifier` |
 
 ---
 
-## Краткий итог
+## Brief summary
 
-**Текст:** `data/{crop}/` + **reindex** = база знаний чата. **Фото:** датасет + **train** + **MODEL_PATH** = осмысленный CV. Два пайплайна, одна админка только для текста.
+**Text:** `data/{crop}/` + **reindex** = chat knowledge base. **Photos:** dataset + **train** + **MODEL_PATH** = meaningful CV. Two pipelines; admin UI is for text only.

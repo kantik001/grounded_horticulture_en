@@ -1,13 +1,13 @@
-Метаданные источника:
-- Заголовок: Демо — парша яблони (синтетический текст для портфолио)
-- Культура (RAG): apple
+Source metadata:
+- Title: Demo — apple scab (synthetic portfolio text)
+- Crop (RAG): apple
 
-Кратко для садовода:
-Парша (Venturia inaequalis) проявляется оливково-зелёными пятнами на листьях и плодах, со временем темнеет и трескается. На юге риск выше в влажные весенние периоды. Профилактика: сбор и уничтожение опавшей листвы, прореживание кроны для проветривания.
+Brief for the grower:
+Apple scab (Venturia inaequalis) shows olive-green spots on leaves and fruit, darkening and cracking over time. In the south, risk is higher in humid spring periods. Prevention: collect and destroy fallen leaves, thin the canopy for airflow.
 
-Основные результаты:
-Первые признаки — на молодых листьях весной. На плодах пятна бугристые, снижают товарность. Комплекс мер: сортовой подбор, сроки обработок по фенофазам, учёт погоды. При высокой влажности интервалы между обработками сокращают.
+Main findings:
+First signs appear on young leaves in spring. On fruit, spots are corky and reduce market quality. Integrated measures: variety choice, spray timing by phenology, weather awareness. In high humidity, intervals between treatments are shortened.
 
-Цифры из текста:
-- Температура 10–16 °C и дождь способствуют заражению аскоспорами.
-- Инкубационный период от заражения до пятен — около 9–14 дней при тёплой погоде.
+Figures from the text:
+- Temperature 10–16 °C and rain favor ascospore infection.
+- Incubation from infection to visible spots — about 9–14 days in warm weather.

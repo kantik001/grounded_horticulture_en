@@ -1,19 +1,19 @@
-﻿# Разбор: Docker и локальный запуск
+﻿# Walkthrough: Docker and local run
 
-**Файлы:** `docker-compose.yml`, `Dockerfile.server`, `Dockerfile.classifier`, `Dockerfile.webapp`, `.env`  
-**Связь:** [server-overview.md](./server-overview.md), [webapp-overview.md](./webapp-overview.md)
+**Files:** `docker-compose.yml`, `Dockerfile.server`, `Dockerfile.classifier`, `Dockerfile.webapp`, `.env`  
+**Related:** [server-overview.md](./server-overview.md), [webapp-overview.md](./webapp-overview.md)
 
 ---
 
-## Зачем четыре сервиса
+## Why four services
 
 ```mermaid
 flowchart LR
-    subgraph host [Порты на ПК]
+    subgraph host [Ports on PC]
         P80[":80 webapp"]
         P8080[":8080 server"]
         P5000[":5000 classifier"]
-        P5432[":5432 postgres опционально"]
+        P5432[":5432 postgres optional"]
     end
     webapp[Nginx webapp]
     server[Go server]
@@ -28,38 +28,38 @@ flowchart LR
     P5000 --> classifier
 ```
 
-| Сервис | Образ | Роль |
-|--------|-------|------|
-| **postgres** | `postgres:16-alpine` | чат, users, feedback, analytics |
+| Service | Image | Role |
+|---------|-------|------|
+| **postgres** | `postgres:16-alpine` | chat, users, feedback, analytics |
 | **classifier** | `Dockerfile.classifier` | Flask `api/` + CV `cv/` + RAG `rag/` |
-| **server** | `Dockerfile.server` | API, LLM, оркестрация |
+| **server** | `Dockerfile.server` | API, LLM, orchestration |
 | **webapp** | `Dockerfile.webapp` | HTML + nginx → server |
 
 ---
 
-## Команды (корень проекта)
+## Commands (project root)
 
 ```bash
-cp .env.example .env   # заполнить LLM_API_KEY, ADMIN_PASSWORD и т.д.
+cp .env.example .env   # fill LLM_API_KEY, ADMIN_PASSWORD, etc.
 docker compose up -d --build
 ```
 
-Полезное:
+Useful:
 
 ```bash
 docker compose ps
 docker compose logs -f server
 docker compose logs -f classifier
 docker compose restart server
-docker compose up -d --force-recreate server   # подхватить .env
+docker compose up -d --force-recreate server   # pick up .env
 docker compose down
-docker compose down -v   # удалить volumes (БД, chroma, uploads!)
+docker compose down -v   # delete volumes (DB, chroma, uploads!)
 ```
 
-Makefile: `make up`, `make logs`, `make smoke` — см. `Makefile`.  
-Имя проекта Compose: **`union_ai_apple`** (`name:` в `docker-compose.yml` = `PROJECT_NAME` в Makefile).
+Makefile: `make up`, `make logs`, `make smoke` — see `Makefile`.  
+Compose project name: **`union_ai_apple`** (`name:` in `docker-compose.yml` = `PROJECT_NAME` in Makefile).
 
-После смены entrypoint Python (`api/app.py` вместо устаревшего `api_server.py`) обязательно:
+After changing Python entrypoint (`api/app.py` instead of legacy `api_server.py`) you must:
 
 ```bash
 docker compose build --no-cache classifier
@@ -68,128 +68,128 @@ docker compose up -d --force-recreate classifier server webapp
 
 ---
 
-## Volumes (данные между перезапусками)
+## Volumes (data across restarts)
 
-| Volume | Где | Что хранит |
-|--------|-----|------------|
-| `postgres_data` | postgres | таблицы чата |
-| `chroma_data` | classifier `/app/chroma_db` | векторный индекс RAG |
-| `bm25_data` | classifier `/app/bm25_db` | BM25 индекс RAG |
-| `models` | classifier `/app/models` | `.pth` (не папка `./models` на хосте!) |
-| `uploads_data` | server `/data/uploads` | фото пользователей |
+| Volume | Where | Stores |
+|--------|-------|--------|
+| `postgres_data` | postgres | chat tables |
+| `chroma_data` | classifier `/app/chroma_db` | RAG vector index |
+| `bm25_data` | classifier `/app/bm25_db` | RAG BM25 index |
+| `models` | classifier `/app/models` | `.pth` (not host `./models` folder!) |
+| `uploads_data` | server `/data/uploads` | user photos |
 
-**Bind mount (с хоста):**
+**Bind mount (from host):**
 
-| Путь хоста | Контейнер | Назначение |
-|------------|-----------|------------|
-| `./data` | classifier `:ro`, server `/app/data` | статьи `.txt` |
-| `./webapp/*.html`, `nginx.conf` | webapp | UI без rebuild |
-| `./api`, `./cv`, `./rag` | classifier `:ro` | dev (код Python) |
+| Host path | Container | Purpose |
+|-----------|-----------|---------|
+| `./data` | classifier `:ro`, server `/app/data` | `.txt` articles |
+| `./webapp/*.html`, `nginx.conf` | webapp | UI without rebuild |
+| `./api`, `./cv`, `./rag` | classifier `:ro` | dev (Python code) |
 
-Важно: `MODEL_PATH=models/apple_classifier.pth` (от `/app` в контейнере) смотрит в **volume `models`**, не в `doctor_gardens_ai/models/` на диске. Чтобы использовать локальную папку — сменить compose на `./models:/app/models`.
+Important: `MODEL_PATH=models/apple_classifier.pth` (from `/app` in container) points to **volume `models`**, not `doctor_gardens_ai/models/` on disk. To use a local folder — change compose to `./models:/app/models`.
 
 ---
 
-## Сервис `postgres`
+## `postgres` service
 
 - User/password/db: `gardener` / `gardener` / `gardener`
-- `DATABASE_URL` в server совпадает с compose
-- Healthcheck `pg_isready` — server стартует после БД
+- `DATABASE_URL` in server matches compose
+- Healthcheck `pg_isready` — server starts after DB
 
 ---
 
-## Сервис `classifier` (Python: `api/` + `cv/` + `rag/`)
+## `classifier` service (Python: `api/` + `cv/` + `rag/`)
 
-- Порт **5000**, entrypoint: `python api/app.py`
+- Port **5000** (published on `127.0.0.1` only), entrypoint: `gunicorn -c api/gunicorn.conf.py api.app:app`, runs as non-root (UID 1000)
 - Env: `MODEL_PATH`, `ADMIN_SECRET`, `FORCE_RAG_REINDEX`, `CROPS_CONFIG_PATH`, `HF_TOKEN`, `RAG_*` (hybrid/rerank)
 - Volumes: `chroma_data` → `/app/chroma_db`, `bm25_data` → `/app/bm25_db`
-- Healthcheck: долгий `start_period: 120s` (embeddings + reranker при первом RAG)
+- Healthcheck: long `start_period: 120s` (embeddings + reranker on first RAG)
 - Endpoints: `/health`, `/classify`, `/rag/context`, `/admin/reindex`, `/crops`
 
-Первый запрос RAG может быть медленным (скачивание e5 + reranker с HuggingFace).
+First RAG request may be slow (download e5 + reranker from HuggingFace).
 
 ---
 
-## Сервис `server`
+## `server` service
 
-- Порт **8080**
-- Зависит от healthy `postgres` + `classifier`
-- В образ: `main`, `migrations/`, `config/` → `/config`
-- `MIGRATIONS_DIR=/migrations` — SQL при старте
-- Монтирует `./data` в `/app/data` для админ upload
-- `UPLOAD_DIR` на volume `uploads_data`
+- Port **8080**
+- Depends on healthy `postgres` + `classifier`
+- In image: `main`, `migrations/`, `config/` → `/config`
+- `MIGRATIONS_DIR=/migrations` — SQL on startup
+- Mounts `./data` to `/app/data` for admin upload
+- `UPLOAD_DIR` on volume `uploads_data`
 
-Ключевые env см. [server-overview.md](./server-overview.md).
+Key env see [server-overview.md](./server-overview.md).
 
-Локальная разработка без Telegram:
+Local dev without Telegram:
 
 ```env
 TELEGRAM_AUTH_DISABLED=true
 ```
 
-затем `docker compose up -d --force-recreate server`.
+then `docker compose up -d --force-recreate server`.
 
 ---
 
-## Сервис `webapp`
+## `webapp` service
 
-- Порт **80** → http://localhost/
-- `index.html` — чат, `admin.html` — админка
+- Port **80** → http://localhost/
+- `index.html` — chat, `admin.html` — admin
 - `location /api/` → proxy `http://server:8080/`
-- Healthcheck: `GET /` (в Docker Desktop серый кружок = «нет healthcheck» до правки compose)
+- Healthcheck: `GET /` (in Docker Desktop gray circle = “no healthcheck” until compose fix)
 
-Пользователь открывает **localhost**, API идёт через nginx (initData с браузера при dev).
-
----
-
-## Сеть между контейнерами
-
-Имена DNS в compose:
-
-- `http://classifier:5000` — из server
-- `http://server:8080` — из webapp nginx
-- `postgres:5432` — из server
-
-С хоста: `localhost:8080` (прямо в Go), `localhost/api/` (через nginx).
+User opens **localhost**, API goes through nginx (initData from browser in dev).
 
 ---
 
-## `.env` и compose
+## Network between containers
 
-Compose подставляет `${VAR:-default}` из файла `.env` в корне:
+DNS names in compose:
+
+- `http://classifier:5000` — from server
+- `http://server:8080` — from webapp nginx
+- `postgres:5432` — from server
+
+From host: `localhost:8080` (direct to Go), `localhost/api/` (through nginx).
+
+---
+
+## `.env` and compose
+
+Compose substitutes `${VAR:-default}` from `.env` in project root:
 
 - `LLM_API_KEY`, `TELEGRAM_BOT_TOKEN`
 - `ADMIN_PASSWORD`, `ADMIN_SECRET`
 - `TELEGRAM_AUTH_DISABLED`
 - `FORCE_RAG_REINDEX`
 
-Без `.env` часть значений пустая — LLM и админка не заработают.
+Without `.env` some values are empty — LLM and admin will not work.
 
 ---
 
-## Типичные проблемы
+## Common issues
 
-| Проблема | Решение |
-|----------|---------|
-| classifier Restarting, `api_server.py` not found | старый образ; `docker compose build classifier` и recreate |
-| server unhealthy | `docker compose logs server`, ждать postgres/classifier |
-| classifier unhealthy 2 мин | норма при первом старте; смотреть логи |
-| webapp серый в UI | без healthcheck или server/classifier down; `docker compose ps` |
-| Изменения в `config/` | volume `./config:/config` (server, classifier); Go: `kill -HUP` или `CONFIG_RELOAD_INTERVAL_SEC` |
-| Статьи не в RAG | файл в `data/apple/`, затем reindex |
-| Модель не грузится | положить `.pth` в volume models или bind `./models` |
-| 401 в чате | `TELEGRAM_AUTH_DISABLED=true` + recreate server |
-
----
-
-## CI vs локальный Docker
-
-GitHub Actions на PR: **go-test**, **python-test**, **docker-build** (server + webapp + classifier import smoke). Полный compose и RAG eval **не** в PR CI — eval вручную: workflow **RAG Eval**. Локально — полный стек. См. [github-ci.yml.md](./github-ci.yml.md), [BACKUPS.md](../BACKUPS.md).
-
-**Метрики:** `GET http://localhost:8080/metrics` (server, без auth).
+| Problem | Solution |
+|---------|----------|
+| classifier Restarting, `api_server.py` not found | old image; `docker compose build classifier` and recreate |
+| server unhealthy | `docker compose logs server`, wait for postgres/classifier |
+| classifier unhealthy 2 min | normal on first start; check logs |
+| webapp gray in UI | no healthcheck or server/classifier down; `docker compose ps` |
+| Changes in `config/` | volume `./config:/config` (server, classifier); Go: `kill -HUP` or `CONFIG_RELOAD_INTERVAL_SEC` |
+| Articles not in RAG | file in `data/apple/`, then reindex |
+| Model not loading | put `.pth` in models volume or bind `./models` |
+| 401 in chat | `TELEGRAM_AUTH_DISABLED=true` + recreate server |
 
 ---
 
-## Краткий итог
+## CI vs local Docker
 
-`docker-compose.yml` — **оркестрация всего продукта**: одна команда поднимает UI, API, ML и БД. Понимание volumes и портов объясняет, почему `.env`, статьи, индексы RAG (`chroma_data`, `bm25_data`) и фото «живут» в разных местах.
+GitHub Actions on PR: **go-test**, **python-test**, **docker-build** (server + webapp + classifier import smoke). Full compose and RAG eval **not** in PR CI — eval manual: workflow **RAG Eval**. Locally — full stack. See [github-ci.yml.md](./github-ci.yml.md), [BACKUPS.md](../BACKUPS.md).
+
+**Metrics:** `GET http://localhost:8080/metrics` (server, no auth).
+
+---
+
+## Brief summary
+
+`docker-compose.yml` — **orchestration of the whole product**: one command brings up UI, API, ML, and DB. Understanding volumes and ports explains why `.env`, articles, RAG indexes (`chroma_data`, `bm25_data`), and photos “live” in different places.

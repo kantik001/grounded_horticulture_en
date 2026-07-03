@@ -1,12 +1,14 @@
 # ----------------------------------------------------------------------
-# Векторное хранилище Chroma: статьи по культурам data/{crop_id}/*.txt
+# Chroma vector store: articles per crop in data/{crop_id}/*.txt
 # ----------------------------------------------------------------------
 import glob
 import os
 import sys
+import threading
 
 
 def _ensure_utf8_stdout() -> None:
+    """Force UTF-8 stdout (Windows consoles may default to a legacy codepage)."""
     if hasattr(sys.stdout, "reconfigure"):
         try:
             sys.stdout.reconfigure(encoding="utf-8")
@@ -42,28 +44,30 @@ DATA_DIR = os.path.join(_PROJECT_ROOT, "data")
 PERSIST_DIR = os.path.join(_PROJECT_ROOT, "chroma_db")
 
 _vector_store = None
+_vector_store_lock = threading.Lock()
 
-# Сколько кандидатов взять из Chroma/BM25 перед rerank и дедупликацией по статьям.
+# How many candidates to take from Chroma/BM25 before rerank and per-article dedup.
 FETCH_K = int(os.environ.get("RAG_FETCH_K", "16"))
 BM25_FETCH_K = int(os.environ.get("RAG_BM25_FETCH_K", str(FETCH_K)))
 
 
-# Сбрасывает in-memory кэш Chroma и BM25 перед принудительной переиндексацией.
+# Clears in-memory Chroma and BM25 cache before forced reindexing.
 def reset_vector_store():
     global _vector_store
     _vector_store = None
     reset_bm25_store()
 
 
-# Мета-файлы папок data/, которые не являются базой знаний и не индексируются.
+# data/ folder meta files that are not knowledge base content and are not indexed.
 _SKIP_FILENAMES = {"readme.txt"}
 
 
 def _is_indexable(file_path: str) -> bool:
+    """False for meta files (README) that must not be indexed."""
     return os.path.basename(file_path).lower() not in _SKIP_FILENAMES
 
 
-# Собирает .txt из data/{crop}/ и устаревшие data/*.txt в корне (как apple).
+# Collects .txt from data/{crop}/ and legacy data/*.txt at repo root (like apple).
 def load_all_documents():
     all_docs = []
     crops = list_crops().get("crops", {}).keys()
@@ -85,11 +89,11 @@ def load_all_documents():
     return all_docs
 
 
-# Читает один .txt и проставляет metadata: filename, crop_id, source_file.
+# Reads one .txt and sets metadata: filename, crop_id, source_file.
 def _load_file(crop_id: str, file_path: str):
     filename = os.path.basename(file_path)
     pretty_title = get_pretty_title(crop_id, filename, file_path=file_path)
-    print(f"Загружаю [{crop_id}] {filename} -> {pretty_title}")
+    print(f"Loading [{crop_id}] {filename} -> {pretty_title}")
     loader = TextLoader(file_path, encoding="utf-8")
     docs = loader.load()
     for doc in docs:
@@ -101,51 +105,57 @@ def _load_file(crop_id: str, file_path: str):
     return docs
 
 
-# Полная переиндексация: split → embeddings + BM25 → сохранение в chroma_db/ и bm25_db/.
+# Full reindex: split -> embeddings + BM25 -> save to chroma_db/ and bm25_db/.
 def create_vector_store():
-    print("Создаю новую векторную базу (мультикультура)...")
+    print("Building new vector store (multi-crop)...")
     documents = load_all_documents()
     if not documents:
-        print("Нет статей для индексации.")
+        print("No articles to index.")
         return None
     chunks = assign_chunk_ids(split_documents(documents))
-    print(f"Фрагментов: {len(chunks)}")
+    print(f"Fragments: {len(chunks)}")
     embeddings = get_embeddings()
     store = Chroma.from_documents(chunks, embeddings, persist_directory=PERSIST_DIR)
-    print(f"База сохранена в {PERSIST_DIR}")
+    print(f"Store saved to {PERSIST_DIR}")
     save_bm25_indexes(build_bm25_indexes(chunks))
     return store
 
 
-# Открывает существующую Chroma или создаёт новую (с учётом FORCE_RAG_REINDEX).
+# Opens an existing Chroma store or creates a new one (respects FORCE_RAG_REINDEX).
+# The lock serializes cold-start loading and /admin/reindex against concurrent searches.
 def load_vector_store(force_reindex: bool = False):
     global _vector_store
     if _vector_store is not None and not force_reindex:
         return _vector_store
 
-    force = force_reindex or os.environ.get("FORCE_RAG_REINDEX", "").lower() in (
-        "1",
-        "true",
-        "yes",
-    )
-    embeddings = get_embeddings()
+    with _vector_store_lock:
+        if _vector_store is not None and not force_reindex:
+            return _vector_store
 
-    if force and os.path.isdir(PERSIST_DIR):
-        import shutil
+        force = force_reindex or os.environ.get("FORCE_RAG_REINDEX", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        embeddings = get_embeddings()
 
-        print("FORCE_RAG_REINDEX: удаляю старую chroma_db")
-        shutil.rmtree(PERSIST_DIR, ignore_errors=True)
-        remove_bm25_index()
+        if force and os.path.isdir(PERSIST_DIR):
+            import shutil
 
-    if os.path.exists(PERSIST_DIR) and os.listdir(PERSIST_DIR):
-        _vector_store = Chroma(persist_directory=PERSIST_DIR, embedding_function=embeddings)
-        load_bm25_indexes()
-    else:
-        _vector_store = create_vector_store()
-    return _vector_store
+            print("FORCE_RAG_REINDEX: removing old chroma_db")
+            shutil.rmtree(PERSIST_DIR, ignore_errors=True)
+            remove_bm25_index()
+
+        if os.path.exists(PERSIST_DIR) and os.listdir(PERSIST_DIR):
+            _vector_store = Chroma(persist_directory=PERSIST_DIR, embedding_function=embeddings)
+            load_bm25_indexes()
+        else:
+            _vector_store = create_vector_store()
+        return _vector_store
 
 
 def _chunk_key(doc: Document) -> str:
+    """chunk_id from metadata, computed on the fly if absent."""
     return doc.metadata.get("chunk_id") or chunk_id_for(doc)
 
 
@@ -155,6 +165,7 @@ def _collect_candidates(
     crop_id: str,
     limit: int,
 ) -> list[Document]:
+    """Resolve merged chunk_ids to Documents (dedup, up to limit)."""
     candidates: list[Document] = []
     seen: set[str] = set()
     for cid in merged_ids:
@@ -170,7 +181,7 @@ def _collect_candidates(
     return candidates
 
 
-# Гибридный поиск: vector + BM25 (RRF) → reranker (по категории) → diversify top-k.
+# Hybrid search: vector + BM25 (RRF) -> reranker (by category) -> diversify top-k.
 def search(query: str, crop_id: str, k: int = 8, category: str | None = None):
     crop_id = normalize_crop_id(crop_id)
     store = load_vector_store()

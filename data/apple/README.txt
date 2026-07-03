@@ -1,7 +1,7 @@
-# Яблоня (`data/apple/`)
+# Apple (`data/apple/`)
 
-В **публичном** репозитории в git только файлы `sample_*.txt` (демо).
+The **public** repository includes only `sample_*.txt` demo files in git.
 
-Полный корпус (~344 статьи) не включён — см. [DATA_LICENSE.md](../DATA_LICENSE.md).
+The full corpus (~344 articles) is not included — see [DATA_LICENSE.md](../DATA_LICENSE.md).
 
-Добавьте свои `.txt` в этот каталог локально, затем переиндексируйте RAG (`scripts/reindex_rag.py`).
+Add your own `.txt` files to this directory locally, then reindex RAG (`scripts/reindex_rag.py`).

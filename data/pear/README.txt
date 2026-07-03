@@ -1,7 +1,7 @@
-# Груша (`data/pear/`)
+# Pear (`data/pear/`)
 
-Статьи для RAG кладите сюда как `*.txt` (локально, не в публичный git по умолчанию).
+Place RAG articles here as `*.txt` (locally, not in the public git by default).
 
-Включите `rag_enabled: true` для `pear` в `config/crops.json`, затем reindex.
+Set `rag_enabled: true` for `pear` in `config/crops.json`, then reindex.
 
-См. [data/README.md](../README.md).
+See [data/README.md](../README.md).

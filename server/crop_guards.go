@@ -2,26 +2,34 @@ package main
 
 import "fmt"
 
-// requireRAGEnabled проверяет флаг rag_enabled для культуры.
+// cropDisplayName returns the English crop label when set, otherwise Russian.
+func cropDisplayName(c CropInfo) string {
+	if c.NameEN != "" {
+		return c.NameEN
+	}
+	return c.NameRU
+}
+
+// requireRAGEnabled checks rag_enabled for the crop.
 func requireRAGEnabled(cropID string) error {
 	info, ok := cropInfo(cropID)
 	if !ok {
-		return fmt.Errorf("неизвестная культура: %s", cropID)
+		return fmt.Errorf("unknown crop: %s", cropID)
 	}
 	if !info.RAGEnabled {
-		return fmt.Errorf("для культуры «%s» текстовый помощник пока недоступен", info.NameRU)
+		return fmt.Errorf("text assistant is not available yet for crop «%s»", cropDisplayName(info))
 	}
 	return nil
 }
 
-// requireCVEnabled проверяет флаг cv_enabled для культуры.
+// requireCVEnabled checks cv_enabled for the crop.
 func requireCVEnabled(cropID string) error {
 	info, ok := cropInfo(cropID)
 	if !ok {
-		return fmt.Errorf("неизвестная культура: %s", cropID)
+		return fmt.Errorf("unknown crop: %s", cropID)
 	}
 	if !info.CVEnabled {
-		return fmt.Errorf("для культуры «%s» распознавание по фото пока недоступно", info.NameRU)
+		return fmt.Errorf("photo recognition is not available yet for crop «%s»", cropDisplayName(info))
 	}
 	return nil
 }

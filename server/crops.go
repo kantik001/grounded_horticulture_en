@@ -11,10 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CropInfo описывает одну культуру в продукте.
+// CropInfo describes one crop in the product catalog.
 type CropInfo struct {
 	ID         string `json:"-"`
 	NameRU     string `json:"name_ru"`
+	NameEN     string `json:"name_en"`
 	Emoji      string `json:"emoji"`
 	CVEnabled  bool   `json:"cv_enabled"`
 	RAGEnabled bool   `json:"rag_enabled"`
@@ -26,29 +27,28 @@ type cropsFile struct {
 	Crops       map[string]CropInfo `json:"crops"`
 }
 
-var cropCatalog cropsFile
-
-// Загружает config/crops.json в память (cropCatalog).
-func loadCropCatalog() error {
+// loadCropCatalog parses config/crops.json into a fresh cropsFile.
+func loadCropCatalog() (cropsFile, error) {
+	var catalog cropsFile
 	path := cropsConfigPath()
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("read crops config %s: %w", path, err)
+		return catalog, fmt.Errorf("read crops config %s: %w", path, err)
 	}
-	if err := json.Unmarshal(body, &cropCatalog); err != nil {
-		return fmt.Errorf("parse crops config: %w", err)
+	if err := json.Unmarshal(body, &catalog); err != nil {
+		return catalog, fmt.Errorf("parse crops config: %w", err)
 	}
-	for id, c := range cropCatalog.Crops {
+	for id, c := range catalog.Crops {
 		c.ID = id
-		cropCatalog.Crops[id] = c
+		catalog.Crops[id] = c
 	}
-	if cropCatalog.DefaultCrop == "" {
-		cropCatalog.DefaultCrop = "apple"
+	if catalog.DefaultCrop == "" {
+		catalog.DefaultCrop = "apple"
 	}
-	return nil
+	return catalog, nil
 }
 
-// Возвращает путь к crops.json (env или поиск по типовым каталогам).
+// cropsConfigPath returns the path to crops.json (env or common locations).
 func cropsConfigPath() string {
 	if p := os.Getenv("CROPS_CONFIG_PATH"); p != "" {
 		return p
@@ -65,29 +65,30 @@ func cropsConfigPath() string {
 	return filepath.Join("config", "crops.json")
 }
 
-// Нормализует crop_id и проверяет, что культура есть в каталоге.
+// normalizeCropID normalizes crop_id and checks it exists in the catalog.
 func normalizeCropID(raw string) (string, error) {
+	catalog := currentCatalogs().Crops
 	id := strings.TrimSpace(strings.ToLower(raw))
 	if id == "" {
-		id = cropCatalog.DefaultCrop
+		id = catalog.DefaultCrop
 	}
-	if _, ok := cropCatalog.Crops[id]; !ok {
-		return "", fmt.Errorf("неизвестная культура: %s", raw)
+	if _, ok := catalog.Crops[id]; !ok {
+		return "", fmt.Errorf("unknown crop: %s", raw)
 	}
 	return id, nil
 }
 
-// Возвращает культуру по умолчанию из каталога.
+// defaultCropID returns the default crop from the catalog.
 func defaultCropID() string {
-	if cropCatalog.DefaultCrop != "" {
-		return cropCatalog.DefaultCrop
+	if dc := currentCatalogs().Crops.DefaultCrop; dc != "" {
+		return dc
 	}
 	return "apple"
 }
 
-// Возвращает описание культуры по id.
+// cropInfo returns crop metadata by id.
 func cropInfo(cropID string) (CropInfo, bool) {
-	c, ok := cropCatalog.Crops[cropID]
+	c, ok := currentCatalogs().Crops.Crops[cropID]
 	return c, ok
 }
 
@@ -99,22 +100,21 @@ type cropPrompts struct {
 	PhotoUserBody  string `json:"photo_user_body"`
 }
 
-var promptCatalog map[string]cropPrompts
-
-// Загружает config/prompts.json (системные промпты RAG и фото).
-func loadPromptCatalog() error {
+// loadPromptCatalog parses config/prompts.json (RAG and photo system prompts).
+func loadPromptCatalog() (map[string]cropPrompts, error) {
 	path := promptsConfigPath()
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("read prompts config %s: %w", path, err)
+		return nil, fmt.Errorf("read prompts config %s: %w", path, err)
 	}
-	if err := json.Unmarshal(body, &promptCatalog); err != nil {
-		return fmt.Errorf("parse prompts config: %w", err)
+	var catalog map[string]cropPrompts
+	if err := json.Unmarshal(body, &catalog); err != nil {
+		return nil, fmt.Errorf("parse prompts config: %w", err)
 	}
-	return nil
+	return catalog, nil
 }
 
-// Возвращает путь к prompts.json.
+// promptsConfigPath returns the path to prompts.json.
 func promptsConfigPath() string {
 	if p := os.Getenv("PROMPTS_CONFIG_PATH"); p != "" {
 		return p
@@ -131,33 +131,40 @@ func promptsConfigPath() string {
 	return filepath.Join("config", "prompts.json")
 }
 
-// Промпты для культуры; при отсутствии — из default_crop или встроенные строки.
+// promptsForCrop returns prompts for a crop; falls back to default_crop or built-in strings.
 func promptsForCrop(cropID string) cropPrompts {
-	if p, ok := promptCatalog[cropID]; ok {
+	catalog := currentCatalogs().Prompts
+	if p, ok := catalog[cropID]; ok {
 		return p
 	}
-	if p, ok := promptCatalog[defaultCropID()]; ok {
+	if p, ok := catalog[defaultCropID()]; ok {
 		return p
 	}
 	return cropPrompts{
-		RAGSystem:      "Ты — грамотный агроном. Отвечай на русском.",
-		RAGTaskIntro:   "Ты — грамотный агроном. Отвечай строго на основе контекста.",
-		PhotoSystem:    "Ты — опытный садовод. Дай практичные советы на русском.",
-		PhotoUserIntro: "Ты — опытный садовод.",
-		PhotoUserBody:  "Результат анализа фото:\n- Класс: %s\n- Уверенность: %.2f%%\n- Топ-3: %v\n\nДай рекомендации по уходу на русском.",
+		RAGSystem:      "You are a knowledgeable agronomist. Respond in English.",
+		RAGTaskIntro:   "You are a knowledgeable agronomist. Answer strictly from the provided context.",
+		PhotoSystem:    "You are an experienced grower. Give practical advice in English.",
+		PhotoUserIntro: "You are an experienced grower.",
+		PhotoUserBody:  "Photo analysis result:\n- Class: %s\n- Confidence: %.2f%%\n- Top 3: %v\n\nGive care recommendations in English.",
 	}
 }
 
-// GET /crops: список культур и флаги cv_enabled / rag_enabled.
+// handleListCrops is GET /crops: crop list with cv_enabled / rag_enabled flags.
 func handleListCrops(c *gin.Context) {
-	list := make([]gin.H, 0, len(cropCatalog.Crops))
-	for id, cinfo := range cropCatalog.Crops {
+	catalog := currentCatalogs().Crops
+	list := make([]gin.H, 0, len(catalog.Crops))
+	for id, cinfo := range catalog.Crops {
 		if cinfo.UIHidden {
 			continue
+		}
+		nameEN := cinfo.NameEN
+		if nameEN == "" {
+			nameEN = cinfo.NameRU
 		}
 		list = append(list, gin.H{
 			"id":          id,
 			"name_ru":     cinfo.NameRU,
+			"name_en":     nameEN,
 			"emoji":       cinfo.Emoji,
 			"cv_enabled":  cinfo.CVEnabled,
 			"rag_enabled": cinfo.RAGEnabled,
@@ -165,7 +172,7 @@ func handleListCrops(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success":      true,
-		"default_crop": cropCatalog.DefaultCrop,
+		"default_crop": catalog.DefaultCrop,
 		"crops":        list,
 	})
 }

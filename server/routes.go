@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// registerPublicRoutes — health, crops, onboarding (с дублем /api для nginx).
+// registerPublicRoutes registers health, crops, onboarding (with /api mirror for nginx).
 func registerPublicRoutes(router *gin.Engine) {
 	router.GET("/health", handleHealthCheck)
 	router.GET("/api/health", handleHealthCheck)
@@ -20,7 +20,7 @@ func registerPublicRoutes(router *gin.Engine) {
 	router.GET("/api/auth/info", handleAuthInfo)
 }
 
-// mountProtectedAPI регистрирует защищённые маршруты на одной группе маршрутов.
+// mountProtectedAPI registers protected routes on one route group.
 func mountProtectedAPI(r gin.IRoutes, auth, lim gin.HandlerFunc) {
 	deprecated := deprecatedAPIMiddleware()
 	r.POST("/classify", auth, lim, handleClassification)
@@ -33,7 +33,7 @@ func mountProtectedAPI(r gin.IRoutes, auth, lim gin.HandlerFunc) {
 	r.GET("/media/:token", auth, lim, handleMedia)
 }
 
-// registerProtectedRoutes — Telegram или API key, rate limit; дубль без префикса и с /api.
+// registerProtectedRoutes uses Telegram or API key auth and rate limit; mirrored with and without /api.
 func registerProtectedRoutes(router *gin.Engine, cfg *Config, rl *rateLimiter) {
 	auth := combinedAuthMiddleware(cfg)
 	lim := rateLimitMiddleware(rl)
@@ -41,7 +41,7 @@ func registerProtectedRoutes(router *gin.Engine, cfg *Config, rl *rateLimiter) {
 	mountProtectedAPI(router.Group("/api"), auth, lim)
 }
 
-// deprecatedAPIMiddleware помечает устаревшие эндпоинты (POST /chat).
+// deprecatedAPIMiddleware marks deprecated endpoints (POST /chat).
 func deprecatedAPIMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Deprecation", "true")

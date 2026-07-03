@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// LogEvent записывает продуктовое событие (без PII в payload).
+// LogEvent records a product event (no PII in payload).
 func (st *ChatStore) LogEvent(ctx context.Context, telegramID int64, eventType string, payload map[string]any) error {
 	if payload == nil {
 		payload = map[string]any{}
@@ -32,7 +32,7 @@ func (st *ChatStore) LogEvent(ctx context.Context, telegramID int64, eventType s
 	return err
 }
 
-// SaveMessageFeedback сохраняет оценку ответа ассистента (1 или -1).
+// SaveMessageFeedback stores an assistant reply rating (1 or -1).
 func (st *ChatStore) SaveMessageFeedback(ctx context.Context, telegramID int64, messageID int64, rating int) error {
 	if rating != 1 && rating != -1 {
 		return errors.New("rating must be 1 or -1")

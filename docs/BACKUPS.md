@@ -1,56 +1,56 @@
-# Резервное копирование (Docker volumes)
+# Backups (Docker volumes)
 
-Рекомендуемое расписание для **продакшена**: ежедневный бэкап + хранение 7–14 дней.  
-Имена volumes задаются в [`docker-compose.yml`](../docker-compose.yml) (проект `union_ai_apple`).
+Recommended schedule for **production**: daily backup + 7–14 day retention.  
+Volume names are defined in [`docker-compose.yml`](../docker-compose.yml) (project `union_ai_apple`).
 
-| Volume Compose | Содержимое | Критичность |
-|----------------|------------|-------------|
-| `postgres_data` | Сессии, сообщения, feedback, analytics | **Высокая** |
-| `chroma_data` | Векторный индекс RAG (Chroma) | **Высокая** (пересобирается из `data/`, но долго) |
-| `bm25_data` | BM25 индекс | **Высокая** (пересобирается из `data/`) |
-| `uploads_data` | Фото пользователей в чате | Средняя |
-| `models` | CV-веса `.pth` | Низкая (если нет кастомных весов) |
+| Compose volume | Contents | Criticality |
+|----------------|----------|-------------|
+| `postgres_data` | Sessions, messages, feedback, analytics | **High** |
+| `chroma_data` | RAG vector index (Chroma) | **High** (rebuildable from `data/`, but slow) |
+| `bm25_data` | BM25 index | **High** (rebuildable from `data/`) |
+| `uploads_data` | User photos in chat | Medium |
+| `models` | CV weights `.pth` | Low (if no custom weights) |
 
 ---
 
 ## PostgreSQL
 
 ```bash
-# Создать дамп (контейнер postgres должен работать)
+# Create dump (postgres container must be running)
 docker compose -p union_ai_apple exec -T postgres \
   pg_dump -U gardener -d gardener -Fc > backups/postgres_$(date +%Y%m%d).dump
 
-# Восстановление (осторожно: перезапишет БД)
+# Restore (caution: overwrites DB)
 docker compose -p union_ai_apple exec -T postgres \
   pg_restore -U gardener -d gardener --clean --if-exists < backups/postgres_YYYYMMDD.dump
 ```
 
-Альтернатива без `exec`: `pg_dump` с хоста по `DATABASE_URL` / порту `5432` (если проброшен).
+Alternative without `exec`: `pg_dump` from host via `DATABASE_URL` / port `5432` (if exposed).
 
 ---
 
-## Chroma и BM25
+## Chroma and BM25
 
-Индексы лежат в volumes classifier-сервиса. Бэкап — архив каталогов из контейнера или volume snapshot.
+Indexes live in classifier service volumes. Backup — archive directories from the container or a volume snapshot.
 
 ```bash
-# Пример: tar из running classifier (пути внутри образа)
+# Example: tar from running classifier (paths inside image)
 docker compose -p union_ai_apple exec classifier \
   tar -czf - /app/chroma_db /app/bm25_db > backups/rag_indexes_$(date +%Y%m%d).tar.gz
 ```
 
-**Восстановление после потери:** смонтировать архив или выполнить переиндексацию:
+**Recovery after loss:** mount archive or run reindex:
 
 ```bash
 make docker-reindex-apply
-# или: python scripts/reindex_rag.py (classifier остановлен)
+# or: python scripts/reindex_rag.py (classifier stopped)
 ```
 
-Переиндексация из `data/` занимает время (e5 + BM25); бэкап индексов ускоряет recovery.
+Reindex from `data/` takes time (e5 + BM25); index backups speed up recovery.
 
 ---
 
-## Uploads (фото в чате)
+## Uploads (chat photos)
 
 ```bash
 docker compose -p union_ai_apple exec server \
@@ -59,13 +59,13 @@ docker compose -p union_ai_apple exec server \
 
 ---
 
-## Проверка бэкапов
+## Backup verification
 
-Раз в месяц: восстановить дамп Postgres в тестовый контейнер и открыть 1–2 сессии; для RAG — smoke `python scripts/run_rag_eval.py --suite apple --fast --in-process` на восстановленном индексе.
+Once a month: restore Postgres dump to a test container and open 1–2 sessions; for RAG — smoke `python scripts/run_rag_eval.py --suite apple --fast --in-process` on restored index.
 
 ---
 
-## Связанные документы
+## Related documents
 
 - [DEPLOY.md](../DEPLOY.md)
 - [knowledge-base/docker-overview.md](./knowledge-base/docker-overview.md)

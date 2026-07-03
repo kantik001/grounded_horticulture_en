@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
-# Верификация RAG-ответов: проверка чисел по фрагментам контекста.
-# Названия статей пользователю не показываются — только общий дисклеймер на Go.
+# RAG answer verification: check numbers against context fragments.
+# Article titles are not shown to users — only the shared disclaimer on Go.
 # ----------------------------------------------------------------------
 import re
 from typing import List, Tuple
@@ -8,15 +8,15 @@ from typing import List, Tuple
 from langchain_core.documents import Document
 
 RAG_ANSWER_DISCLAIMER = (
-    "Справочная информация из базы знаний. Не заменяет очный осмотр агронома; "
-    "решения по препаратам — с учётом инструкций и законодательства."
+    "Reference information from the knowledge base. Does not replace an on-site agronomist visit; "
+    "product decisions must follow labels and local regulations."
 )
 
-_SOURCE_LINE_RE = re.compile(r"(?im)^\s*Источник:.*\n?")
+_SOURCE_LINE_RE = re.compile(r"(?im)^\s*Source:.*\n?")
 
 
-# Извлекает все числа из текста (для сравнения ответа с контекстом).
 def extract_numbers(text: str) -> List[float]:
+    """Extract all numbers from text for comparison with context."""
     if not text:
         return []
     text = text.replace(",", ".")
@@ -24,19 +24,19 @@ def extract_numbers(text: str) -> List[float]:
     return [float(n) for n in numbers]
 
 
-# Убирает строки «Источник:» и дисклеймер перед проверкой чисел.
 def strip_source_attribution(answer: str) -> str:
+    """Remove Source: lines and disclaimer before number checks."""
     s = _SOURCE_LINE_RE.sub("", answer or "")
     s = s.replace(RAG_ANSWER_DISCLAIMER, "")
     return " ".join(s.split())
 
 
-# Проверяет, что каждое число в ответе встречается во фрагментах статей (эталон для pytest).
 def verify_answer(question: str, answer: str, fragments: List[Document]) -> Tuple[bool, str]:
+    """Verify each number in the answer appears in article fragments (pytest contract)."""
     if answer is None:
-        return False, "Ответ отсутствует (None)"
+        return False, "Answer is missing (None)"
     if not isinstance(answer, str):
-        return False, "Ответ не является строкой"
+        return False, "Answer is not a string"
 
     context_text = "\n".join([f.page_content for f in fragments])
     body = strip_source_attribution(answer)
@@ -48,6 +48,6 @@ def verify_answer(question: str, answer: str, fragments: List[Document]) -> Tupl
             if not any(abs(num - ctx_num) < 0.01 for ctx_num in numbers_in_context):
                 missing_numbers.append(num)
         if missing_numbers:
-            return False, f"Число(а) {missing_numbers} не найдены в источниках."
+            return False, f"Number(s) {missing_numbers} not found in sources."
 
-    return True, "Верификация пройдена"
+    return True, "Verification passed"

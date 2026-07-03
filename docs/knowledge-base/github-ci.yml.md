@@ -1,20 +1,20 @@
-﻿# Разбор: `.github/workflows/ci.yml` и RAG Eval
+﻿# Walkthrough: `.github/workflows/ci.yml` and RAG Eval
 
-**Исходные файлы:**
-- `.github/workflows/ci.yml` — на каждый push/PR
-- `.github/workflows/rag-eval.yml` — **только вручную** (полный retrieval eval)
+**Source files:**
+- `.github/workflows/ci.yml` — on every push/PR
+- `.github/workflows/rag-eval.yml` — **manual only** (full retrieval eval)
 
-**Платформа:** [GitHub Actions](https://docs.github.com/en/actions)
-
----
-
-## Что такое CI простыми словами
-
-**CI (Continuous Integration)** — при push или Pull Request GitHub запускает виртуальную машину (Ubuntu), выполняет тесты и сборку, показывает ✅ или ❌.
+**Platform:** [GitHub Actions](https://docs.github.com/en/actions)
 
 ---
 
-## Когда запускается `ci.yml`
+## What is CI in simple terms
+
+**CI (Continuous Integration)** — on push or Pull Request GitHub runs a virtual machine (Ubuntu), runs tests and build, shows ✅ or ❌.
+
+---
+
+## When `ci.yml` runs
 
 ```yaml
 on:
@@ -24,106 +24,123 @@ on:
     branches: [master, main]
 ```
 
-| Событие | Условие |
-|---------|---------|
-| **push** | В `master`, `main`, `feature/**`, `fix/**`, `feat/**` |
-| **pull_request** | PR в `master` или `main` |
+| Event | Condition |
+|-------|-----------|
+| **push** | To `master`, `main`, `feature/**`, `fix/**`, `feat/**` |
+| **pull_request** | PR into `master` or `main` |
 
-`concurrency` отменяет старый run при новом push в ту же ветку — экономит минуты Actions.
+`concurrency` cancels old runs on new push to the same branch — saves Actions minutes.
 
-Результат: репозиторий → **Actions** → workflow **CI**.
+Result: repository → **Actions** → workflow **CI**.
 
 ---
 
-## Общая схема CI (PR)
+## CI overview (PR)
 
 ```mermaid
 flowchart TB
-    subgraph trigger [Триггер]
+    subgraph trigger [Trigger]
         P[push / pull_request]
     end
-    subgraph jobs [Три job параллельно]
-        G[go-test]
+    subgraph jobs [Five jobs in parallel]
+        G[go-test vet + race]
+        GL[go-lint golangci-lint]
         PY[python-test]
-        D[docker-build + classifier smoke]
+        PL[python-lint ruff]
+        D[docker-build + compose smoke]
     end
     P --> G
+    P --> GL
     P --> PY
+    P --> PL
     P --> D
 ```
 
-Типичное время: **~10–15 минут** (без reindex и без полного RAG eval).
+Typical time: **~10–15 minutes** (no reindex, no full RAG eval).
 
 ---
 
 ## Job 1: `go-test`
 
 - Go **1.23**, `working-directory: server`
-- `go mod tidy` → `go test -v -count=1 ./...`
+- `go mod tidy` → `go vet ./...` → `go test -v -race -count=1 ./...`
 - `CROPS_CONFIG_PATH: ${{ github.workspace }}/config/crops.json`
 
-Покрытие: verify, crops, admin, auth, rate limit, feedback report, контракт verify.
+Coverage: verify, crops, admin, auth, rate limit, feedback report, verify contract.
 
 ---
 
-## Job 2: `python-test`
+## Job 2: `go-lint`
+
+- `golangci-lint` (pinned version) over `server/` — errcheck, staticcheck, govet, unused, etc.
+
+---
+
+## Job 3: `python-test`
 
 - Python **3.11**, `pytest tests/ -v --tb=short`
-- Зависимости: `tests/requirements-test.txt` (без PyTorch/Chroma)
-- Ожидание: **45 passed**
+- Dependencies: `tests/requirements-test.txt` (no PyTorch/Chroma)
+- Expected: **40 passed**
 
 ---
 
-## Job 3: `docker-build`
+## Job 4: `python-lint`
 
-- `scripts/docker_build.sh` — образы **server**, **webapp**, **classifier**
-- Classifier: `SKIP_HF_BAKE=1` (без запекания HF-моделей в образ на CI)
-- Smoke в контейнере: import torch 2.5 CPU, `load_all_documents()` из `data/`
-
-**Не делает:** `docker compose up`, reindex, `run_rag_eval.py`, push в registry.
+- `ruff check api rag cv scripts tests` (config in `ruff.toml`)
 
 ---
 
-## RAG Eval — отдельный workflow (ручной)
+## Job 5: `docker-build`
 
-**Файл:** `.github/workflows/rag-eval.yml`  
-**Триггер:** `workflow_dispatch` (Actions → **RAG Eval** → Run workflow)
+- `scripts/docker_build.sh` — images **server**, **webapp**, **classifier**
+- Classifier: `SKIP_HF_BAKE=1` (no baking HF models into image on CI)
+- Smoke in container: import torch 2.5 CPU, `load_all_documents()` from `data/`
+- **End-to-end compose smoke:** `docker compose up -d --build --wait` (warmup disabled, `TELEGRAM_AUTH_DISABLED=true`) → `scripts/smoke.sh` (health, crops, session, onboarding) → `compose down -v`
 
-Почему не в каждом PR: reindex + embeddings на CPU в GHA занимает **20–45+ минут**.
+**Does not:** reindex, `run_rag_eval.py`, push to registry.
 
-### Параметры
+---
 
-| Input | Значения |
-|-------|----------|
+## RAG Eval — separate workflow (manual)
+
+**File:** `.github/workflows/rag-eval.yml`  
+**Trigger:** `workflow_dispatch` (Actions → **RAG Eval** → Run workflow)
+
+Why not on every PR: reindex + embeddings on CPU in GHA takes **20–45+ minutes**.
+
+### Parameters
+
+| Input | Values |
+|-------|--------|
 | `suite` | `apple`, `pear`, `plum`, `demo_hr`, `all` |
 
-### Что делает job `rag-eval`
+### What job `rag-eval` does
 
-1. Сборка classifier-образа
-2. В контейнере: `reindex_rag.py` → `run_rag_eval.py --suite … --in-process --fast`
-3. `RAG_RERANK_ENABLED=false` на CI (ускорение; локально reranker включён)
-4. Секрет **`HF_TOKEN`** в настройках репозитория (опционально, ускоряет HF)
+1. Build classifier image
+2. In container: `reindex_rag.py` → `run_rag_eval.py --suite … --in-process --fast`
+3. `RAG_RERANK_ENABLED=false` on CI (speed; reranker enabled locally)
+4. Secret **`HF_TOKEN`** in repo settings (optional, speeds up HF)
 
-Локальный аналог:
+Local equivalent:
 
 ```bash
 python scripts/run_rag_eval.py --suite all --timeout 300
 ```
 
-(нужен запущенный classifier или `--in-process`)
+(needs running classifier or `--in-process`)
 
 ---
 
-## Сравнение
+## Comparison
 
-| Workflow | Когда | Длительность | Что проверяет |
-|----------|-------|--------------|---------------|
-| **CI** | каждый PR | ~10–15 мин | unit-тесты, сборка образов |
-| **RAG Eval** | вручную | до ~45 мин | retrieval regression на JSONL |
+| Workflow | When | Duration | What it checks |
+|----------|------|----------|----------------|
+| **CI** | every PR | ~10–15 min | lint, unit tests (race), image build, compose smoke |
+| **RAG Eval** | manual | up to ~45 min | retrieval regression on JSONL |
 
 ---
 
-## Локально перед push
+## Locally before push
 
 ```powershell
 cd server; go mod tidy; go test ./...
@@ -131,7 +148,7 @@ pytest tests/ -v
 docker build -f Dockerfile.server -t test-server .
 ```
 
-Полный eval — перед релизом или после смены `data/`:
+Full eval — before release or after changing `data/`:
 
 ```powershell
 python scripts/run_rag_eval.py --suite all
@@ -139,25 +156,24 @@ python scripts/run_rag_eval.py --suite all
 
 ---
 
-## Чего в CI нет (нормально)
+## What CI does not include (normal)
 
-- Деплой на сервер (CD)
-- E2E smoke в workflow (`scripts/smoke.ps1` — вручную после `compose up`)
-- End-to-end eval с LLM (`--full`)
-
----
-
-## Связанные документы
-
-| Тема | Файл |
-|------|------|
-| Go-тесты | `server/*_test.go`, [tests-overview.md](./tests-overview.md) |
-| Python-тесты | [tests-overview.md](./tests-overview.md) |
-| Eval-наборы | [eval/README.md](../../eval/README.md) |
-| Качество RAG | [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md) |
+- Deploy to server (CD)
+- End-to-end eval with LLM (`--full`)
 
 ---
 
-## Краткий итог
+## Related documents
 
-**CI** — быстрая страховка: Go + Python unit + Docker build. **RAG Eval** — тяжёлая регрессия retrieval, запускается вручную когда меняется корпус или RAG-код.
+| Topic | File |
+|-------|------|
+| Go tests | `server/*_test.go`, [tests-overview.md](./tests-overview.md) |
+| Python tests | [tests-overview.md](./tests-overview.md) |
+| Eval suites | [eval/README.md](../../eval/README.md) |
+| RAG quality | [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md) |
+
+---
+
+## Brief summary
+
+**CI** — fast safety net: lint (golangci-lint, ruff) + Go/Python unit tests (with race detector) + Docker build + compose smoke. **RAG Eval** — heavy retrieval regression, run manually when corpus or RAG code changes.

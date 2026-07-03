@@ -1,61 +1,61 @@
-# 🍏 grounded-horticulture — помощник садовода
+# 🍏 grounded-horticulture — horticulture assistant
 
-**Grounded RAG** для садоводства: ответы по научным статьям с проверкой фактов, а не «галлюцинации» LLM. Telegram Mini App и веб-чат с API-ключом.
+**Grounded RAG** for horticulture: answers grounded in scientific articles with fact checking, not LLM hallucinations. Telegram Mini App and browser chat with API key.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.23-00ADD8?logo=go&logoColor=white)](server/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](api/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
 
-## Демо
+## Demo
 
-| Чат: вопрос → RAG-ответ | Админка: статьи и 👍/👎 |
+| Chat: question → RAG answer | Admin: articles and 👍/👎 |
 |:---:|:---:|
-| ![Демо чата](docs/assets/demo-chat.gif) | ![Демо админки](docs/assets/demo-admin.gif) |
+| ![Chat demo](docs/assets/demo-chat.gif) | ![Admin demo](docs/assets/demo-admin.gif) |
 
-[▶ Полная запись чата (MP4)](docs/assets/demo-chat.mp4) · [▶ Полная запись админки (MP4)](docs/assets/demo-admin.mp4)
+[▶ Full chat recording (MP4)](docs/assets/demo-chat.mp4) · [▶ Full admin recording (MP4)](docs/assets/demo-admin.mp4)
 
 ---
 
-## Что это
+## What it is
 
-Ассистент для садовода и агронома: **текст** → гибридный поиск по базе статей → ответ LLM с **верификацией** цифр и дозировок; **фото** → CV + рекомендация (бета, без production-весов в репо).
+An assistant for gardeners and agronomists: **text** → hybrid search over articles → LLM answer with **verification** of numbers and dosages; **photo** → CV + recommendation (beta, no production weights in this repo).
 
-| Компонент | Роль |
+| Component | Role |
 |-----------|------|
-| **Go** (`server/`) | Auth, сессии Postgres, оркестрация RAG+LLM, verify, rate limit, `/metrics` |
+| **Go** (`server/`) | Auth, Postgres sessions, RAG+LLM orchestration, verify, rate limit, `/metrics` |
 | **Python** (`api/`, `rag/`) | Hybrid retrieval (Chroma + BM25 + reranker), CV `/classify` |
-| **Web** (`webapp/`) | Чат, админка загрузки статей, nginx в Docker |
+| **Web** (`webapp/`) | Chat, article upload admin, nginx in Docker |
 
-**Доступ:** Telegram `initData` или браузер `X-API-Key` (см. `.env.example`).
+**Access:** Telegram `initData` or browser `X-API-Key` (see `.env.example`).
 
-> **Публичный репозиторий:** в git только демо-данные (`data/demo_hr/`, `data/apple/sample_*.txt`). Полный корпус статей и веса `.pth` — локально. [DATA_LICENSE.md](DATA_LICENSE.md) · [data/README.md](data/README.md)
+> **Public repository:** git contains demo data only (`data/demo_hr/`, `data/apple/sample_*.txt`). Full article corpus and `.pth` weights stay local. [DATA_LICENSE.md](DATA_LICENSE.md) · [data/README.md](data/README.md)
 
-## Быстрый старт (Docker)
+## Quick start (Docker)
 
 ```bash
-cp .env.example .env   # задайте LLM_API_KEY, API_KEYS, ADMIN_PASSWORD
+cp .env.example .env   # set LLM_API_KEY, API_KEYS, ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
-Откройте **http://localhost/** (чат) и **http://localhost/admin.html** (админка).  
-Первый запуск classifier: ~30 с прогрев моделей, затем ответы за несколько секунд.
+Open **http://localhost/** (chat) and **http://localhost/admin.html** (admin).  
+First classifier start: ~30 s model warmup, then answers in a few seconds.
 
 ```bash
-docker compose ps          # все сервисы healthy
-make smoke                 # smoke-тест API (нужен TELEGRAM_AUTH_DISABLED=true в .env)
+docker compose ps          # all services healthy
+make smoke                 # API smoke test (TELEGRAM_AUTH_DISABLED=true in .env)
 docker compose down
 ```
 
-После смены статей в `data/`: `make docker-reindex-apply`.
+After changing articles in `data/`: `make docker-reindex-apply`.
 
-## Архитектура
+## Architecture
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────────────────┐
 │  Telegram Web   │────▶│   Go Server      │────▶│ Python (Flask / gunicorn)   │
-│  или браузер    │◀────│  auth, sessions  │     │  /classify — CV (бета)      │
-│  X-API-Key      │     │  /message (чат)  │────▶│  /rag/context — hybrid RAG  │
+│  or browser     │◀────│  auth, sessions  │     │  /classify — CV (beta)      │
+│  X-API-Key      │     │  /message (chat) │────▶│  /rag/context — hybrid RAG  │
 └─────────────────┘     └────────┬─────────┘     └─────────────────────────────┘
                                  │
                                  ▼  LLM (OpenRouter / OpenAI-compatible)
@@ -64,37 +64,37 @@ docker compose down
                           └──────────────┘
 ```
 
-**Текст:** вопрос → Go → Python `/rag/context` → LLM + verify → ответ в чат (стриминг).  
-**Фото:** снимок → CV → LLM или шаблон из `photo_templates.json`.
+**Text:** question → Go → Python `/rag/context` → LLM + verify → streamed reply.  
+**Photo:** image → CV → LLM or template from `photo_templates.json`.
 
-## Стек
+## Stack
 
 - **RAG:** `multilingual-e5-small`, Chroma, BM25 (RRF), `bge-reranker-base`, query expansion (`agro_glossary.json`)
-- **CV:** MobileNetV2 + PyTorch (обучение: `cv/train_classifier.py`)
+- **CV:** MobileNetV2 + PyTorch (training: `cv/train_classifier.py`)
 - **Backend:** Gin, PostgreSQL, Prometheus `/metrics`
-- **Eval:** 68 вопросов в `eval/rag_*_baseline.jsonl`, `scripts/run_rag_eval.py`
+- **Eval:** 68 questions in `eval/rag_*_baseline.jsonl`, `scripts/run_rag_eval.py`
 
-Подробный case study для портфолио: [**docs/AGRO_CASE_STUDY_RU.md**](docs/AGRO_CASE_STUDY_RU.md) · [EN](docs/AGRO_CASE_STUDY_EN.md)
+Portfolio case study: [**docs/AGRO_CASE_STUDY_EN.md**](docs/AGRO_CASE_STUDY_EN.md)
 
-## Структура проекта
+## Project structure
 
 ```
 grounded-horticulture/
-├── server/           # Go: /message, /classify, RAG+LLM, сессии, admin API
+├── server/           # Go: /message, /classify, RAG+LLM, sessions, admin API
 ├── api/ + rag/       # Python: /rag/context, /classify, Chroma, BM25, reranker
 ├── webapp/           # index.html, admin.html, app.js
 ├── config/           # crops, prompts, branding, few_shot, question_categories
-├── data/             # статьи .txt (в публичном git — demo + sample)
-├── eval/             # baseline JSONL для регрессии retrieval
+├── data/             # .txt articles (public git: demo + samples)
+├── eval/             # baseline JSONL for retrieval regression
 └── docker-compose.yml
 ```
 
-## Установка без Docker
+## Install without Docker
 
 <details>
-<summary>Локальная разработка (раскрыть)</summary>
+<summary>Local development (expand)</summary>
 
-**Python** (порт 5000):
+**Python** (port 5000):
 
 ```bash
 pip install -r cv/requirements.txt
@@ -102,66 +102,65 @@ cp .env.example .env
 python api/app.py
 ```
 
-**Go** (порт 8080):
+**Go** (port 8080):
 
 ```bash
 cd server && go mod download && go run .
 ```
 
-**Web App:** разместите `webapp/` на HTTPS-хостинге; API — на Go-сервере.
+**Web app:** host `webapp/` on HTTPS; API on the Go server.
 
-Переменные: `TELEGRAM_BOT_TOKEN` или `API_KEYS`, `LLM_API_KEY`, `DATABASE_URL` — см. `.env.example`.  
-Dev без Telegram: `TELEGRAM_AUTH_DISABLED=true` (только локально).
+Variables: `TELEGRAM_BOT_TOKEN` or `API_KEYS`, `LLM_API_KEY`, `DATABASE_URL` — see `.env.example`.  
+Dev without Telegram: `TELEGRAM_AUTH_DISABLED=true` (local only).
 
 </details>
 
-## API (кратко)
+## API (summary)
 
-| Метод | Путь | Назначение |
-|-------|------|------------|
-| `POST` | `/api/message` | Чат: текст (RAG) или фото (CV) |
-| `POST` | `/api/message/stream` | То же, SSE-стриминг ответа |
-| `POST` | `/api/session` | Новая сессия |
-| `GET` | `/api/history` | История диалога |
-| `POST` | `/api/feedback` | 👍/👎 на ответ |
-| `POST` | `/classify` | CV без сессии |
-| `POST` | `/rag/context` | Только retrieval (Python) |
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/message` | Chat: text (RAG) or photo (CV) |
+| `POST` | `/api/message/stream` | Same, SSE streaming |
+| `POST` | `/api/session` | New session |
+| `GET` | `/api/history` | Chat history |
+| `POST` | `/api/feedback` | 👍/👎 on a reply |
+| `POST` | `/classify` | CV without session |
+| `POST` | `/rag/context` | Retrieval only (Python) |
 
-Auth: `X-Telegram-Init-Data` или `X-API-Key`. `POST /chat` устарел — используйте `/message`.
+Auth: `X-Telegram-Init-Data` or `X-API-Key`. `POST /chat` is deprecated — use `/message`.
 
 <details>
-<summary>Примеры запросов (раскрыть)</summary>
+<summary>Request examples (expand)</summary>
 
 **POST /message** (JSON):
 
 ```json
-{"session_id": "…", "text": "Какие признаки парши на листьях?", "crop_id": "apple"}
+{"session_id": "…", "text": "What are the signs of apple scab on leaves?", "crop_id": "apple"}
 ```
 
 **POST /rag/context** (Python):
 
 ```json
-{"question": "подвои для интенсивного сада", "crop_id": "apple"}
+{"question": "rootstocks for intensive orchard", "crop_id": "apple"}
 ```
 
 </details>
 
-## Документация
+## Documentation
 
-| Тема | Файл |
-|------|------|
-| Архитектура платформы | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| Деплой и прод | [docs/DEPLOY.md](docs/DEPLOY.md) |
-| Roadmap | [docs/ROADMAP.md](docs/ROADMAP.md) |
-| База знаний по коду | [docs/knowledge-base/README.md](docs/knowledge-base/README.md) |
-| Публикация / демо | [docs/PUBLIC_REPO.md](docs/PUBLIC_REPO.md) |
-| Аудит готовности | [docs/PILOT_READINESS_AUDIT.md](docs/PILOT_READINESS_AUDIT.md) |
+| Topic | File |
+|-------|------|
+| Platform architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Deploy and production | [docs/DEPLOY.md](docs/DEPLOY.md) |
+| Backups | [docs/BACKUPS.md](docs/BACKUPS.md) |
+| Code knowledge base | [docs/knowledge-base/README.md](docs/knowledge-base/README.md) |
+| Portfolio case study | [docs/AGRO_CASE_STUDY_EN.md](docs/AGRO_CASE_STUDY_EN.md) |
 
-## Лицензия
+## License
 
-Исходный код — [Apache License 2.0](LICENSE).  
-Тексты в `data/` — [DATA_LICENSE.md](DATA_LICENSE.md).
+Source code — [Apache License 2.0](LICENSE).  
+Texts in `data/` — [DATA_LICENSE.md](DATA_LICENSE.md).
 
-## Контакты
+## Contact
 
-Вопросы и предложения — через [Issues](https://github.com/kantik001/grounded-horticulture_ru/issues).
+Questions and suggestions — [Issues](https://github.com/kantik001/grounded_horticulture_en/issues).

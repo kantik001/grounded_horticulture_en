@@ -14,7 +14,7 @@ const (
 	headerTelegramInit   = "X-Telegram-Init-Data"
 )
 
-// Разбирает CORS_ALLOWED_ORIGINS в список origin (через запятую).
+// Parses CORS_ALLOWED_ORIGINS into a comma-separated origin list.
 func parseAllowedOrigins(raw string) []string {
 	var out []string
 	for _, part := range strings.Split(raw, ",") {
@@ -26,7 +26,7 @@ func parseAllowedOrigins(raw string) []string {
 	return out
 }
 
-// corsMiddleware разрешает запросы только с перечисленных Origin (безопаснее, чем *).
+// corsMiddleware allows only listed Origins (safer than *).
 func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
 	allowAll := len(allowedOrigins) == 0
 	originSet := make(map[string]struct{}, len(allowedOrigins))
@@ -56,7 +56,7 @@ func corsMiddleware(allowedOrigins []string) gin.HandlerFunc {
 	}
 }
 
-// telegramAuthMiddleware проверяет подпись initData от Telegram Web App.
+// telegramAuthMiddleware validates Telegram Web App initData signature.
 func telegramAuthMiddleware(cfg *Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if cfg.TelegramAuthDisabled {
@@ -76,7 +76,7 @@ func telegramAuthMiddleware(cfg *Config) gin.HandlerFunc {
 
 		initData := strings.TrimSpace(c.GetHeader(headerTelegramInit))
 		if initData == "" {
-			// Заголовок Authorization: tma <initData>
+			// Authorization header: tma <initData>
 			auth := strings.TrimSpace(c.GetHeader("Authorization"))
 			if strings.HasPrefix(strings.ToLower(auth), "tma ") {
 				initData = strings.TrimSpace(auth[4:])
@@ -85,7 +85,7 @@ func telegramAuthMiddleware(cfg *Config) gin.HandlerFunc {
 		if initData == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"error":   "Требуется авторизация: Telegram (X-Telegram-Init-Data) или API-ключ (X-API-Key).",
+				"error":   "Authorization required: Telegram (X-Telegram-Init-Data) or API key (X-API-Key).",
 			})
 			return
 		}
@@ -94,7 +94,7 @@ func telegramAuthMiddleware(cfg *Config) gin.HandlerFunc {
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"error":   "Недействительная авторизация Telegram: " + err.Error(),
+				"error":   "Invalid Telegram authorization: " + err.Error(),
 			})
 			return
 		}

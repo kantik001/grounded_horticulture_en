@@ -1,12 +1,12 @@
 """
-Поиск по статьям (RAG retrieval): контекст для Go с учётом crop_id.
+Article search (RAG retrieval): context for Go by crop_id.
 """
 
 import json
 import os
 from typing import Any, Dict, List
 
-from rag.crops_config import get_crop, normalize_crop_id
+from rag.crops_config import crop_display_name, get_crop, normalize_crop_id
 from rag.debug_log import rag_debug
 from rag.question_categories import classify_question
 
@@ -14,8 +14,8 @@ _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _few_shot_cache = None
 
 
-# Загружает config/few_shot.json один раз в кэш.
 def _few_shot_path() -> str:
+    """Resolve path to few_shot.json."""
     env = os.environ.get("FEW_SHOT_CONFIG_PATH")
     if env and os.path.isfile(env):
         return env
@@ -29,6 +29,7 @@ def _few_shot_path() -> str:
 
 
 def _load_few_shot() -> dict:
+    """Load config/few_shot.json once into cache."""
     global _few_shot_cache
     if _few_shot_cache is not None:
         return _few_shot_cache
@@ -38,14 +39,14 @@ def _load_few_shot() -> dict:
     return _few_shot_cache
 
 
-# Возвращает few-shot пример для культуры и категории вопроса.
 def few_shot_for(crop_id: str, category: str) -> str:
+    """Return few-shot example for crop and question category."""
     crop_shots = _load_few_shot().get(crop_id, {})
     return crop_shots.get(category) or crop_shots.get("general", "")
 
 
-# Главная функция: поиск в Chroma → context, few_shot, fragments для Go.
 def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str, Any]:
+    """Search Chroma and return context, few_shot, and fragments for Go."""
     q = (user_question or "").strip()
     empty = {
         "success": False,
@@ -57,7 +58,7 @@ def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str
         "crop_id": crop_id,
     }
     if not q:
-        empty["error"] = "Пустой вопрос"
+        empty["error"] = "Empty question"
         return empty
 
     try:
@@ -68,9 +69,10 @@ def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str
 
     crop = get_crop(crop_id)
     if not crop.get("rag_enabled", True):
+        label = crop_display_name(crop, crop_id)
         empty["error"] = (
-            f"База статей для «{crop.get('name_ru', crop_id)}» пока не подключена. "
-            "Выберите другую культуру или вернитесь позже."
+            f"Article base for «{label}» is not connected yet. "
+            "Choose another crop or try again later."
         )
         return empty
 
@@ -79,19 +81,18 @@ def retrieve_rag_context(user_question: str, crop_id: str = "apple") -> Dict[str
     category = classify_question(q)
     fragments = search(q, crop_id=crop_id, k=8, category=category)
     if not fragments:
-        empty["error"] = (
-            f"Не нашёл информации в статьях по культуре «{crop.get('name_ru', crop_id)}»."
-        )
+        label = crop_display_name(crop, crop_id)
+        empty["error"] = f"No information found in articles for crop «{label}»."
         return empty
 
     for f in fragments:
-        rag_debug(f"[RAG:{crop_id}] источник: {f.metadata.get('filename')}")
+        rag_debug(f"[RAG:{crop_id}] source: {f.metadata.get('filename')}")
 
     context_parts: List[str] = []
     fr_json: List[Dict[str, str]] = []
     for frag in fragments:
-        source_name = frag.metadata.get("filename", "Неизвестный источник")
-        context_parts.append(f"Текст из статьи '{source_name}':\n{frag.page_content}")
+        source_name = frag.metadata.get("filename", "Unknown source")
+        context_parts.append(f"Text from article '{source_name}':\n{frag.page_content}")
         fr_json.append({"filename": source_name, "content": frag.page_content})
 
     context = "\n\n---\n\n".join(context_parts)

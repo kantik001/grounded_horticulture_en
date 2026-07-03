@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-// ragAnswerDisclaimer — общий дисклеймер в конце ответа (без названий статей).
-// Синхронизировать с rag/verifier.py (RAG_ANSWER_DISCLAIMER) и tests/test_verifier.py.
-const ragAnswerDisclaimer = "Справочная информация из базы знаний. Не заменяет очный осмотр агронома; решения по препаратам — с учётом инструкций и законодательства."
+// ragAnswerDisclaimer is appended to RAG answers (no article titles).
+// Keep in sync with rag/verifier.py (RAG_ANSWER_DISCLAIMER) and tests/test_verifier.py.
+const ragAnswerDisclaimer = "Reference information from the knowledge base. Does not replace an on-site agronomist visit; product decisions must follow labels and local regulations."
 
 var (
 	reNumberWord = regexp.MustCompile(`\b\d+(?:\.\d+)?\b`)
@@ -18,12 +18,12 @@ var (
 	reThink      = regexp.MustCompile(`(?i)</?think>`)
 	reAnswerTag  = regexp.MustCompile(`(?i)</?answer>`)
 	reSystemTag  = regexp.MustCompile(`(?i)</?system>`)
-	reAbot       = regexp.MustCompile(`(?i)\bаботчик\b`)
-	reIntro      = regexp.MustCompile(`(?i)^(Хорошо|Давайте посмотрим|Итак|Я думаю|мне нужно ответить|Из контекста видно|Теперь я понимаю|Из таблицы видно)[,:.]?\s*`)
-	reSourceLine = regexp.MustCompile(`(?im)^\s*Источник:.*\n?`)
+	reAbot       = regexp.MustCompile(`(?i)\bworker\b`)
+	reIntro      = regexp.MustCompile(`(?i)^(Well|Let's look|So|I think|I need to answer|From the context|Now I understand|From the table)[,:.]?\s*`)
+	reSourceLine = regexp.MustCompile(`(?im)^\s*Source:.*\n?`)
 )
 
-// Извлекает числа из текста для верификации ответа RAG.
+// extractNumbersFromText collects numbers from text for RAG answer verification.
 func extractNumbersFromText(s string) []float64 {
 	s = strings.ReplaceAll(s, ",", ".")
 	var out []float64
@@ -36,10 +36,10 @@ func extractNumbersFromText(s string) []float64 {
 	return out
 }
 
-// Убирает служебные теги и вводные фразы из ответа LLM.
+// cleanRAGAnswer removes service tags and filler phrases from the LLM reply.
 func cleanRAGAnswer(text string) string {
 	if text == "" {
-		return "Ответ не сформирован корректно."
+		return "Answer was not formed correctly."
 	}
 	text = reThink.ReplaceAllString(text, "")
 	text = reAnswerTag.ReplaceAllString(text, "")
@@ -48,40 +48,40 @@ func cleanRAGAnswer(text string) string {
 	text = reIntro.ReplaceAllString(text, "")
 	text = strings.TrimSpace(reMultiSpace.ReplaceAllString(text, " "))
 	if text == "" {
-		return "Ответ не сформирован корректно."
+		return "Answer was not formed correctly."
 	}
 	return text
 }
 
-// Удаляет строки «Источник:» из ответа перед показом пользователю.
+// stripSourceAttribution removes "Source:" lines before showing the answer to the user.
 func stripSourceAttribution(answer string) string {
 	s := reSourceLine.ReplaceAllString(answer, "")
 	return strings.TrimSpace(reMultiSpace.ReplaceAllString(s, " "))
 }
 
-// Добавляет дисклеймер в конец ответа RAG.
+// appendRAGDisclaimer appends the standard disclaimer to a RAG answer.
 func appendRAGDisclaimer(answer string) string {
 	body := stripSourceAttribution(answer)
 	if body == "" {
 		return ragAnswerDisclaimer
 	}
-	if strings.Contains(body, "Не заменяет очный осмотр агронома") {
+	if strings.Contains(body, "Does not replace an on-site agronomist") {
 		return body
 	}
 	return body + "\n\n" + ragAnswerDisclaimer
 }
 
-// Текст ответа без дисклеймера и источников — для проверки чисел.
+// answerBodyForVerification returns answer text without disclaimer and sources for number checks.
 func answerBodyForVerification(answer string) string {
 	s := stripSourceAttribution(answer)
 	s = strings.ReplaceAll(s, ragAnswerDisclaimer, "")
 	return strings.TrimSpace(s)
 }
 
-// Проверяет, что все числа в ответе есть во фрагментах статей.
+// verifyRAGAnswer checks that all numbers in the answer appear in article fragments.
 func verifyRAGAnswer(answer string, fragments []RAGFragment) (bool, string) {
 	if answer == "" {
-		return false, "Ответ отсутствует"
+		return false, "Answer is missing"
 	}
 	var ctx strings.Builder
 	for _, f := range fragments {
@@ -90,7 +90,7 @@ func verifyRAGAnswer(answer string, fragments []RAGFragment) (bool, string) {
 	}
 	numsAns := extractNumbersFromText(answerBodyForVerification(answer))
 	if len(numsAns) == 0 {
-		return true, "Верификация пройдена"
+		return true, "Verification passed"
 	}
 	numsCtx := extractNumbersFromText(ctx.String())
 	var missing []float64
@@ -107,7 +107,7 @@ func verifyRAGAnswer(answer string, fragments []RAGFragment) (bool, string) {
 		}
 	}
 	if len(missing) > 0 {
-		return false, fmt.Sprintf("Число(а) %v не найдены в источниках.", missing)
+		return false, fmt.Sprintf("Number(s) %v not found in sources.", missing)
 	}
-	return true, "Верификация пройдена"
+	return true, "Verification passed"
 }

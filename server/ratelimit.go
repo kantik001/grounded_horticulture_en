@@ -10,8 +10,8 @@ import (
 
 const rateLimitGCInterval = 256
 
-// rateLimiter — простой in-memory лимитер (для одного инстанса Go).
-// На продакшене с несколькими репликами заменим на Redis (фаза 1B).
+// rateLimiter is a simple in-memory limiter (single Go instance).
+// Replace with Redis when running multiple replicas (phase 1B).
 type rateLimiter struct {
 	mu       sync.Mutex
 	limit    int
@@ -20,7 +20,7 @@ type rateLimiter struct {
 	ops      uint64
 }
 
-// Создаёт in-memory лимитер запросов на пользователя за окно времени.
+// Creates an in-memory per-user request limiter over a time window.
 func newRateLimiter(limit int, window time.Duration) *rateLimiter {
 	return &rateLimiter{
 		limit:    limit,
@@ -29,7 +29,7 @@ func newRateLimiter(limit int, window time.Duration) *rateLimiter {
 	}
 }
 
-// gcStale удаляет ключи без запросов в текущем окне (защита от утечки памяти).
+// gcStale drops keys with no requests in the current window (memory leak guard).
 func (rl *rateLimiter) gcStale(now time.Time) {
 	cutoff := now.Add(-rl.window)
 	for key, times := range rl.counters {
@@ -47,7 +47,7 @@ func (rl *rateLimiter) gcStale(now time.Time) {
 	}
 }
 
-// Проверяет, не превышен ли лимит для ключа (tg:… или api:…).
+// Returns whether the key (tg:… or api:…) is within the limit.
 func (rl *rateLimiter) allow(key string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -79,7 +79,7 @@ func (rl *rateLimiter) allow(key string) bool {
 	return true
 }
 
-// Gin-middleware: 429 при превышении лимита запросов в минуту.
+// Gin middleware: 429 when per-minute request limit is exceeded.
 func rateLimitMiddleware(rl *rateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if rl == nil || rl.limit <= 0 {
@@ -94,7 +94,7 @@ func rateLimitMiddleware(rl *rateLimiter) gin.HandlerFunc {
 		if !rl.allow(key) {
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"success": false,
-				"error":   "Слишком много запросов. Подождите минуту и попробуйте снова.",
+				"error":   "Too many requests. Wait a minute and try again.",
 			})
 			return
 		}

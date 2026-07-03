@@ -1,33 +1,33 @@
-﻿# Разбор: чат и база данных (`server/`)
+﻿# Walkthrough: chat and database (`server/`)
 
-**Файлы:** `message_handlers.go`, `session_handlers.go`, `chat_session.go`, `postgres_store.go`, `classify_flow.go` (фото)  
-**БД:** схема в [migrations-overview.md](./migrations-overview.md)  
-**Клиент:** [webapp-overview.md](./webapp-overview.md) → `POST /message`
-
----
-
-## Главный пользовательский поток
-
-**`POST /message`** (auth + rate limit) — всё, что делает чат в Telegram.
-
-Два формата тела:
-
-| Content-Type | Поля | Ветка |
-|--------------|------|--------|
-| `application/json` | `session_id`, `crop_id`, `text` | текст → RAG |
-| `multipart/form-data` | `session_id`, `crop_id`, `text`, `image` | фото → CV + LLM |
-
-Лимит фото: **10 МБ** (`maxUploadImageBytes` в `classify_flow.go`).
+**Files:** `message_handlers.go`, `session_handlers.go`, `chat_session.go`, `postgres_store.go`, `classify_flow.go` (photos)  
+**DB:** schema in [migrations-overview.md](./migrations-overview.md)  
+**Client:** [webapp-overview.md](./webapp-overview.md) → `POST /message`
 
 ---
 
-## `handleMessage` → разветвление
+## Main user flow
+
+**`POST /message`** (auth + rate limit) — everything the Telegram chat does.
+
+Two body formats:
+
+| Content-Type | Fields | Branch |
+|--------------|--------|--------|
+| `application/json` | `session_id`, `crop_id`, `text` | text → RAG |
+| `multipart/form-data` | `session_id`, `crop_id`, `text`, `image` | photo → CV + LLM |
+
+Photo limit: **10 MB** (`maxUploadImageBytes` in `classify_flow.go`).
+
+---
+
+## `handleMessage` → branching
 
 ```mermaid
 flowchart TD
     M[POST /message] --> P{multipart?}
-    P -->|да| I[handleImageMessage]
-    P -->|нет| T[handleTextMessage]
+    P -->|yes| I[handleImageMessage]
+    P -->|no| T[handleTextMessage]
     T --> RAG[answerWithRAG + history]
     I --> SAVE[SaveImage token]
     I --> CAR[classifyAndRecommend]
@@ -35,98 +35,98 @@ flowchart TD
     CAR --> LLM[generatePhotoRecommendation]
 ```
 
-Ответ всегда: JSON `{ success, session_id, crop_id, messages: [...] }` — полная история для UI.
+Response always: JSON `{ success, session_id, crop_id, messages: [...] }` — full history for UI.
 
 ---
 
-## Текст: `handleTextMessage`
+## Text: `handleTextMessage`
 
-1. **`HistoryForLLM`** — последние реплики user/assistant для контекста LLM (до 80 сообщений в store).
-2. **`answerWithRAG(text, cropID, prior)`** — см. [server-rag_chat.md](./server-rag_chat.md).
-3. Сохранить сообщение **user** в БД.
-4. При ошибке RAG (мягкой) — assistant с текстом ошибки, `logAnalytics("rag_answer", soft_fail)`.
-5. При успехе — assistant с ответом, analytics `soft_fail: false`.
-6. **`respondWithMessages`** — отдать обновлённый список сообщений.
+1. **`HistoryForLLM`** — latest user/assistant turns for LLM context (up to 80 messages in store).
+2. **`answerWithRAG(text, cropID, prior)`** — see [server-rag_chat.md](./server-rag_chat.md).
+3. Save **user** message in DB.
+4. On RAG error (soft) — assistant with error text, `logAnalytics("rag_answer", soft_fail)`.
+5. On success — assistant with answer, analytics `soft_fail: false`.
+6. **`respondWithMessages`** — return updated message list.
 
 ---
 
-## Фото: `handleImageMessage`
+## Photo: `handleImageMessage`
 
-1. История для LLM (как у текста).
-2. **`SaveImage`** — файл в `UPLOAD_DIR`, в БД только **token** (не base64).
+1. History for LLM (same as text).
+2. **`SaveImage`** — file in `UPLOAD_DIR`, DB stores only **token** (not base64).
 3. **`classifyAndRecommend(image, cropID, caption, prior)`** (`classify_flow.go`):
    - Python CV → prediction + confidence;
-   - **`generatePhotoRecommendation`** — LLM с историей или шаблон из `photo_templates.json`.
-4. Сообщение user: caption, `kind=image`, token, class_prediction, class_confidence.
-5. Сообщение assistant с рекомендацией.
-6. Analytics `photo_classified` с prediction/confidence.
+   - **`generatePhotoRecommendation`** — LLM with history or template from `photo_templates.json`.
+4. User message: caption, `kind=image`, token, class_prediction, class_confidence.
+5. Assistant message with recommendation.
+6. Analytics `photo_classified` with prediction/confidence.
 
-При сбое CV — assistant с ошибкой, без LLM.
+On CV failure — assistant with error, no LLM.
 
-Отдельный **`POST /classify`** (без сессии) использует тот же `classifyAndRecommend`, но без сохранения в БД — см. [server-overview.md](./server-overview.md).
+Separate **`POST /classify`** (no session) uses same `classifyAndRecommend` but without DB save — see [server-overview.md](./server-overview.md).
 
 ---
 
-## Сессии: `session_handlers.go` + `chat_session.go`
+## Sessions: `session_handlers.go` + `chat_session.go`
 
 ### `POST /session`
 
-JSON `{ "crop_id": "apple" }` → новая `chat_sessions` + `session_id` (random hex).
+JSON `{ "crop_id": "apple" }` → new `chat_sessions` + `session_id` (random hex).
 
 ### `GET /history?session_id=`
 
-Проверка владельца (telegram_id) → список сообщений для UI.
+Owner check (telegram_id) → message list for UI.
 
 ### `GET /media/:token`
 
-Отдача файла фото с диска; только если token принадлежит сессии пользователя.
+Serve photo file from disk; only if token belongs to user session.
 
 ### `ctxTelegramUser(c)`
 
-Достаёт `TelegramUser` из Gin context после middleware.
+Gets `TelegramUser` from Gin context after middleware.
 
 ---
 
 ## `postgres_store.go` — `ChatStore`
 
-### Подключение
+### Connection
 
-- `pgxpool` к `DATABASE_URL`.
-- При старте: миграции + долгоживущий пул.
+- `pgxpool` to `DATABASE_URL`.
+- On startup: migrations + long-lived pool.
 
-### Ключевые методы
+### Key methods
 
-| Метод | Назначение |
-|-------|------------|
-| `UpsertUser` | user по `telegram_id` |
-| `CreateSession` / `GetOrCreateSession` | сессия + crop_id |
-| `sessionOwned` | чужой session_id → 404 |
-| `AppendMessage` | INSERT в `messages` |
-| `ListMessages` | история + LEFT JOIN `message_feedback.rating` |
-| `HistoryForLLM` | role/content для LLM |
-| `SaveImage` | файл + token |
-| `OpenImageForUser` | безопасная отдача media |
+| Method | Purpose |
+|--------|---------|
+| `UpsertUser` | user by `telegram_id` |
+| `CreateSession` / `GetOrCreateSession` | session + crop_id |
+| `sessionOwned` | foreign session_id → 404 |
+| `AppendMessage` | INSERT into `messages` |
+| `ListMessages` | history + LEFT JOIN `message_feedback.rating` |
+| `HistoryForLLM` | role/content for LLM |
+| `SaveImage` | file + token |
+| `OpenImageForUser` | safe media serve |
 | `SaveMessageFeedback` | 👍/👎, UNIQUE (message_id, user_id) |
 | `LogEvent` | INSERT `analytics_events` JSONB |
 
-### Безопасность сессий
+### Session security
 
-Любой запрос с `session_id` проверяет: сессия принадлежит **этому** `telegram_id`. Нельзя читать чужой чат по угаданному id.
+Any request with `session_id` checks: session belongs to **this** `telegram_id`. Cannot read another user’s chat by guessing id.
 
-### Лимит истории
+### History limit
 
-`maxSessionMessages = 80` — обрезка при выборке для LLM (не удаление из БД).
+`maxSessionMessages = 80` — trim on fetch for LLM (not deleted from DB).
 
 ---
 
-## Структура `ChatMessage` (для API)
+## `ChatMessage` structure (for API)
 
-Поля в JSON для webapp:
+JSON fields for webapp:
 
 - `id`, `role`, `content`, `kind`
-- `image_url` или путь через `/media/:token`
-- `class_prediction`, `class_confidence` (для фото)
-- `feedback_rating` (-1, 1 или null)
+- `image_url` or path via `/media/:token`
+- `class_prediction`, `class_confidence` (for photos)
+- `feedback_rating` (-1, 1 or null)
 
 ---
 
@@ -134,37 +134,37 @@ JSON `{ "crop_id": "apple" }` → новая `chat_sessions` + `session_id` (ran
 
 | | `/chat` | `/message` |
 |--|---------|------------|
-| Статус | **устарел** (`Deprecation: true`) | основной API |
-| История в БД | нет | да |
-| Сессия | не нужна | обязательна |
-| Использование | legacy-интеграции | Telegram Web App |
+| Status | **deprecated** (`Deprecation: true`) | main API |
+| DB history | no | yes |
+| Session | not required | required |
+| Use | legacy integrations | Telegram Web App |
 
-Web App шлёт только **`POST /api/message`**. Оба текстовых пути вызывают `answerWithRAG` (с проверкой `rag_enabled`); `/message` сохраняет диалог в Postgres.
+Web App sends only **`POST /api/message`**. Both text paths call `answerWithRAG` (with `rag_enabled` check); `/message` saves dialog in Postgres.
 
-Фото в чате: multipart `image` + `readImageFromFormFile` → `classifyAndRecommend` (проверка `cv_enabled`).
-
----
-
-## Аналитика из обработчиков сообщений
-
-`logAnalytics` в `message_handlers.go` → `analytics_events` (см. [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)):
-
-- `rag_answer` — успех/soft_fail RAG
-- `photo_classified` — результат CV
+Photo in chat: multipart `image` + `readImageFromFormFile` → `classifyAndRecommend` (`cv_enabled` check).
 
 ---
 
-## Типичные ошибки
+## Analytics from message handlers
 
-| Симптом | Где смотреть |
-|---------|----------------|
-| «Сессия не найдена» | чужой session_id или смена user |
-| Фото не в чате | `loadAuthedImage` + token + auth |
-| Пустая история после refresh | `GET /history`, sessionStorage в UI |
-| Ошибка БД при старте | postgres не ready, миграции |
+`logAnalytics` in `message_handlers.go` → `analytics_events` (see [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)):
+
+- `rag_answer` — RAG success/soft_fail
+- `photo_classified` — CV result
 
 ---
 
-## Краткий итог
+## Common errors
 
-**message_handlers** / **session_handlers** — бизнес-логика чата (текст/фото). **postgres_store** — персистентность и изоляция пользователей. **chat_session** — хелперы Telegram user из context. Это центр продукта для садовода в Telegram.
+| Symptom | Where to look |
+|---------|---------------|
+| “Session not found” | wrong session_id or user change |
+| Photo missing in chat | `loadAuthedImage` + token + auth |
+| Empty history after refresh | `GET /history`, sessionStorage in UI |
+| DB error on startup | postgres not ready, migrations |
+
+---
+
+## Brief summary
+
+**message_handlers** / **session_handlers** — chat business logic (text/photo). **postgres_store** — persistence and user isolation. **chat_session** — Telegram user helpers from context. Center of the product for the gardener in Telegram.

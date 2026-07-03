@@ -1,7 +1,7 @@
-Больничные и временная нетрудоспособность (демо).
+Sick leave and temporary disability (demo).
 
-При болезни сотрудник обязан уведомить руководителя до 10:00 первого дня отсутствия.
+When ill, the employee must notify their manager by 10:00 on the first day of absence.
 
-Больничный лист предоставляется в HR в течение 3 рабочих дней после выхода на работу.
+The sick leave certificate must be submitted to HR within 3 business days after returning to work.
 
-Оплата больничного производится согласно законодательству и внутреннему регламенту; HR рассчитывает сумму после получения листа.
+Sick pay follows applicable law and internal rules; HR calculates the amount after receiving the certificate.

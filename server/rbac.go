@@ -9,6 +9,7 @@ const RoleChatOnly = "chat_only"
 
 const ctxKeyAPIRoles = "api_roles"
 
+// normalizeRoles maps raw role names to canonical ones, dropping duplicates and unknowns.
 func normalizeRoles(in []string) []string {
 	if len(in) == 0 {
 		return nil
@@ -29,6 +30,7 @@ func normalizeRoles(in []string) []string {
 	return out
 }
 
+// normalizeRoleName maps a raw role alias to its canonical name, or empty if unknown.
 func normalizeRoleName(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case RoleChatOnly, "chat", "chat-only":
@@ -38,10 +40,12 @@ func normalizeRoleName(raw string) string {
 	}
 }
 
+// defaultAPIKeyRoles returns the fallback role set for keys without explicit roles.
 func defaultAPIKeyRoles() []string {
 	return []string{RoleChatOnly}
 }
 
+// canUseChatAPI reports whether the role set grants chat access.
 func canUseChatAPI(apiRoles []string) bool {
 	for _, r := range apiRoles {
 		if r == RoleChatOnly {

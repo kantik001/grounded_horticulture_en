@@ -1,31 +1,31 @@
-# Метрики и базовые алерты
+# Metrics and basic alerts
 
-Go-сервер отдаёт **Prometheus text exposition** на:
+Go server exposes **Prometheus text exposition** on:
 
 - `GET /metrics`
 - `GET /api/metrics`
 
-Эндпоинт **публичный** (без auth) — на продакшене ограничьте доступ сетью (firewall / internal scrape only).
+Endpoint is **public** (no auth) — on production restrict access by network (firewall / internal scrape only).
 
 ---
 
-## Метрики
+## Metrics
 
-| Имя | Тип | Описание |
-|-----|-----|----------|
-| `garden_http_requests_total` | counter | Все HTTP-запросы |
-| `garden_http_responses_2xx_total` | counter | Ответы 2xx |
-| `garden_http_responses_4xx_total` | counter | Ответы 4xx |
-| `garden_http_responses_5xx_total` | counter | Ответы 5xx |
-| `garden_llm_errors_total` | counter | Ошибки вызова LLM API |
-| `garden_rag_requests_total` | counter | Завершённые RAG-ответы (по `logRAGTrace`) |
-| `garden_rag_verify_pass_total` | counter | Ответы, прошедшие verify чисел |
-| `garden_rag_verify_fail_total` | counter | Ответы с провалом verify |
-| `garden_rag_soft_fail_total` | counter | Soft fail (нет контекста / verify) |
-| `garden_rag_retrieval_ms_total` | counter | Сумма latency retrieval (мс) |
-| `garden_rag_llm_ms_total` | counter | Сумма latency LLM (мс) |
+| Name | Type | Description |
+|------|------|-------------|
+| `garden_http_requests_total` | counter | All HTTP requests |
+| `garden_http_responses_2xx_total` | counter | 2xx responses |
+| `garden_http_responses_4xx_total` | counter | 4xx responses |
+| `garden_http_responses_5xx_total` | counter | 5xx responses |
+| `garden_llm_errors_total` | counter | LLM API call errors |
+| `garden_rag_requests_total` | counter | Completed RAG answers (via `logRAGTrace`) |
+| `garden_rag_verify_pass_total` | counter | Answers that passed number verify |
+| `garden_rag_verify_fail_total` | counter | Answers that failed verify |
+| `garden_rag_soft_fail_total` | counter | Soft fail (no context / verify) |
+| `garden_rag_retrieval_ms_total` | counter | Sum of retrieval latency (ms) |
+| `garden_rag_llm_ms_total` | counter | Sum of LLM latency (ms) |
 
-Средняя latency retrieval (PromQL):
+Average retrieval latency (PromQL):
 
 ```promql
 rate(garden_rag_retrieval_ms_total[5m]) / rate(garden_rag_requests_total[5m])
@@ -33,7 +33,7 @@ rate(garden_rag_retrieval_ms_total[5m]) / rate(garden_rag_requests_total[5m])
 
 ---
 
-## Пример scrape (Prometheus)
+## Example scrape (Prometheus)
 
 ```yaml
 scrape_configs:
@@ -45,7 +45,7 @@ scrape_configs:
 
 ---
 
-## Пример алертов (Alertmanager)
+## Example alerts (Alertmanager)
 
 ```yaml
 groups:
@@ -88,17 +88,17 @@ groups:
           summary: "RAG retrieval avg > 15s"
 ```
 
-Пороги подстройте под пилотную нагрузку.
+Tune thresholds for pilot load.
 
 ---
 
-## Feedback + RAG в админке
+## Feedback + RAG in admin
 
-`GET /admin/feedback` возвращает поле `rag` у каждой оценки (если есть событие `rag_answer` в `analytics_events` с тем же `message_id`): category, fragments, verify_pass, latency.
+`GET /admin/feedback` returns field `rag` for each rating (if `rag_answer` event exists in `analytics_events` with same `message_id`): category, fragments, verify_pass, latency.
 
 ---
 
-## Связанные документы
+## Related documents
 
 - [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md)
 - [server-admin-and-ux-api.md](./server-admin-and-ux-api.md)

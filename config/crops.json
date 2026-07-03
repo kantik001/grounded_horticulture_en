@@ -1,27 +1,31 @@
 {
-  "_comment": "Единый каталог культур для Go (server) и Python (rag, api). Пути: CROPS_CONFIG_PATH.",
+  "_comment": "Unified crop catalog for Go (server) and Python (rag, api). Paths: CROPS_CONFIG_PATH.",
   "default_crop": "apple",
   "crops": {
     "apple": {
-      "name_ru": "Яблоня",
+      "name_ru": "Apple",
+      "name_en": "Apple",
       "emoji": "🍎",
       "cv_enabled": true,
       "rag_enabled": true
     },
     "pear": {
-      "name_ru": "Груша",
+      "name_ru": "Pear",
+      "name_en": "Pear",
       "emoji": "🍐",
       "cv_enabled": false,
       "rag_enabled": true
     },
     "plum": {
-      "name_ru": "Слива",
+      "name_ru": "Plum",
+      "name_en": "Plum",
       "emoji": "🍑",
       "cv_enabled": false,
       "rag_enabled": true
     },
     "demo_hr": {
-      "name_ru": "HR (демо платформы)",
+      "name_ru": "HR (platform demo)",
+      "name_en": "HR (platform demo)",
       "emoji": "📋",
       "cv_enabled": false,
       "rag_enabled": true,

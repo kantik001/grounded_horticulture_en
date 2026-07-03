@@ -1,8 +1,9 @@
-"""Cross-encoder reranker для финальной пересортировки кандидатов."""
+"""Cross-encoder reranker for final candidate re-ranking."""
 
 from __future__ import annotations
 
 import os
+import threading
 from typing import List, Optional
 
 from langchain_core.documents import Document
@@ -12,24 +13,31 @@ RERANK_TOP_N = int(os.environ.get("RAG_RERANK_TOP_N", "16"))
 
 _cross_encoder = None
 _load_failed = False
+_cross_encoder_lock = threading.Lock()
 
 
 def _get_cross_encoder():
+    """Lazily load and cache the cross-encoder; None if loading failed."""
     global _cross_encoder, _load_failed
     if _load_failed:
         return None
     if _cross_encoder is not None:
         return _cross_encoder
-    try:
-        from sentence_transformers import CrossEncoder
+    with _cross_encoder_lock:
+        if _load_failed:
+            return None
+        if _cross_encoder is not None:
+            return _cross_encoder
+        try:
+            from sentence_transformers import CrossEncoder
 
-        _cross_encoder = CrossEncoder(RERANK_MODEL, max_length=512)
-        print(f"Reranker загружен: {RERANK_MODEL}")
-        return _cross_encoder
-    except Exception as exc:
-        _load_failed = True
-        print(f"Reranker недоступен ({exc}), поиск без пересортировки")
-        return None
+            _cross_encoder = CrossEncoder(RERANK_MODEL, max_length=512)
+            print(f"Reranker loaded: {RERANK_MODEL}")
+            return _cross_encoder
+        except Exception as exc:
+            _load_failed = True
+            print(f"Reranker unavailable ({exc}), search without re-ranking")
+            return None
 
 
 def rerank_documents(
@@ -37,6 +45,7 @@ def rerank_documents(
     documents: List[Document],
     limit: Optional[int] = None,
 ) -> List[Document]:
+    """Re-rank documents by cross-encoder score; passthrough if model unavailable."""
     if not documents:
         return []
     model = _get_cross_encoder()

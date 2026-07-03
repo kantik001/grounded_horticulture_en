@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Verifies that a valid X-API-Key passes auth and sets the actor identity.
 func TestCombinedAuthMiddleware_APIKey(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	apiKeyRegistry = map[string]apiKeyRecord{
@@ -34,6 +35,7 @@ func TestCombinedAuthMiddleware_APIKey(t *testing.T) {
 	}
 }
 
+// Verifies that an unknown X-API-Key is rejected with 401.
 func TestCombinedAuthMiddleware_InvalidKey(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	apiKeyRegistry = map[string]apiKeyRecord{}

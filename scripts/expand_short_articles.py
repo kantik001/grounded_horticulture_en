@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Расширить короткие статьи (1–122) из PDF журнала — формат как у авто-ingest."""
+"""Expand short articles (1–122) from journal PDFs — same format as auto-ingest."""
 from __future__ import annotations
 
 import json
@@ -38,12 +38,12 @@ JOURNAL_ISSUE_RE = re.compile(
     re.I,
 )
 KW_STOP = {
-    "кратко", "практика", "культура", "культуры", "регион", "авторы", "журнал",
-    "метаданные", "источника", "яблоня", "груша", "слива", "статья", "данные",
-    "результаты", "исследования", "условиях", "краснодар", "ставрополь",
+    "brief", "briefly", "practice", "culture", "cultures", "region", "authors", "journal",
+    "metadata", "source", "apple", "pear", "plum", "article", "data",
+    "results", "research", "conditions", "krasnodar", "stavropol",
 }
 
-# Проверенные соответствия короткая статья → PDF
+# Verified short-article → PDF mappings
 MANUAL_PDF_OVERRIDES: dict[str, str] = {
     "article9_liberty_rootstocks_young_stavropol": "http://journalkubansad.ru/pdf/13/05/08.pdf",
     "article2_belarus_chelate_foliar": "http://journalkubansad.ru/pdf/13/05/15.pdf",
@@ -57,26 +57,30 @@ MANUAL_PDF_OVERRIDES: dict[str, str] = {
 }
 
 WRONG_PDF_MARKERS = (
-    "Попова Валентина Петровна",
-    "РАЗРАБОТКА ПРИЕМОВ УПРАВЛЕНИЯ УСТОЙЧИВОСТЬЮ ПЛОДОВЫХ ЦЕНОЗОВ",
+    "Popova Valentina Petrovna",
+    "DEVELOPMENT OF METHODS FOR MANAGING FRUIT CENOSES RESILIENCE",
 )
 
 
 def norm_journal_url(url: str) -> str:
+    """Normalize a journal PDF URL to the canonical host and strip trailing punctuation."""
     return url.replace("journal.kubansad.ru", "journalkubansad.ru").rstrip(").,")
 
 
 def norm_doi(text: str) -> str:
+    """Extract the journal DOI from text, or return an empty string."""
     m = re.search(r"10\.30679/2219-5335-[^\s\)\]]+", text)
     return m.group(0).rstrip(").,") if m else ""
 
 
 def article_num(path: Path) -> int:
+    """Numeric article index parsed from the filename (9999 if absent)."""
     m = re.search(r"article(\d+)", path.name)
     return int(m.group(1)) if m else 9999
 
 
 def doi_map() -> dict[str, str]:
+    """Build a DOI -> PDF URL map from existing articles and the journal catalog."""
     m: dict[str, str] = {}
     for crop in CROPS:
         for p in (DATA / crop).glob("article*.txt"):
@@ -96,6 +100,7 @@ def doi_map() -> dict[str, str]:
 
 
 def parse_doi_issue(doi: str) -> tuple[str, str] | None:
+    """Parse (yy, issue) path components from a journal DOI."""
     m = re.search(r"2219-5335-(\d{4})-(\d+)-", doi)
     if not m:
         return None
@@ -104,6 +109,7 @@ def parse_doi_issue(doi: str) -> tuple[str, str] | None:
 
 
 def parse_doi_pages(doi: str) -> tuple[int, int] | None:
+    """Parse the (first, last) page range from a journal DOI."""
     m = re.search(r"2219-5335-\d{4}-\d+-\d+-(\d+)-(\d+)$", doi)
     if not m:
         return None
@@ -111,6 +117,7 @@ def parse_doi_pages(doi: str) -> tuple[int, int] | None:
 
 
 def parse_journal_issue(text: str) -> tuple[str, str, int, int] | None:
+    """Parse (yy, issue, first page, last page) from a citation like 2013;23(5):1-10."""
     m = JOURNAL_ISSUE_RE.search(text)
     if not m:
         return None
@@ -119,6 +126,7 @@ def parse_journal_issue(text: str) -> tuple[str, str, int, int] | None:
 
 
 def pdf_text_has_doi(pdf_text: str, doi: str) -> bool:
+    """True if the PDF text mentions the DOI or its page range."""
     compact = re.sub(r"\s+", "", pdf_text)
     tail = doi.split("/")[-1]
     needles = {doi, tail, tail.replace("-", ""), doi.replace("-", "")}
@@ -134,6 +142,7 @@ def pdf_text_has_doi(pdf_text: str, doi: str) -> bool:
 
 
 def ensure_pdf(url: str, session: requests.Session) -> Path:
+    """Download the PDF into the cache (if needed) and return its local path."""
     path = pdf_cache_path(url)
     download_pdf(url, path, session)
     return path
@@ -145,6 +154,7 @@ def scan_issue_pdfs(
     session: requests.Session,
     matcher,
 ) -> str:
+    """Probe every PDF of a journal issue and return the first URL whose text matches."""
     for n in range(1, MAX_ISSUE_PDF):
         url = f"http://journalkubansad.ru/pdf/{yy}/{ii}/{n:02d}.pdf"
         try:
@@ -160,6 +170,7 @@ def scan_issue_pdfs(
 
 
 def resolve_pdf_by_doi(doi: str, session: requests.Session, by: dict[str, str]) -> str:
+    """Resolve a PDF URL for a DOI via cache, known map, or issue scan."""
     if doi in PDF_PROBE_CACHE:
         return PDF_PROBE_CACHE[doi]
     if doi in by:
@@ -180,14 +191,15 @@ def resolve_pdf_by_doi(doi: str, session: requests.Session, by: dict[str, str]) 
     return found
 
 
-def kratko_keywords(text: str) -> list[str]:
+def brief_keywords(text: str) -> list[str]:
+    """Up to 8 distinctive keywords from the article's Brief section."""
     chunk = text
-    for label in ("Кратко:", "Кратко для садовода"):
+    for label in ("Brief:", "Brief for the grower"):
         if label in text:
             chunk = text.split(label, 1)[1]
             break
     chunk = chunk[:800]
-    words = re.findall(r"[А-ЯЁа-яё]{5,}", chunk)
+    words = re.findall(r"[a-zA-Z]{5,}", chunk)
     out = []
     for w in words:
         low = w.lower()
@@ -201,13 +213,14 @@ def kratko_keywords(text: str) -> list[str]:
 
 
 def author_surnames(meta: dict[str, str]) -> list[str]:
-    authors = meta.get("Авторы", "")
+    """Up to 4 author surnames from metadata, excluding place names."""
+    authors = meta.get("Authors", "")
     skip = {
-        "краснодар", "ставрополь", "северо", "кабардино", "нальчик",
-        "москва", "орел", "орёл", "астрахань", "беларусь",
+        "krasnodar", "stavropol", "north", "kabardino", "nalchik",
+        "moscow", "orel", "astrakhan", "belarus",
     }
     out: list[str] = []
-    for w in re.findall(r"[А-ЯЁ][а-яё]{3,}", authors):
+    for w in re.findall(r"[A-Z][a-z]{3,}", authors):
         low = w.lower()
         if low in skip:
             continue
@@ -217,14 +230,15 @@ def author_surnames(meta: dict[str, str]) -> list[str]:
 
 
 def pdf_matches_topic(pdf_text: str, text: str, meta: dict[str, str]) -> bool:
+    """Check that the PDF matches the article by authors and keyword overlap."""
     low = pdf_text.lower()
     authors = author_surnames(meta)
     if authors and not any(a in low for a in authors):
         return False
     if any(m.lower() in low for m in WRONG_PDF_MARKERS):
-        if authors and "попова" not in authors:
+        if authors and "popova" not in authors:
             return False
-    kws = kratko_keywords(text)
+    kws = brief_keywords(text)
     if len(kws) < 3:
         return True
     score = sum(1 for k in kws if k in low)
@@ -232,10 +246,11 @@ def pdf_matches_topic(pdf_text: str, text: str, meta: dict[str, str]) -> bool:
 
 
 def has_wrong_pdf_assignment(text: str, meta: dict[str, str]) -> bool:
+    """True if the article contains content from a known mismatched PDF."""
     if not any(m in text for m in WRONG_PDF_MARKERS):
         return False
     authors = author_surnames(meta)
-    return bool(authors) and "попова" not in authors
+    return bool(authors) and "popova" not in authors
 
 
 def resolve_from_corpus(
@@ -244,9 +259,9 @@ def resolve_from_corpus(
     session: requests.Session,
     meta: dict[str, str],
 ) -> str:
-    """Найти PDF по совпадению ключевых слов с уже расширенной статьёй той же культуры."""
+    """Find PDF by keyword overlap with an already expanded article in the same crop."""
     crop = path.parent.name
-    kws = kratko_keywords(text)
+    kws = brief_keywords(text)
     if len(kws) < 3:
         return ""
     best_url, best_score = "", 0
@@ -278,14 +293,16 @@ def resolve_from_corpus(
 
 
 def resolve_by_keywords(text: str, session: requests.Session) -> str:
+    """Find the article's PDF by scanning its journal issue with keyword/page matching."""
     issue = parse_journal_issue(text)
-    kws = kratko_keywords(text)
+    kws = brief_keywords(text)
     if not issue or len(kws) < 3:
         return ""
     yy, ii, p1, p2 = issue
     page_hint = f"{p1}-{p2}"
 
     def matcher(pdf_text: str) -> bool:
+        """Match a candidate PDF by page-range hint or keyword score."""
         if page_hint in pdf_text or page_hint.replace("-", "–") in pdf_text:
             return True
         low = pdf_text.lower()
@@ -301,6 +318,7 @@ def resolve_pdf_url(
     by_doi: dict[str, str],
     meta: dict[str, str],
 ) -> str:
+    """Resolve the source PDF URL for an article, trying overrides, DOI, keywords, corpus."""
     stem = path.stem
     if stem in MANUAL_PDF_OVERRIDES:
         return MANUAL_PDF_OVERRIDES[stem]
@@ -341,53 +359,56 @@ def resolve_pdf_url(
 
 
 def is_ingest_expanded(text: str) -> bool:
+    """True if the article already has the full auto-ingest structure."""
     return (
-        "Метаданные источника:" in text
+        "Source metadata:" in text
         and JOURNAL_URL_RE.search(text)
-        and "Основные результаты:" in text
+        and "Main findings:" in text
         and len(text) > 5000
         and (
-            "Цель и задачи:" in text
-            or "Объекты, методы" in text
-            or "Дополнение из ручной разметки" in text
+            "Goals and tasks:" in text
+            or "Objects, methods" in text
+            or "Manual markup supplement" in text
         )
     )
 
 
 def should_expand(path: Path, text: str, *, repair: bool = False) -> bool:
+    """Decide whether an article needs expansion (or repair of a wrong PDF)."""
     if article_num(path) > MAX_NUM:
         return False
     meta = parse_meta(text)
     if repair:
         return has_wrong_pdf_assignment(text, meta)
-    if "Кратко для садовода и ассистента:" in text and "Цель исследований:" in text:
+    if "Brief for the grower and assistant:" in text and "Research goal:" in text:
         return False
     if is_ingest_expanded(text) and not has_wrong_pdf_assignment(text, meta):
         return False
     if (
-        "Кратко для садовода" in text
-        and "Цель и задачи:" in text
+        "Brief for the grower" in text
+        and "Goals and tasks:" in text
         and len(text) > MAX_LEN
         and not has_wrong_pdf_assignment(text, meta)
     ):
         return False
     if (
         len(text) > MAX_LEN
-        and "Кратко:" not in text
+        and "Brief:" not in text
         and not has_wrong_pdf_assignment(text, meta)
     ):
         return False
     return bool(
-        re.search(r"Кратко(?:\s+для\s+садовода)?\s*:", text, re.I)
-        or "Практика:" in text
-        or "Новое для региона:" in text
+        re.search(r"Brief(?:\s+for\s+(?:the\s+)?grower)?\s*:", text, re.I)
+        or "Practice:" in text
+        or "New for the region:" in text
         or has_wrong_pdf_assignment(text, meta)
     )
 
 
 def parse_meta(text: str) -> dict[str, str]:
+    """Parse key metadata fields (Authors, Journal, DOI, ...) from article text."""
     meta: dict[str, str] = {}
-    for key in ("Авторы", "Журнал", "Регион", "Культура", "Культуры", "DOI"):
+    for key in ("Authors", "Journal", "Region", "Crop", "Crops", "DOI"):
         m = re.search(rf"-\s*{key}:\s*(.+)", text, re.I)
         if m:
             meta[key] = m.group(1).strip()
@@ -395,13 +416,14 @@ def parse_meta(text: str) -> dict[str, str]:
 
 
 def extract_manual_extra(text: str) -> str:
+    """Collect manual markup blocks (Practice, Notes, Figures...) worth preserving."""
     chunks: list[str] = []
     markers = (
-        "Новое для региона:",
-        "Практика:",
-        "Примечание для бота:",
-        "Связь с другими темами RAG:",
-        "Цифры:",
+        "New for the region:",
+        "Practice:",
+        "Note for the bot:",
+        "Related RAG topics:",
+        "Figures:",
     )
     for label in markers:
         if label not in text:
@@ -409,13 +431,14 @@ def extract_manual_extra(text: str) -> str:
         part = text.split(label, 1)[1]
         stop = len(part)
         for end_m in (
-            "Метаданные",
-            "Кратко",
-            "Цель",
-            "Дисклеймер",
-            "Аннотация",
-            "Цифры из",
-            "Основные результаты",
+            "Source metadata",
+            "Metadata",
+            "Brief",
+            "Goal",
+            "Disclaimer",
+            "Abstract",
+            "Figures from",
+            "Main findings",
         ):
             i = part.find("\n\n" + end_m)
             if i != -1:
@@ -423,24 +446,26 @@ def extract_manual_extra(text: str) -> str:
         body = part[:stop].strip()
         if len(body) > 40:
             chunks.append(f"{label}\n{body}")
-    note = re.search(r"-\s*Примечание[^:\n]*:\s*(.+)", text, re.I)
-    if note and "Примечание для бота" not in text:
-        chunks.append("Примечание из метаданных:\n" + note.group(1).strip())
+    note = re.search(r"-\s*Note[^:\n]*:\s*(.+)", text, re.I)
+    if note and "Note for the bot" not in text:
+        chunks.append("Note from metadata:\n" + note.group(1).strip())
     return "\n\n".join(chunks)
 
 
 def merge_body(pdf_body: str, manual_extra: str, meta: dict[str, str]) -> str:
+    """Append the preserved manual supplement to the PDF-derived article body."""
     if not manual_extra:
         return pdf_body
-    extra_lines = ["", "Дополнение из ручной разметки (сохранено при расширении):", manual_extra]
-    if "Регион" in meta and meta["Регион"] not in pdf_body:
-        extra_lines.insert(2, f"Регион (из метаданных): {meta['Регион']}")
-    if pdf_body.rstrip().endswith("адаптации."):
+    extra_lines = ["", "Manual markup supplement (preserved during expansion):", manual_extra]
+    if "Region" in meta and meta["Region"] not in pdf_body:
+        extra_lines.insert(2, f"Region (from metadata): {meta['Region']}")
+    if pdf_body.rstrip().endswith("adaptation."):
         return pdf_body.rstrip()[:-1].rstrip() + "\n" + "\n".join(extra_lines) + "\n"
     return pdf_body.rstrip() + "\n" + "\n".join(extra_lines) + "\n"
 
 
 def display_title(path: Path) -> str:
+    """Pretty article title from config/article_titles.json, falling back to the file stem."""
     if TITLES_PATH.exists():
         try:
             titles = json.loads(TITLES_PATH.read_text(encoding="utf-8"))
@@ -454,6 +479,7 @@ def display_title(path: Path) -> str:
 
 
 def main() -> None:
+    """Expand or repair short articles from journal PDFs and report the counts."""
     repair = "--repair" in sys.argv
     session = requests.Session()
     session.headers["User-Agent"] = "doctor_gardens_ai-kb-bot/1.0 (research; local)"
@@ -479,7 +505,7 @@ def main() -> None:
                 "title": display_title(path),
                 "pdf_url": pdf_url,
                 "doi": norm_doi(text),
-                "authors": meta.get("Авторы", ""),
+                "authors": meta.get("Authors", ""),
                 "abstract": "",
                 "crop_id": crop,
             }

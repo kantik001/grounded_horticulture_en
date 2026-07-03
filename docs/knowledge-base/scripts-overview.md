@@ -1,164 +1,164 @@
-﻿# Разбор: папка `scripts/`
+﻿# Walkthrough: `scripts/` folder
 
-**Папка:** `scripts/`  
-**Назначение:** утилиты для разработки — **не** часть runtime в Docker (кроме косвенно: те же команды вы делаете руками).
+**Folder:** `scripts/`  
+**Purpose:** development utilities — **not** part of Docker runtime (except indirectly: you run the same commands manually).
 
-| Файл | Платформа | Задача |
-|------|-----------|--------|
-| `reindex_rag.py` | Python | Пересобрать Chroma + BM25 из `data/` |
-| `run_rag_eval.py` | Python | Прогон `eval/*.jsonl` (retrieval), отчёт в `eval/results/` |
-| `docker_build.sh` | Linux / CI | Сборка Docker-образов |
-| `smoke.sh` | Linux / macOS / Git Bash | Быстрая проверка API Go |
-| `smoke.ps1` | Windows PowerShell | То же для Windows |
+| File | Platform | Task |
+|------|----------|------|
+| `reindex_rag.py` | Python | Rebuild Chroma + BM25 from `data/` |
+| `run_rag_eval.py` | Python | Run `eval/*.jsonl` (retrieval), report to `eval/results/` |
+| `docker_build.sh` | Linux / CI | Build Docker images |
+| `smoke.sh` | Linux / macOS / Git Bash | Quick Go API check |
+| `smoke.ps1` | Windows PowerShell | Same for Windows |
 
-> Скрипты загрузки статей из журнала (`journal_ingest.py` и др.) есть на ветке `master`, но **не входят** в публичную ветку `public-portfolio`.
+> Article ingestion scripts (`journal_ingest.py`, etc.) exist on the `master` branch but **are not** in the public `public-portfolio` branch.
 
 ---
 
-## Когда что использовать
+## When to use what
 
 ```mermaid
 flowchart TD
-    A[Добавили .txt в data/] --> B{Где запускаете?}
-    B -->|Локально Python| C[reindex_rag.py]
-    B -->|Docker + админка| D[admin upload + reindex]
+    A[Added .txt to data/] --> B{Where do you run?}
+    B -->|Local Python| C[reindex_rag.py]
+    B -->|Docker + admin| D[admin upload + reindex]
     B -->|Docker env| E[FORCE_RAG_REINDEX=true + restart classifier]
 
-    F[Подняли docker compose] --> G{ОС?}
-    G -->|Windows| H[smoke.ps1 или make smoke]
+    F[Started docker compose] --> G{OS?}
+    G -->|Windows| H[smoke.ps1 or make smoke]
     G -->|Linux/Mac| I[smoke.sh]
 ```
 
 ---
 
-## `reindex_rag.py` — переиндексация RAG
+## `reindex_rag.py` — RAG reindex
 
-### Зачем
+### Why
 
-После добавления или изменения статей в `data/{crop_id}/*.txt` индексы **Chroma** (`chroma_db/`) и **BM25** (`bm25_db/`) должны обновиться. Иначе `search()` не найдёт новый текст (или hybrid отключится без BM25).
+After adding or changing articles in `data/{crop_id}/*.txt`, **Chroma** (`chroma_db/`) and **BM25** (`bm25_db/`) indexes must be updated. Otherwise `search()` will not find new text (or hybrid disables without BM25).
 
-### Как работает (построчно)
+### How it works (step by step)
 
-1. Добавляет корень проекта в `sys.path` (как `app.py`).
-2. Ставит **`FORCE_RAG_REINDEX=true`** — тот же флаг, что понимает `rag/vector_store.py`.
-3. Вызывает **`create_vector_store()`** напрямую:
-   - читает все `.txt`;
-   - режет на чанки (`rag/chunking.py`);
-   - строит embeddings → `chroma_db/`;
-   - строит BM25 → `bm25_db/`.
+1. Adds project root to `sys.path` (like `app.py`).
+2. Sets **`FORCE_RAG_REINDEX=true`** — same flag understood by `rag/vector_store.py`.
+3. Calls **`create_vector_store()`** directly:
+   - reads all `.txt`;
+   - chunks (`rag/chunking.py`);
+   - builds embeddings → `chroma_db/`;
+   - builds BM25 → `bm25_db/`.
 
-Не поднимает Flask и не нужен `ADMIN_SECRET`.
+Does not start Flask and does not need `ADMIN_SECRET`.
 
-### Запуск
+### Run
 
-Из корня проекта (нужен Python с зависимостями `cv/requirements.txt`, пакеты `rag/`):
+From project root (need Python with `cv/requirements.txt` deps, `rag/` packages):
 
 ```bash
 python scripts/reindex_rag.py
 ```
 
-Ожидаемый вывод: `Создаю новую векторную базу...`, `Фрагментов: N`, `BM25 индекс сохранён...`, `Переиндексация RAG завершена.`
+Expected output: `Creating new vector store...`, `Fragments: N`, `BM25 index saved...`, `RAG reindex complete.`
 
-### Альтернативы (то же по смыслу)
+### Alternatives (same meaning)
 
-| Способ | Когда |
-|--------|--------|
-| Админка `admin.html` → Reindex | Docker, есть `ADMIN_SECRET` |
-| `POST /admin/reindex` на Python-сервис (compose: classifier) | из Go-админки |
-| `FORCE_RAG_REINDEX=true` при старте classifier | в `.env`, один раз при деплое |
+| Method | When |
+|--------|------|
+| Admin `admin.html` → Reindex | Docker, have `ADMIN_SECRET` |
+| `POST /admin/reindex` on Python service (compose: classifier) | from Go admin |
+| `FORCE_RAG_REINDEX=true` on classifier startup | in `.env`, once on deploy |
 
-Подробнее: [rag-vector_store.md](./rag-vector_store.md).
+Details: [rag-vector_store.md](./rag-vector_store.md).
 
-### Отличие от admin reindex
+### Difference from admin reindex
 
-- **Скрипт** — удобно на машине разработчика с локальными `chroma_db/` и `bm25_db/`.
-- **Admin/API** — когда всё в Docker и volumes `chroma_data` + `bm25_data` внутри контейнера.
+- **Script** — convenient on dev machine with local `chroma_db/` and `bm25_db/`.
+- **Admin/API** — when everything is in Docker and volumes `chroma_data` + `bm25_data` are inside the container.
 
-Пути индексов должны совпадать с тем, что видит процесс на `/rag/context`. После reindex: **`docker compose restart classifier`**.
+Index paths must match what the process sees on `/rag/context`. After reindex: **`docker compose restart classifier`**.
 
 ---
 
-## `run_rag_eval.py` — регрессии RAG
+## `run_rag_eval.py` — RAG regressions
 
-### Зачем
+### Why
 
-Проверить, что после reindex или смены промптов **retrieval** находит ожидаемые фрагменты (без вызова LLM).
+Verify that after reindex or prompt changes **retrieval** finds expected fragments (without calling LLM).
 
-### Наборы
+### Suites
 
-| `--suite` | Файл | Вопросов |
-|-----------|------|----------|
+| `--suite` | File | Questions |
+|-----------|------|-----------|
 | `apple` | `eval/rag_apple_baseline.jsonl` | 45 |
 | `pear` | `eval/rag_pear_baseline.jsonl` | 8 |
 | `plum` | `eval/rag_plum_baseline.jsonl` | 10 |
 | `demo_hr` | `eval/rag_demo_hr_baseline.jsonl` | 5 |
-| `all` | все выше | **68** |
+| `all` | all above | **68** |
 
-### Запуск
+### Run
 
 ```bash
-# classifier должен слушать :5000
+# classifier must listen on :5000
 set CLASSIFIER_RAG_URL=http://localhost:5000/rag/context
 python scripts/run_rag_eval.py --suite all
 
-# Быстро in-process (в Docker classifier)
+# Fast in-process (in Docker classifier)
 python scripts/run_rag_eval.py --suite all --in-process --fast
 
 make eval-retrieval
 ```
 
-**CI:** полный прогон — GitHub Actions → workflow **RAG Eval** (ручной). См. [github-ci.yml.md](./github-ci.yml.md).
+**CI:** full run — GitHub Actions → workflow **RAG Eval** (manual). See [github-ci.yml.md](./github-ci.yml.md).
 
-Отчёт: `eval/results/`. Подробнее: [eval/README.md](../../eval/README.md), [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md).
+Report: `eval/results/`. Details: [eval/README.md](../../eval/README.md), [quality-eval-and-rag-logs.md](./quality-eval-and-rag-logs.md).
 
 ---
 
-## `smoke.sh` и `smoke.ps1` — smoke-тест API
+## `smoke.sh` and `smoke.ps1` — API smoke test
 
-### Зачем
+### Why
 
-**Быстро проверить**, что Go-сервер жив и основные маршруты отвечают **2xx**, без ручного кликанья в Web App.
+**Quickly verify** Go server is alive and main routes return **2xx**, without manual clicks in the Web App.
 
-Это **не** полноценные E2E-тесты (нет RAG-вопроса, нет фото, нет LLM).
+This is **not** full E2E (no RAG question, no photo, no LLM).
 
-### Предусловия
+### Prerequisites
 
-1. Запущен стек, доступен **Go на порту 8080** (обычно `docker compose up`).
-2. Для **`POST /api/session`** без Telegram в `.env`:
+1. Stack running, **Go on port 8080** available (usually `docker compose up`).
+2. For **`POST /api/session`** without Telegram in `.env`:
 
    ```env
    TELEGRAM_AUTH_DISABLED=true
    ```
 
-   И пересоздать server: `docker compose up -d --force-recreate server`.
+   And recreate server: `docker compose up -d --force-recreate server`.
 
-Иначе session вернёт 401 — smoke упадёт (в `.ps1` будет `[WARN]`).
+Otherwise session returns 401 — smoke fails (`.ps1` will show `[WARN]`).
 
-### Что проверяют (одинаково в sh и ps1)
+### What they check (same in sh and ps1)
 
-| Шаг | Метод | Путь | Смысл |
-|-----|--------|------|--------|
-| health | GET | `/health` | сервер поднялся |
-| crops | GET | `/api/crops` | конфиг культур |
-| session | POST | `/api/session` `{"crop_id":"apple"}` | создать чат-сессию |
-| onboarding | GET | `/api/onboarding?crop_id=apple` | онбординг для культуры |
+| Step | Method | Path | Meaning |
+|------|--------|------|---------|
+| health | GET | `/health` | server up |
+| crops | GET | `/api/crops` | crop config |
+| session | POST | `/api/session` `{"crop_id":"apple"}` | create chat session |
+| onboarding | GET | `/api/onboarding?crop_id=apple` | crop onboarding |
 
-Успех: HTTP код **2xx** (200–299).  
-Итог: `Smoke PASSED` или exit code 1.
+Success: HTTP **2xx** (200–299).  
+Result: `Smoke PASSED` or exit code 1.
 
 ### `smoke.sh` (bash)
 
 ```bash
 ./scripts/smoke.sh
-# или другой хост:
+# or another host:
 ./scripts/smoke.sh http://127.0.0.1:8080
 ```
 
-- `set -euo pipefail` — падать при ошибках.
-- `curl` пишет тело во `/tmp/smoke_body.txt`.
-- Первый аргумент — `BASE_URL` (по умолчанию `http://localhost:8080`).
+- `set -euo pipefail` — fail on errors.
+- `curl` writes body to `/tmp/smoke_body.txt`.
+- First argument — `BASE_URL` (default `http://localhost:8080`).
 
-Подходит: Git Bash на Windows, Linux, macOS, CI (если добавите job вручную).
+Works: Git Bash on Windows, Linux, macOS, CI (if you add a job manually).
 
 ### `smoke.ps1` (PowerShell)
 
@@ -167,61 +167,61 @@ make eval-retrieval
 .\scripts\smoke.ps1 -BaseUrl "http://localhost:8080"
 ```
 
-- `Invoke-WebRequest` вместо curl.
-- Парсит `session_id` из JSON и выводит `[INFO] session_id=...`.
-- **`make smoke`** в Makefile вызывает именно этот файл (Windows-ориентированный проект).
+- `Invoke-WebRequest` instead of curl.
+- Parses `session_id` from JSON and prints `[INFO] session_id=...`.
+- **`make smoke`** in Makefile calls this file (Windows-oriented project).
 
-### Чего smoke **не** проверяет
+### What smoke does **not** check
 
-- Python classifier `:5000` (только косвенно — если server healthy).
+- Python classifier `:5000` (only indirectly — if server healthy).
 - `POST /api/message` / RAG / LLM.
-- `POST /classify` с фото.
-- PostgreSQL напрямую.
+- `POST /classify` with photo.
+- PostgreSQL directly.
 - Admin upload / reindex.
 
-Для RAG/CV — ручной тест в webapp или отдельные тесты (`pytest`, `go test`).
+For RAG/CV — manual webapp test or separate tests (`pytest`, `go test`).
 
-### Связь с CI
+### CI relation
 
-В [github-ci.yml.md](./github-ci.yml.md) smoke **не** входит в workflow — только `go-test`, `python-test`, `docker-build`. Smoke — **локально после `docker compose up`**.
+In [github-ci.yml.md](./github-ci.yml.md) smoke is **not** in the workflow — only `go-test`, `python-test`, `docker-build`. Smoke — **locally after `docker compose up`**.
 
 ---
 
-## Сравнение трёх скриптов
+## Three-script comparison
 
 | | reindex_rag.py | smoke.sh / smoke.ps1 |
 |--|----------------|----------------------|
-| Нужен Docker | нет (но пути должны совпасть) | да (обычно) |
-| Сервис | Python rag | Go :8080 |
-| Зависимости | torch/langchain/chroma тяжёлые | curl или PowerShell |
-| Время | минуты (embeddings) | секунды |
-| Частота | после новых статей | после каждого деплоя/запуска |
+| Needs Docker | no (but paths must match) | yes (usually) |
+| Service | Python rag | Go :8080 |
+| Dependencies | torch/langchain/chroma heavy | curl or PowerShell |
+| Time | minutes (embeddings) | seconds |
+| Frequency | after new articles | after each deploy/start |
 
 ---
 
-## Типичные сценарии
+## Typical scenarios
 
-### «Залил статьи, бот не находит ответ»
+### “Uploaded articles, bot does not find answers”
 
 ```bash
 python scripts/reindex_rag.py
-# или reindex в админке
-docker compose restart classifier   # если искали из контейнера
+# or reindex in admin
+docker compose restart classifier   # if searching from container
 ```
 
-### «Поднял compose, хочу убедиться что API ок»
+### “Started compose, want to verify API”
 
 ```powershell
 make smoke
-# или .\scripts\smoke.ps1
+# or .\scripts\smoke.ps1
 ```
 
-### «Smoke FAIL на session»
+### “Smoke FAIL on session”
 
-Проверить `TELEGRAM_AUTH_DISABLED=true` в `.env` и `force-recreate server`.
+Check `TELEGRAM_AUTH_DISABLED=true` in `.env` and `force-recreate server`.
 
 ---
 
-## Краткий итог
+## Brief summary
 
-`scripts/` — **две задачи разработчика**: (1) **обновить индекс статей** — `reindex_rag.py`; (2) **проверить, что Go API отвечает** — `smoke.ps1` / `smoke.sh`. Не путать с unit-тестами (`tests/`, `go test`) и не с CI на GitHub Actions.
+`scripts/` — **two developer tasks**: (1) **refresh article index** — `reindex_rag.py`; (2) **verify Go API responds** — `smoke.ps1` / `smoke.sh`. Do not confuse with unit tests (`tests/`, `go test`) or GitHub Actions CI.

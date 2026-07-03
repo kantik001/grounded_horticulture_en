@@ -1,26 +1,26 @@
-﻿# Разбор: папка `webapp/`
+﻿# Walkthrough: `webapp/` folder
 
-**Папка:** `webapp/` — фронтенд без React/Vue: **статический HTML + CSS + JS**, раздаётся **Nginx** (контейнер `webapp`, порт **80**).
+**Folder:** `webapp/` — frontend without React/Vue: **static HTML + CSS + JS**, served by **Nginx** (container `webapp`, port **80**).
 
-| Файл | Роль |
+| File | Role |
 |------|------|
-| `index.html` | Разметка чата (Telegram Web App) |
-| `app.css` | Стили чата |
-| `app.js` | Логика чата, `apiFetch`, сессии, `/message` |
-| `admin.html` | Админка: upload `.txt` + reindex RAG |
-| `nginx.conf` | Прокси `/api/` → Go, раздача HTML |
+| `index.html` | Chat markup (Telegram Web App) |
+| `app.css` | Chat styles |
+| `app.js` | Chat logic, `apiFetch`, sessions, `/message` |
+| `admin.html` | Admin UI: upload `.txt` + RAG reindex |
+| `nginx.conf` | Proxy `/api/` → Go, serve HTML |
 
-Сборка: `Dockerfile.webapp` копирует `index.html`, `app.css`, `app.js`, `admin.html` в образ.
+Build: `Dockerfile.webapp` copies `index.html`, `app.css`, `app.js`, `admin.html` into the image.
 
-Тексты шапки и дисклеймера подгружаются из **`GET /api/branding`** (`config/branding.json`) — при клоне платформы правят JSON, не обязательно HTML. Поле **`photo_beta_notice`** показывается при прикреплении фото (CV в бета-режиме).
+Header and disclaimer text are loaded from **`GET /api/branding`** (`config/branding.json`) — when cloning the platform, edit JSON, not necessarily HTML. Field **`photo_beta_notice`** is shown when attaching a photo (CV in beta).
 
 ---
 
-## Архитектура в Docker
+## Architecture in Docker
 
 ```mermaid
 flowchart LR
-    Browser["Браузер / Telegram"]
+    Browser["Browser / Telegram"]
     Nginx["webapp :80"]
     Go["server :8080"]
     Py["classifier :5000"]
@@ -32,46 +32,46 @@ flowchart LR
     Go -->|RAG CV| Py
 ```
 
-В `docker-compose.yml` HTML монтируется **read-only** с хоста — правки `index.html` видны после refresh без пересборки образа (если volume настроен на `./webapp/...`).
+In `docker-compose.yml`, HTML is mounted **read-only** from the host — edits to `index.html` appear after refresh without rebuilding the image (if the volume is set to `./webapp/...`).
 
 ---
 
-## `nginx.conf` — шлюз
+## `nginx.conf` — gateway
 
 ### `location /api/`
 
-- Запросы `http://localhost/api/session` → `http://server:8080/session` (префикс `/api` срезается при proxy).
-- Пробрасывает **`X-Telegram-Init-Data`** — без этого Go не узнает пользователя Telegram.
-- Таймауты до **120s** — долгий RAG+LLM.
-- `client_max_body_size 12m` — загрузка фото.
+- Requests `http://localhost/api/session` → `http://server:8080/session` (prefix `/api` is stripped on proxy).
+- Forwards **`X-Telegram-Init-Data`** — without this Go cannot identify the Telegram user.
+- Timeouts up to **120s** — long RAG+LLM.
+- `client_max_body_size 12m` — photo upload.
 
 ### `location /`
 
-- `try_files` → `index.html` для SPA-подобного поведения (фактически один HTML).
-- Заголовки безопасности: `X-Frame-Options`, `nosniff`, `no-cache` для HTML.
+- `try_files` → `index.html` for SPA-like behavior (effectively one HTML page).
+- Security headers: `X-Frame-Options`, `nosniff`, `no-cache` for HTML.
 
-### Статика `js|css|png|...`
+### Static `js|css|png|...`
 
-Кэш 1 год — у вас почти всё inline в HTML, блок почти не используется.
+Cache 1 year — almost everything is inline in HTML here, so this block is barely used.
 
-### Локальная отладка без nginx
+### Local debugging without nginx
 
-`index.html` умеет fallback на **`http://host:8080/api/`** (см. `apiFetch` в JS) — если открыли файл напрямую или nginx не проксирует.
+`index.html` can fall back to **`http://host:8080/api/`** (see `apiFetch` in JS) — if you opened the file directly or nginx is not proxying.
 
 ---
 
-## `index.html` — пользовательский чат
+## `index.html` — user chat
 
-**`index.html`** — разметка; **`app.css`** — стили; **`app.js`** — логика (~600 строк). Telegram Web App SDK подключается с `telegram.org`.
+**`index.html`** — markup; **`app.css`** — styles; **`app.js`** — logic (~600 lines). Telegram Web App SDK is loaded from `telegram.org`.
 
-### Внешний вид
+### Appearance
 
-- Стиль «мессенджер»: пузыри user/assistant, шапка с дисклеймером (id: `headerTitle`, `headerSubtitle`, `headerDisclaimer` — заполняются из branding API).
-- CSS-переменные `--tg-theme-*` — подстройка под тему Telegram.
-- Выбор **культуры** (`cropSelect`) в шапке.
-- Онбординг: чипы с примерами вопросов (`onboardingRoot`).
-- Композер: текст, 📎 фото, отправка.
-- У ответов бота: **👍 / 👎** (`feedback-row`).
+- Messenger style: user/assistant bubbles, header with disclaimer (ids: `headerTitle`, `headerSubtitle`, `headerDisclaimer` — filled from branding API).
+- CSS variables `--tg-theme-*` — adapt to Telegram theme.
+- **Crop** selector (`cropSelect`) in the header.
+- Onboarding: chips with sample questions (`onboardingRoot`).
+- Composer: text, 📎 photo, send.
+- Bot replies: **👍 / 👎** (`feedback-row`).
 
 ### Telegram Web App
 
@@ -80,145 +80,145 @@ const tg = window.Telegram && window.Telegram.WebApp;
 tg.ready(); tg.expand();
 ```
 
-- `getTelegramInitData()` → заголовок **`X-Telegram-Init-Data`** на каждый API-запрос.
-- В браузере без Telegram initData пустой → нужен **`TELEGRAM_AUTH_DISABLED=true`** на Go (локальная разработка).
+- `getTelegramInitData()` → **`X-Telegram-Init-Data`** header on every API request.
+- In a browser without Telegram, initData is empty → need **`TELEGRAM_AUTH_DISABLED=true`** on Go (local dev).
 
-### sessionStorage (состояние в браузере)
+### sessionStorage (browser state)
 
-| Ключ | Содержимое |
-|------|------------|
-| `apple_gardener_session_id` | id чат-сессии в Postgres |
-| `apple_gardener_crop_id` | выбранная культура |
-| `apple_gardener_api_base` | какой base URL сработал (`/api/` или `:8080`) |
+| Key | Content |
+|------|---------|
+| `apple_gardener_session_id` | chat session id in Postgres |
+| `apple_gardener_crop_id` | selected crop |
+| `apple_gardener_api_base` | which base URL worked (`/api/` or `:8080`) |
 
-Смена культуры → новая сессия (`createSessionWithCrop`).
+Crop change → new session (`createSessionWithCrop`).
 
-### `apiFetch(path)` — умный клиент API
+### `apiFetch(path)` — smart API client
 
-1. Пробует сохранённый base, затем `/api/`, затем `http://127.0.0.1:8080/api/`.
-2. Считает ответ «нашим», если JSON с полем **`success`** (отсекает чужие 404 HTML).
-3. Запоминает рабочий base в sessionStorage.
+1. Tries saved base, then `/api/`, then `http://127.0.0.1:8080/api/`.
+2. Treats a response as “ours” if JSON has **`success`** (filters foreign 404 HTML).
+3. Remembers working base in sessionStorage.
 
-При старте: `loadBranding()` → `/branding`, затем `loadCropsCatalog()` → `/crops`.
+On startup: `loadBranding()` → `/branding`, then `loadCropsCatalog()` → `/crops`.
 
-Типичные пути:
+Typical paths:
 
-| Метод | path | Назначение |
-|-------|------|------------|
-| GET | `/crops` | список культур |
+| Method | path | Purpose |
+|--------|------|---------|
+| GET | `/crops` | crop list |
 | POST | `/session` | `{ crop_id }` → `session_id` |
-| GET | `/history?session_id=` | восстановить чат |
-| GET | `/onboarding?crop_id=` | примеры вопросов |
-| POST | `/message` | текст JSON или multipart с фото |
+| GET | `/history?session_id=` | restore chat |
+| GET | `/onboarding?crop_id=` | sample questions |
+| POST | `/message` | text JSON or multipart with photo |
 | POST | `/feedback` | `{ session_id, message_id, rating: ±1 }` |
-| GET | `/uploads/...` | картинка из истории (через `loadAuthedImage`) |
+| GET | `/uploads/...` | image from history (via `loadAuthedImage`) |
 
-### Отправка сообщения `sendMessage()`
+### Sending a message `sendMessage()`
 
-**Только текст:**
+**Text only:**
 
 ```json
 POST /message
 { "session_id", "crop_id", "text" }
 ```
 
-**Фото (+ опционально текст):**
+**Photo (+ optional text):**
 
 ```
 multipart: session_id, crop_id, text, image
 ```
 
-Go → CV и/или RAG → в ответе **`messages`** — полный список, UI перерисовывает чат (`renderMessages`).
+Go → CV and/or RAG → response **`messages`** — full list, UI redraws chat (`renderMessages`).
 
-### Онбординг
+### Onboarding
 
-`loadOnboarding` → GET `/api/onboarding` → кнопки-подсказки; клик подставляет текст и вызывает `sendMessage()`. Скрывается, когда в чате уже есть сообщения.
+`loadOnboarding` → GET `/api/onboarding` → hint buttons; click fills text and calls `sendMessage()`. Hidden when the chat already has messages.
 
 ### Feedback
 
-Только у сообщений assistant с полем **`id`** (из БД). `sendFeedback` → POST `/feedback`, кнопки блокируются после голоса.
+Only on assistant messages with **`id`** (from DB). `sendFeedback` → POST `/feedback`, buttons disabled after voting.
 
-### Фото в истории
+### Photos in history
 
-`<img>` не шлёт заголовки auth → `loadAuthedImage` делает `fetch` с initData, blob URL.
+`<img>` does not send auth headers → `loadAuthedImage` does `fetch` with initData, blob URL.
 
-### Классы CV в UI
+### CV classes in UI
 
-`formatPredictionName` — русские подписи для `apple_scab`, `healthy_leaf` и т.д. (если backend вернул prediction в сообщении).
+`formatPredictionName` — localized labels for `apple_scab`, `healthy_leaf`, etc. (if backend returned prediction in the message).
 
-### Старт приложения
+### App startup
 
 ```
 loadCropsCatalog → ensureSession → loadOnboarding
 ```
 
-Ошибка на любом шаге → toast «Не удалось подключиться».
+Error on any step → toast “Failed to connect”.
 
 ---
 
-## `admin.html` — админка статей
+## `admin.html` — article admin
 
-Отдельная страница: **`http://localhost/admin.html`** (не внутри Telegram).
+Separate page: **`http://localhost/admin.html`** (not inside Telegram).
 
-### Авторизация
+### Authentication
 
-- **HTTP Basic** — логин/пароль из `.env`: `ADMIN_USER`, `ADMIN_PASSWORD`.
-- Креды в **`sessionStorage`** (`garden_admin_basic`), только вкладка браузера.
-- `checkLogin()` → GET `/api/admin/status` с заголовком `Authorization: Basic ...`.
+- **HTTP Basic** — login/password from `.env`: `ADMIN_USER`, `ADMIN_PASSWORD`.
+- Credentials in **`sessionStorage`** (`garden_admin_basic`), browser tab only.
+- `checkLogin()` → GET `/api/admin/status` with `Authorization: Basic ...` header.
 
-### После входа (`toolsCard`)
+### After login (`toolsCard`)
 
-| Действие | API |
-|----------|-----|
-| Список файлов | GET `/api/admin/articles?crop_id=` |
+| Action | API |
+|--------|-----|
+| File list | GET `/api/admin/articles?crop_id=` |
 | Upload `.txt` | POST `/api/admin/upload` (FormData: crop_id, file) |
 | Reindex RAG | POST `/api/admin/reindex` → Go → Python `/admin/reindex` |
 
-Ограничения upload (на Go): латиница в имени, `.txt`, до 2 МБ — см. `admin_test.go`.
+Upload limits (on Go): Latin filename, `.txt`, up to 2 MB — see `admin_test.go`.
 
-### Важно
+### Important
 
-- Админка **не** для обучения CV и **не** для загрузки `.pth` — только **текстовые статьи** в `data/{crop}/`.
-- После upload нужен **Reindex**, иначе Chroma и BM25 не обновятся.
+- Admin UI is **not** for CV training and **not** for uploading `.pth` — only **text articles** in `data/{crop}/`.
+- After upload you need **Reindex**, otherwise Chroma and BM25 are not updated.
 
 ---
 
-## Сравнение index vs admin
+## index vs admin comparison
 
 | | `index.html` | `admin.html` |
 |--|--------------|--------------|
-| Пользователь | садовод в Telegram | вы / коллега |
+| User | gardener in Telegram | you / colleague |
 | Auth | Telegram initData | Basic |
-| API префикс | `/api/...` | `/api/admin/...` |
-| Задачи | чат, фото, feedback | статьи, reindex |
+| API prefix | `/api/...` | `/api/admin/...` |
+| Tasks | chat, photo, feedback | articles, reindex |
 
 ---
 
-## Типичные проблемы
+## Common issues
 
-| Симптом | Проверить |
-|---------|-----------|
-| 401 на session | `TELEGRAM_AUTH_DISABLED` или открыть из Telegram |
-| 404 JSON | nginx не проксирует `/api/` — `docker compose up webapp server` |
-| API только с :8080 | нормально — `apiFetch` переключится сам |
-| Админка 403 | `ADMIN_PASSWORD` в `.env`, пересоздать server |
-| Reindex долго | embeddings, смотреть логи `classifier` |
-| Изменения HTML не видны | volume mount vs старый образ — `up --build webapp` |
+| Symptom | Check |
+|---------|-------|
+| 401 on session | `TELEGRAM_AUTH_DISABLED` or open from Telegram |
+| 404 JSON | nginx not proxying `/api/` — `docker compose up webapp server` |
+| API only on :8080 | normal — `apiFetch` will switch automatically |
+| Admin 403 | `ADMIN_PASSWORD` in `.env`, recreate server |
+| Reindex slow | embeddings, check `classifier` logs |
+| HTML changes not visible | volume mount vs old image — `up --build webapp` |
 
 ---
 
-## Что читать дальше
+## What to read next
 
-| Тема | Файл |
-|------|------|
-| Маршруты Go | [server-overview.md](./server-overview.md), `server/message_handlers.go` |
-| Онбординг JSON | `config/onboarding.json` |
+| Topic | File |
+|-------|------|
+| Go routes | [server-overview.md](./server-overview.md), `server/message_handlers.go` |
+| Onboarding JSON | `config/onboarding.json` |
 | Admin backend | `server/admin.go` |
-| RAG после reindex | [rag-vector_store.md](./rag-vector_store.md) |
-| Smoke API | [scripts-overview.md](./scripts-overview.md) |
+| RAG after reindex | [rag-vector_store.md](./rag-vector_store.md) |
+| API smoke | [scripts-overview.md](./scripts-overview.md) |
 
 ---
 
-## Краткий итог
+## Brief summary
 
-`webapp/` — **тонкий клиент**: Nginx отдаёт HTML и проксирует `/api/` на Go. `index.html` — Telegram-чат с сессией, культурой, текстом, фото, feedback. `admin.html` — загрузка статей и reindex. Вся «умная» логика — на Go/Python; здесь только UI и `fetch`.
+`webapp/` — **thin client**: Nginx serves HTML and proxies `/api/` to Go. `index.html` — Telegram chat with session, crop, text, photo, feedback. `admin.html` — article upload and reindex. All “smart” logic is on Go/Python; here only UI and `fetch`.

@@ -1,124 +1,124 @@
-﻿# Разбор: `cv/apple_classifier.py`
+﻿# Walkthrough: `cv/apple_classifier.py`
 
-**Исходный файл:** `cv/apple_classifier.py`  
-**Язык:** Python (PyTorch + torchvision)  
-**Связанные модули:** `cv/registry.py`, `api/app.py`, `cv/train_classifier.py`  
-**Кто вызывает:** `registry.get_classifier_for_crop()` → `app.py` (`POST /classify`)
-
----
-
-## Зачем этот файл
-
-Здесь живёт **нейросеть для распознавания болезней и состояния яблони/листа по фото**.
-
-- Архитектура: **MobileNetV2** (лёгкая CNN, подходит для мобильного/сервера).
-- На выходе: **один из 10 классов** + уверенность (confidence) + top-3 варианта.
-- Два способа подать картинку: **путь к файлу** (`predict`) или **байты из HTTP** (`predict_from_bytes`).
-
-Файл **не поднимает HTTP** — только логика модели. HTTP — в `app.py`.
+**Source file:** `cv/apple_classifier.py`  
+**Language:** Python (PyTorch + torchvision)  
+**Related modules:** `cv/registry.py`, `api/app.py`, `cv/train_classifier.py`  
+**Called by:** `registry.get_classifier_for_crop()` → `app.py` (`POST /classify`)
 
 ---
 
-## Классы, которые распознаёт модель
+## Why this file exists
 
-Метки по умолчанию — из **`config/cv_class_labels.json`** (`cv/labels_config.py`), экспорт **`DEFAULT_CLASS_LABELS`** для яблони. При загрузке `.pth` список может быть заменён на **`class_labels` из checkpoint**:
+**Neural network for apple/leaf disease and condition recognition from photos**.
 
-| Индекс | Метка | Смысл (кратко) |
-|--------|--------|----------------|
-| 0 | `healthy_apple` | Здоровое яблоко |
-| 1 | `apple_scab` | Парша |
-| 2 | `black_rot` | Чёрная гниль |
-| 3 | `cedar_apple_rust` | Ржавчина |
-| 4 | `healthy_leaf` | Здоровый лист |
-| 5 | `powdery_mildew` | Мучнистая роса |
-| 6 | `fire_blight` | Бактериальный ожог |
-| 7 | `bitter_rot` | Горькая гниль |
-| 8 | `blue_mold` | Голубая плесень |
-| 9 | `brown_rot` | Бурая гниль |
+- Architecture: **MobileNetV2** (light CNN, suitable for mobile/server).
+- Output: **one of 10 classes** + confidence + top-3 variants.
+- Two image inputs: **file path** (`predict`) or **HTTP bytes** (`predict_from_bytes`).
 
-При обучении (`train_classifier.py`) папки датасета идут **в порядке `DEFAULT_CLASS_LABELS`**; в checkpoint сохраняется `class_labels` — inference подхватывает тот же порядок.
+File does **not** serve HTTP — only model logic. HTTP is in `app.py`.
 
 ---
 
-## Инициализация: `__init__` (строки 28–54)
+## Classes the model recognizes
+
+Default labels — from **`config/cv_class_labels.json`** (`cv/labels_config.py`), export **`DEFAULT_CLASS_LABELS`** for apple. On `.pth` load list may be replaced by **`class_labels` from checkpoint**:
+
+| Index | Label | Meaning (brief) |
+|-------|--------|-----------------|
+| 0 | `healthy_apple` | Healthy apple |
+| 1 | `apple_scab` | Scab |
+| 2 | `black_rot` | Black rot |
+| 3 | `cedar_apple_rust` | Cedar apple rust |
+| 4 | `healthy_leaf` | Healthy leaf |
+| 5 | `powdery_mildew` | Powdery mildew |
+| 6 | `fire_blight` | Fire blight |
+| 7 | `bitter_rot` | Bitter rot |
+| 8 | `blue_mold` | Blue mold |
+| 9 | `brown_rot` | Brown rot |
+
+During training (`train_classifier.py`) dataset folders follow **`DEFAULT_CLASS_LABELS`** order; checkpoint saves `class_labels` — inference uses same order.
+
+---
+
+## Initialization: `__init__` (lines 28–54)
 
 ```python
 AppleClassifier(model_path='../models/mobilenet_v2-b0353104.pth', num_classes=10)
 ```
 
-Что происходит:
+What happens:
 
-1. **`self.device`** — `cuda`, если есть GPU, иначе `cpu`.
-2. Читает checkpoint (если есть) → **`class_labels`** и **`num_classes`**.
-3. **`self.model = self._build_model(checkpoint)`** — backbone + голова + `state_dict`.
-4. **`self.model.eval()`** — режим инференса (без dropout на обучении, фиксированное поведение).
-5. **`self.transform`** — пайплайн подготовки картинки:
-   - resize **224×224** (стандарт для ImageNet/MobileNet);
-   - в тензор;
-   - **Normalize** с mean/std ImageNet — те же числа, что при предобучении backbone.
+1. **`self.device`** — `cuda` if GPU available, else `cpu`.
+2. Reads checkpoint (if any) → **`class_labels`** and **`num_classes`**.
+3. **`self.model = self._build_model(checkpoint)`** — backbone + head + `state_dict`.
+4. **`self.model.eval()`** — inference mode (no training dropout, fixed behavior).
+5. **`self.transform`** — image pipeline:
+   - resize **224×224** (ImageNet/MobileNet standard);
+   - to tensor;
+   - **Normalize** with ImageNet mean/std — same as backbone pretraining.
 
-Без своих весов модель всё равно «запускается», но голова случайная → предсказания бессмысленны, пока не обучите и не укажете `MODEL_PATH`.
+Without your weights model still “runs”, but head is random → predictions meaningless until you train and set `MODEL_PATH`.
 
 ---
 
-## Загрузка модели: `_read_checkpoint` + `_build_model`
+## Model load: `_read_checkpoint` + `_build_model`
 
-### Шаг 1 — backbone
+### Step 1 — backbone
 
 ```python
 model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
 ```
 
-Берётся MobileNetV2, уже обученный на ImageNet (общие признаки: формы, текстуры, края).
+MobileNetV2 pretrained on ImageNet (general features: shapes, textures, edges).
 
-### Шаг 2 — своя «голова» классификатора
+### Step 2 — custom classifier head
 
-Последний слой заменяется на:
+Last layer replaced with:
 
-- `Dropout(0.2)` — регуляризация при обучении;
-- `Linear(..., num_classes)` — **10 выходов** (по числу болезней/состояний).
+- `Dropout(0.2)` — regularization during training;
+- `Linear(..., num_classes)` — **10 outputs** (disease/condition count).
 
-То есть transfer learning: тело сети — ImageNet, последний слой — под ваши классы.
+Transfer learning: ImageNet body, last layer for your classes.
 
-### Шаг 3 — ваши веса (если есть `model_path`)
+### Step 3 — your weights (if `model_path` exists)
 
-Checkpoint читается **один раз** в `__init__`; `_build_model` подставляет `state_dict`.
+Checkpoint read **once** in `__init__`; `_build_model` applies `state_dict`.
 
-Ожидаемый формат файла `.pth` (как сохраняет `train_classifier.py`):
+Expected `.pth` format (as saved by `train_classifier.py`):
 
 ```python
 {
     'epoch': ...,
     'state_dict': model.state_dict(),
-    'class_labels': [...],  # метки из датасета при обучении
+    'class_labels': [...],  # labels from training dataset
     'val_acc': ...
 }
 ```
 
-Важно: в `registry.py` путь к весам задаётся через `.env` (`MODEL_PATH`, `MODEL_PATH_{CROP}`). Если файла нет — в лог: «Весов нет — только backbone ImageNet».
+In `registry.py` weight path comes from `.env` (`MODEL_PATH`, `MODEL_PATH_{CROP}`). If file missing — log: “No weights — ImageNet backbone only”.
 
 ---
 
-## Инференс: общая логика
+## Inference: shared logic
 
-И `predict`, и `predict_from_bytes` делают одно и то же, разница только в источнике картинки:
+`predict` and `predict_from_bytes` do the same thing; only image source differs:
 
-| Метод | Вход |
-|--------|------|
-| `predict(image_path)` | путь к файлу на диске |
-| `predict_from_bytes(image_bytes)` | байты из multipart (API) |
+| Method | Input |
+|--------|-------|
+| `predict(image_path)` | file path on disk |
+| `predict_from_bytes(image_bytes)` | bytes from multipart (API) |
 
-### Пайплайн (одинаковый)
+### Pipeline (same)
 
-1. **PIL** открывает изображение, `convert('RGB')` (даже если было grayscale/RGBA).
-2. **`self.transform(image)`** → тензор 1×3×224×224.
-3. **`torch.no_grad()`** — без градиентов, быстрее и меньше памяти.
-4. **`outputs = self.model(image_tensor)`** — сырые логиты (10 чисел).
-5. **`softmax`** → вероятности по классам.
-6. **`torch.max`** → класс с максимальной вероятностью и **confidence**.
-7. **`torch.topk(..., 3)`** → три лучших варианта для UI/отладки.
+1. **PIL** opens image, `convert('RGB')` (even if grayscale/RGBA).
+2. **`self.transform(image)`** → tensor 1×3×224×224.
+3. **`torch.no_grad()`** — no gradients, faster, less memory.
+4. **`outputs = self.model(image_tensor)`** — raw logits (10 numbers).
+5. **`softmax`** → class probabilities.
+6. **`torch.max`** → highest-probability class and **confidence**.
+7. **`torch.topk(..., 3)`** → top three for UI/debug.
 
-### Успешный ответ (словарь)
+### Success response (dict)
 
 ```json
 {
@@ -134,45 +134,45 @@ Checkpoint читается **один раз** в `__init__`; `_build_model` п
 }
 ```
 
-### Ошибка
+### Error
 
 ```json
 {
   "success": false,
-  "error": "описание исключения",
+  "error": "exception description",
   "image_processed": false
 }
 ```
 
-Исключения не пробрасываются наружу — API получает JSON с `success: false` (удобно для Go).
+Exceptions are not re-raised — API gets JSON with `success: false` (convenient for Go).
 
 ---
 
-## Фабрика: `create_classifier` (строки 190–200)
+## Factory: `create_classifier` (lines 190–200)
 
 ```python
 def create_classifier(model_path: str = None) -> AppleClassifier:
     return AppleClassifier(model_path=model_path)
 ```
 
-Используется в **`registry.py`**: один раз создаёт классификатор на культуру и кладёт в кэш `_classifiers[crop_id]`.
+Used in **`registry.py`**: create classifier once per crop and cache in `_classifiers[crop_id]`.
 
 ---
 
-## Блок `if __name__ == '__main__'` (строки 203–212)
+## `if __name__ == '__main__'` block (lines 203–212)
 
-Локальный тест без сервера:
+Local test without server:
 
 ```bash
 cd cv
 python apple_classifier.py
 ```
 
-Ожидает файл `test_apple.jpg` рядом — для ручной проверки после обучения.
+Expects `test_apple.jpg` nearby — manual check after training.
 
 ---
 
-## Связь с остальной системой
+## System integration
 
 ```mermaid
 flowchart LR
@@ -181,70 +181,70 @@ flowchart LR
     C --> D[AppleClassifier.predict_from_bytes]
     D --> E[JSON prediction + confidence]
     E --> F[Go sendToClassifier]
-    F --> G[LLM или шаблон рекомендации]
+    F --> G[LLM or template recommendation]
 ```
 
-### Go после Python
+### Go after Python
 
-В Go (`server/classifier_client.go`, `server/photo_recommendations.go`):
+In Go (`server/classifier_client.go`, `server/photo_recommendations.go`):
 
-- парсит JSON в `ClassificationResult` (`prediction`, `confidence`, `top_predictions`);
-- `classifyAndRecommend` → `generatePhotoRecommendation` / `generateTemplateRecommendation` — текст совета по классу;
-- сохраняет в БД `class_prediction`, `class_confidence` (`postgres_store.go`).
+- parses JSON into `ClassificationResult` (`prediction`, `confidence`, `top_predictions`);
+- `classifyAndRecommend` → `generatePhotoRecommendation` / `generateTemplateRecommendation` — advice text by class;
+- saves `class_prediction`, `class_confidence` in DB (`postgres_store.go`).
 
-Порог confidence для «не уверен» в roadmap ещё в планах (фаза 4) — в `apple_classifier.py` сейчас **нет** отсечения по порогу, всегда отдаётся лучший класс.
-
----
-
-## Обучение модели (отдельный файл)
-
-Веса для `_load_model` готовит **`train_classifier.py`**:
-
-- датасет: папки по классам (`healthy_apple/`, `apple_scab/`, …);
-- та же архитектура MobileNetV2 + замена головы;
-- сохранение в `.pth` с ключом `state_dict`.
-
-После обучения:
-
-1. Положить файл, например `models/apple_classifier.pth`.
-2. В `.env`: `MODEL_PATH=models/apple_classifier.pth` (или путь из docker volume).
-3. Перезапустить контейнер `classifier`.
-
-Подробный разбор обучения — [cv-train_classifier.md](./cv-train_classifier.md).
+Confidence threshold for “not sure” is still planned in roadmap (phase 4) — `apple_classifier.py` has **no** threshold cutoff yet, always returns best class.
 
 ---
 
-## Частые вопросы
+## Model training (separate file)
 
-### Почему 224×224 и эти mean/std?
+Weights for `_load_model` come from **`train_classifier.py`**:
 
-MobileNetV2 и ImageNet обучались на таких размерах и нормализации. Другие числа → хуже качество без переобучения.
+- dataset: folders per class (`healthy_apple/`, `apple_scab/`, …);
+- same MobileNetV2 architecture + head replacement;
+- save to `.pth` with `state_dict` key.
 
-### Почему `num_classes=10`, а в списке 10 меток?
+After training:
 
-Должно совпадать. Если добавите класс — меняйте и список, и `num_classes`, и переобучайте.
+1. Put file e.g. `models/apple_classifier.pth`.
+2. In `.env`: `MODEL_PATH=models/apple_classifier.pth` (or docker volume path).
+3. Restart `classifier` container.
 
-### Модель всегда отвечает уверенно, но неправильно
-
-Скорее всего нет вашего `.pth` или мало данных при обучении. Проверьте лог registry: `Загрузка весов: ...` vs `Весов нет — только backbone ImageNet`.
-
-### `predict` и `predict_from_bytes`
-
-Оба вызывают общий **`_run_inference`** после препроцессинга тензора.
+Training walkthrough — [cv-train_classifier.md](./cv-train_classifier.md).
 
 ---
 
-## Что читать дальше
+## FAQ
 
-| Тема | Файл |
-|------|------|
-| HTTP и эндпоинт `/classify` | [python-api.md](./python-api.md) |
-| Выбор модели и кэш | [cv-registry.md](./cv-registry.md) |
-| Обучение весов | [cv-train_classifier.md](./cv-train_classifier.md) |
-| Рекомендация пользователю после CV | `server/classify_flow.go`, `photo_recommendations.go` (`generatePhotoRecommendation`) |
+### Why 224×224 and these mean/std?
+
+MobileNetV2 and ImageNet trained at this size and normalization. Different numbers → worse quality without retraining.
+
+### Why `num_classes=10` and 10 labels in list?
+
+Must match. Adding a class — change list, `num_classes`, and retrain.
+
+### Model always confident but wrong
+
+Likely no your `.pth` or too little training data. Check registry log: `Loading weights: ...` vs `No weights — ImageNet backbone only`.
+
+### `predict` and `predict_from_bytes`
+
+Both call shared **`_run_inference`** after tensor preprocessing.
 
 ---
 
-## Краткий итог
+## What to read next
 
-`apple_classifier.py` — **ядро Computer Vision**: загрузка MobileNetV2, подмена головы на 10 классов, препроцессинг, inference, JSON-результат. В проде вызывается только через **`predict_from_bytes`** из `app.py`; Go получает готовые `prediction` и `confidence` и дополняет ответ текстом.
+| Topic | File |
+|-------|------|
+| HTTP and `/classify` | [python-api.md](./python-api.md) |
+| Model selection and cache | [cv-registry.md](./cv-registry.md) |
+| Training weights | [cv-train_classifier.md](./cv-train_classifier.md) |
+| User recommendation after CV | `server/classify_flow.go`, `photo_recommendations.go` (`generatePhotoRecommendation`) |
+
+---
+
+## Brief summary
+
+`apple_classifier.py` — **CV core**: load MobileNetV2, replace head for 10 classes, preprocessing, inference, JSON result. In production called only via **`predict_from_bytes`** from `app.py`; Go gets `prediction` and `confidence` and adds text.

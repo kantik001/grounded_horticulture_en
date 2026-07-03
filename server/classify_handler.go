@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// POST /classify: фото → Python CV → рекомендация LLM или шаблон (без сессии чата).
+// POST /classify: photo -> Python CV -> LLM recommendation or template (no chat session).
 func handleClassification(c *gin.Context) {
 	imageData, cropID, filename, err := parseClassifyForm(c)
 	if err != nil {
@@ -15,15 +15,15 @@ func handleClassification(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Получено изображение: %s (%d байт)", filename, len(imageData))
+	log.Printf("Received image: %s (%d bytes)", filename, len(imageData))
 
-	result, err := classifyAndRecommend(imageData, cropID, "", nil)
+	result, err := classifyAndRecommend(c.Request.Context(), imageData, cropID, "", nil)
 	if err != nil {
 		jsonError(c, http.StatusInternalServerError, err)
 		return
 	}
 	if result.UsedLLMTemplate {
-		log.Printf("Рекомендация по фото: использован шаблон (LLM недоступен или ошибка)")
+		log.Printf("Photo recommendation: used template (LLM unavailable or error)")
 	}
 
 	c.JSON(http.StatusOK, RecommendationResponse{

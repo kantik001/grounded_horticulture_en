@@ -1,4 +1,4 @@
-"""RRF-слияние векторного и BM25 ранжирования."""
+"""RRF merge of vector and BM25 rankings."""
 
 import os
 import re
@@ -12,18 +12,22 @@ _DEFAULT_RERANK_CATEGORIES = frozenset(
 
 
 def env_flag(name: str, default: str = "true") -> bool:
+    """Boolean env var: 1/true/yes/on count as True."""
     return os.environ.get(name, default).lower() in ("1", "true", "yes", "on")
 
 
 def hybrid_enabled() -> bool:
+    """True when hybrid (vector + BM25) search is enabled."""
     return env_flag("RAG_HYBRID_ENABLED", "true")
 
 
 def rerank_enabled() -> bool:
+    """True when the cross-encoder reranker is enabled."""
     return env_flag("RAG_RERANK_ENABLED", "true")
 
 
 def rerank_categories() -> FrozenSet[str]:
+    """Question categories that trigger reranking (env override or defaults)."""
     raw = os.environ.get("RAG_RERANK_CATEGORIES", "")
     if raw.strip():
         return frozenset(part.strip().lower() for part in raw.split(",") if part.strip())
@@ -31,7 +35,7 @@ def rerank_categories() -> FrozenSet[str]:
 
 
 def rerank_for_category(category: Optional[str]) -> bool:
-    """Reranker только для «сложных» категорий (коды, дозы, сорта); general/irrigation — быстрее."""
+    """Reranker only for complex categories (codes, doses, varieties); general/irrigation is faster."""
     if not rerank_enabled():
         return False
     if env_flag("RAG_RERANK_ALWAYS", "false"):
@@ -46,11 +50,12 @@ _TOKEN_RE = re.compile(r"[\w\d]+", re.UNICODE)
 
 
 def tokenize(text: str) -> List[str]:
+    """Lowercase word tokens for BM25 indexing and queries."""
     return _TOKEN_RE.findall((text or "").lower())
 
 
 def rrf_merge(rankings: Iterable[Iterable[str]], k: int = RRF_K) -> List[str]:
-    """Reciprocal Rank Fusion: объединяет несколько ранжированных списков chunk_id."""
+    """Reciprocal Rank Fusion: merges multiple ranked chunk_id lists."""
     scores: dict[str, float] = {}
     for ranking in rankings:
         for rank, chunk_id in enumerate(ranking):

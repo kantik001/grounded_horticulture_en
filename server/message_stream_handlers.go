@@ -9,16 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// handleMessageStream — текстовый RAG+LLM с SSE-стримингом токенов LLM.
+// handleMessageStream runs text RAG+LLM with SSE token streaming.
 func handleMessageStream(c *gin.Context) {
 	var req jsonMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Ожидается JSON: session_id, text"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Expected JSON: session_id, text"})
 		return
 	}
 	text := strings.TrimSpace(req.Text)
 	if text == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Нужен текст"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Text required"})
 		return
 	}
 
@@ -38,7 +38,7 @@ func handleMessageStream(c *gin.Context) {
 	sid, sessionCrop, err := chatStore.GetOrCreateSession(ctx, strings.TrimSpace(req.SessionID), tgUser, requestCropID)
 	if err != nil {
 		log.Printf("GetOrCreateSession: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сессии"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Session error"})
 		return
 	}
 
@@ -50,11 +50,11 @@ func handleMessageStream(c *gin.Context) {
 	historyMs := time.Since(historyStart).Milliseconds()
 	if err != nil {
 		log.Printf("HistoryForLLM: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка истории"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "History error"})
 		return
 	}
 
-	input, errMsg, ragSoft, err := buildRAGLLMMessages(text, sessionCrop, prior, sid)
+	input, errMsg, ragSoft, err := buildRAGLLMMessages(ctx, text, sessionCrop, prior, sid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": publicAPIError(err)})
 		return
@@ -63,7 +63,7 @@ func handleMessageStream(c *gin.Context) {
 	userMsg, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "user", Content: text, Kind: "text"})
 	if err != nil {
 		log.Printf("AppendMessage user: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Ошибка сохранения"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Save error"})
 		return
 	}
 
@@ -74,7 +74,7 @@ func handleMessageStream(c *gin.Context) {
 		return
 	}
 	if errMsg != "" {
-		asstMsg, _ := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: "Ошибка: " + errMsg, Kind: "assistant"})
+		asstMsg, _ := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: "Error: " + errMsg, Kind: "assistant"})
 		status := http.StatusInternalServerError
 		if strings.Contains(errMsg, "LLM_API_KEY") {
 			status = http.StatusServiceUnavailable
@@ -105,16 +105,16 @@ func handleMessageStream(c *gin.Context) {
 		return
 	}
 
-	answer, ok, verifyPass, verifyReason := finalizeRAGAnswer(raw, input, sid)
+	answer, ok, verifyPass, verifyReason := finalizeRAGAnswer(ctx, raw, input, sid)
 	if !ok {
-		_ = writeSSE(c, "error", gin.H{"error": "Не удалось сформировать ответ"})
+		_ = writeSSE(c, "error", gin.H{"error": "Could not form an answer"})
 		return
 	}
 
 	asstMsg, err := chatStore.AppendMessage(ctx, sid, ChatMessage{Role: "assistant", Content: answer, Kind: "assistant"})
 	if err != nil {
 		log.Printf("AppendMessage assistant: %v", err)
-		_ = writeSSE(c, "error", gin.H{"error": "Ошибка сохранения"})
+		_ = writeSSE(c, "error", gin.H{"error": "Save error"})
 		return
 	}
 

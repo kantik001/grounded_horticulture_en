@@ -1,7 +1,7 @@
 # Agro Case Study — Grounded RAG Horticulture Assistant
 
 **Project:** grounded-horticulture (doctor_gardens_ai)  
-**Repository:** публичное портфолио — код + демо-данные; полный журнальный корпус не в git.
+**Repository:** [grounded_horticulture_en](https://github.com/kantik001/grounded_horticulture_en) — public portfolio (code + demo data); full journal corpus not in git.
 **Domain:** Apple, pear, plum — scientific articles from *Plodovodstvo i vinogradarstvo Yuga Rossii*  
 **Stack:** Go orchestration · Python hybrid RAG · Telegram Mini App · browser client (API key)
 
@@ -9,7 +9,7 @@
 
 ## Problem
 
-Gardeners and agronomists need **trustworthy, source-grounded** answers about rootstocks, slope planting, nutrition, and disease control — not generic LLM guesses. The knowledge base is large (~500 articles), Russian-language, and full of domain synonyms (СК-4 / СК 4, марссониоз / *Marssonina*).
+Gardeners and agronomists need **trustworthy, source-grounded** answers about rootstocks, slope planting, nutrition, and disease control — not generic LLM guesses. The knowledge base is large (~500 articles), mostly Russian-language in the private corpus, with domain synonyms (SK-4 / SK 4, marssonina / *Marssonina*).
 
 ## Solution
 
@@ -17,7 +17,7 @@ A production-style assistant with:
 
 1. **Hybrid retrieval** — Chroma (multilingual-e5-small) + BM25 + RRF merge  
 2. **Cross-encoder reranker** — `BAAI/bge-reranker-base` on top-32 candidates  
-3. **Chunking** — 650 tokens / 80 overlap, section-aware splits, “Кратко для садовода” priority  
+3. **Chunking** — 650 tokens / 80 overlap, section-aware splits, “Brief for the grower” priority  
 4. **Query expansion** — `config/agro_glossary.json` for horticulture synonyms  
 5. **Grounded generation** — Go builds the prompt, calls LLM, verifies numbers against context  
 6. **Multi-channel access** — Telegram `initData` or browser `X-API-Key`  

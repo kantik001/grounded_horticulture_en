@@ -18,16 +18,16 @@ import (
 const maxSessionMessages = 80
 const maxLLMHistoryMessages = 24
 
-// ChatStore — персистентное хранилище чата (PostgreSQL + файлы на диске).
+// ChatStore is persistent chat storage (PostgreSQL + files on disk).
 type ChatStore struct {
 	pool      *pgxpool.Pool
 	uploadDir string
 }
 
-// Подключается к Postgres и создаёт ChatStore с каталогом загрузок.
+// Connects to Postgres and creates ChatStore with an upload directory.
 func newChatStore(ctx context.Context, databaseURL, uploadDir string) (*ChatStore, error) {
 	if strings.TrimSpace(databaseURL) == "" {
-		return nil, fmt.Errorf("DATABASE_URL не задан")
+		return nil, fmt.Errorf("DATABASE_URL is not set")
 	}
 	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
 		return nil, fmt.Errorf("upload dir: %w", err)
@@ -43,27 +43,65 @@ func newChatStore(ctx context.Context, databaseURL, uploadDir string) (*ChatStor
 	return &ChatStore{pool: pool, uploadDir: uploadDir}, nil
 }
 
-// Закрывает пул соединений PostgreSQL.
+// Closes the PostgreSQL connection pool.
 func (st *ChatStore) Close() {
 	if st != nil && st.pool != nil {
 		st.pool.Close()
 	}
 }
 
-// Применяет один SQL-файл миграции к базе.
-func runMigrations(ctx context.Context, pool *pgxpool.Pool, sqlPath string) error {
+// Applies one SQL migration file to the database and records it in
+// schema_migrations within the same transaction.
+func applyMigration(ctx context.Context, pool *pgxpool.Pool, sqlPath string) error {
 	body, err := os.ReadFile(sqlPath)
 	if err != nil {
 		return fmt.Errorf("read migration %s: %w", sqlPath, err)
 	}
-	_, err = pool.Exec(ctx, string(body))
+	tx, err := pool.Begin(ctx)
 	if err != nil {
+		return fmt.Errorf("begin migration tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, string(body)); err != nil {
 		return fmt.Errorf("apply migration: %w", err)
 	}
-	return nil
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO schema_migrations (filename) VALUES ($1)`,
+		filepath.Base(sqlPath),
+	); err != nil {
+		return fmt.Errorf("record migration: %w", err)
+	}
+	return tx.Commit(ctx)
 }
 
-// Применяет все .sql из каталога миграций по порядку имени.
+// appliedMigrations returns the set of migration filenames already recorded
+// in schema_migrations (creating the ledger table on first run).
+func appliedMigrations(ctx context.Context, pool *pgxpool.Pool) (map[string]bool, error) {
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			filename   TEXT PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		)`); err != nil {
+		return nil, fmt.Errorf("create schema_migrations: %w", err)
+	}
+	rows, err := pool.Query(ctx, `SELECT filename FROM schema_migrations`)
+	if err != nil {
+		return nil, fmt.Errorf("read schema_migrations: %w", err)
+	}
+	defer rows.Close()
+	applied := make(map[string]bool)
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("scan schema_migrations: %w", err)
+		}
+		applied[name] = true
+	}
+	return applied, rows.Err()
+}
+
+// Applies pending .sql files from the migrations directory in name order,
+// skipping ones already recorded in schema_migrations.
 func runAllMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -83,16 +121,28 @@ func runAllMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error
 	if len(files) == 0 {
 		return fmt.Errorf("no .sql migrations in %s", dir)
 	}
+	applied, err := appliedMigrations(ctx, pool)
+	if err != nil {
+		return err
+	}
+	skipped := 0
 	for _, f := range files {
-		if err := runMigrations(ctx, pool, f); err != nil {
+		if applied[filepath.Base(f)] {
+			skipped++
+			continue
+		}
+		if err := applyMigration(ctx, pool, f); err != nil {
 			return fmt.Errorf("%s: %w", f, err)
 		}
 		log.Printf("Applied migration: %s", filepath.Base(f))
 	}
+	if skipped > 0 {
+		log.Printf("Migrations up to date: %d already applied", skipped)
+	}
 	return nil
 }
 
-// Ищет каталог migrations (env MIGRATIONS_DIR или типовые пути).
+// Finds the migrations directory (MIGRATIONS_DIR env or common paths).
 func findMigrationsDir() (string, error) {
 	if p := os.Getenv("MIGRATIONS_DIR"); p != "" {
 		if st, err := os.Stat(p); err == nil && st.IsDir() {
@@ -111,21 +161,21 @@ func findMigrationsDir() (string, error) {
 	return "", fmt.Errorf("migrations directory not found")
 }
 
-// Генерирует случайный id сессии чата (hex).
+// Generates a random chat session id (hex).
 func newSessionID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
-// Генерирует token для URL загруженного изображения.
+// Generates a token for an uploaded image URL.
 func newImageToken() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
-// UpsertUser создаёт или обновляет пользователя по telegram_id.
+// UpsertUser creates or updates a user by telegram_id.
 func (st *ChatStore) UpsertUser(ctx context.Context, u *TelegramUser) (int64, error) {
 	var id int64
 	err := st.pool.QueryRow(ctx, `
@@ -142,7 +192,7 @@ func (st *ChatStore) UpsertUser(ctx context.Context, u *TelegramUser) (int64, er
 	return id, err
 }
 
-// NULL в SQL для пустой строки, иначе указатель на значение.
+// SQL NULL for empty string, otherwise pointer to value.
 func nullIfEmpty(s string) *string {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -151,7 +201,7 @@ func nullIfEmpty(s string) *string {
 	return &s
 }
 
-// CreateSession создаёт новую сессию для пользователя (id в таблице users) и культуры.
+// CreateSession creates a new session for a user (users table id) and crop.
 func (st *ChatStore) CreateSession(ctx context.Context, userID int64, cropID string) (string, error) {
 	sid := newSessionID()
 	_, err := st.pool.Exec(ctx,
@@ -161,7 +211,7 @@ func (st *ChatStore) CreateSession(ctx context.Context, userID int64, cropID str
 	return sid, err
 }
 
-// SessionCropID возвращает crop_id сессии (с проверкой владельца).
+// SessionCropID returns the session crop_id (with ownership check).
 func (st *ChatStore) SessionCropID(ctx context.Context, sessionID string, telegramID int64) (string, error) {
 	var cropID string
 	err := st.pool.QueryRow(ctx, `
@@ -175,7 +225,7 @@ func (st *ChatStore) SessionCropID(ctx context.Context, sessionID string, telegr
 	return cropID, nil
 }
 
-// sessionOwned проверяет, что сессия принадлежит telegram-пользователю.
+// sessionOwned checks that the session belongs to the telegram user.
 func (st *ChatStore) sessionOwned(ctx context.Context, sessionID string, telegramID int64) (bool, error) {
 	var ok bool
 	err := st.pool.QueryRow(ctx, `
@@ -188,7 +238,7 @@ func (st *ChatStore) sessionOwned(ctx context.Context, sessionID string, telegra
 	return ok, err
 }
 
-// GetOrCreateSession возвращает существующую сессию или создаёт новую с crop_id.
+// GetOrCreateSession returns an existing session or creates one with crop_id.
 func (st *ChatStore) GetOrCreateSession(ctx context.Context, sessionID string, u *TelegramUser, cropID string) (string, string, error) {
 	userID, err := st.UpsertUser(ctx, u)
 	if err != nil {
@@ -212,7 +262,7 @@ func (st *ChatStore) GetOrCreateSession(ctx context.Context, sessionID string, u
 	return sid, cropID, err
 }
 
-// scanChatMessage читает одну строку messages (с опциональным feedback).
+// scanChatMessage reads one messages row (with optional feedback).
 func scanChatMessage(
 	imageToken *string,
 	classPred *string,
@@ -235,6 +285,7 @@ func scanChatMessage(
 	}
 }
 
+// finalizeStoredMessage sets the DB id and fills the media URL from the image token.
 func finalizeStoredMessage(m ChatMessage, id int64) ChatMessage {
 	m.ID = id
 	if m.ImageToken != "" && m.ImageURL == "" {
@@ -243,7 +294,7 @@ func finalizeStoredMessage(m ChatMessage, id int64) ChatMessage {
 	return m
 }
 
-// ListMessages возвращает историю сессии для UI.
+// ListMessages returns session history for the UI.
 func (st *ChatStore) ListMessages(ctx context.Context, sessionID string, telegramID int64) ([]ChatMessage, error) {
 	owned, err := st.sessionOwned(ctx, sessionID, telegramID)
 	if err != nil {
@@ -282,14 +333,14 @@ func (st *ChatStore) ListMessages(ctx context.Context, sessionID string, telegra
 	return out, rows.Err()
 }
 
-// Публичный URL медиафайла по token.
+// Public media file URL by token.
 func mediaURL(token string) string {
 	return "/api/media/" + token
 }
 
 var errSessionNotFound = fmt.Errorf("session not found")
 
-// AppendMessage сохраняет сообщение и обрезает историю до maxSessionMessages.
+// AppendMessage saves a message and trims history to maxSessionMessages.
 func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m ChatMessage) (ChatMessage, error) {
 	var id int64
 	err := st.pool.QueryRow(ctx, `
@@ -315,7 +366,7 @@ func (st *ChatStore) AppendMessage(ctx context.Context, sessionID string, m Chat
 	return finalizeStoredMessage(m, id), err
 }
 
-// NULL для пустого image_token при INSERT.
+// NULL for empty image_token on INSERT.
 func nullToken(s string) *string {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -324,7 +375,7 @@ func nullToken(s string) *string {
 	return &s
 }
 
-// NULL для нулевой уверенности классификации.
+// NULL for zero classification confidence.
 func nullConfidence(v float64) *float64 {
 	if v <= 0 {
 		return nil
@@ -332,7 +383,7 @@ func nullConfidence(v float64) *float64 {
 	return &v
 }
 
-// HistoryForLLM — последние сообщения сессии в формате LLM (SQL LIMIT, без полной истории).
+// HistoryForLLM returns recent session messages for the LLM (SQL LIMIT, not full history).
 func (st *ChatStore) HistoryForLLM(ctx context.Context, sessionID string, telegramID int64, excludeLastN int) ([]Message, error) {
 	if excludeLastN < 0 {
 		excludeLastN = 0
@@ -392,7 +443,7 @@ func (st *ChatStore) HistoryForLLM(ctx context.Context, sessionID string, telegr
 	return trimHistoryMessages(out, maxLLMHistoryMessages), nil
 }
 
-// SaveImage сохраняет JPEG/PNG на диск, возвращает token для URL.
+// SaveImage stores JPEG/PNG on disk and returns a URL token.
 func (st *ChatStore) SaveImage(data []byte) (string, error) {
 	token := newImageToken()
 	path := filepath.Join(st.uploadDir, token+".bin")
@@ -402,7 +453,7 @@ func (st *ChatStore) SaveImage(data []byte) (string, error) {
 	return token, nil
 }
 
-// UserCanAccessImage проверяет, что файл принадлежит сообщению пользователя.
+// UserCanAccessImage checks that the file belongs to the user's message.
 func (st *ChatStore) UserCanAccessImage(ctx context.Context, token string, telegramID int64) (bool, error) {
 	var ok bool
 	err := st.pool.QueryRow(ctx, `
@@ -416,7 +467,7 @@ func (st *ChatStore) UserCanAccessImage(ctx context.Context, token string, teleg
 	return ok, err
 }
 
-// ReadImage возвращает байты файла по token.
+// ReadImage returns file bytes by token.
 func (st *ChatStore) ReadImage(token string) ([]byte, error) {
 	token = strings.TrimSpace(token)
 	if token == "" || strings.Contains(token, "..") || strings.Contains(token, "/") {
@@ -425,7 +476,7 @@ func (st *ChatStore) ReadImage(token string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(st.uploadDir, token+".bin"))
 }
 
-// Ждёт готовности Postgres при старте (docker compose).
+// Waits for Postgres readiness at startup (docker compose).
 func waitForPostgres(ctx context.Context, databaseURL string, attempts int) (*pgxpool.Pool, error) {
 	var lastErr error
 	for i := 0; i < attempts; i++ {

@@ -1,49 +1,76 @@
-# Ограничения верификации RAG-ответов
+# RAG answer verification limits
 
-Верификация (`server/rag_verify.go`, `rag/verifier.py`) — **эвристика против галлюцинаций с цифрами**, а не полная проверка фактов.
+Verification (`server/rag_verify.go`, `rag/verifier.py`) is a **heuristic against numeric hallucinations**, not full fact checking.
 
-Контрактный набор кейсов: `tests/fixtures/rag_verify_contract.json` (прогоняется в Go и Python).
-
----
-
-## Что проверяется
-
-1. Из ответа LLM извлекаются **все числа** (regex `\b\d+(?:\.\d+)?\b`, запятая → точка).
-2. Перед проверкой убираются строки `Источник:` и текст дисклеймера.
-3. Каждое число из ответа должно **встретиться хотя бы в одном** retrieved-фрагменте с допуском **±0.01**.
-4. Если в ответе **нет чисел** — верификация считается пройденной.
+Contract test cases: `tests/fixtures/rag_verify_contract.json` (run in Go and Python).
 
 ---
 
-## Что **не** проверяется
+## What is checked
 
-| Ограничение | Последствие |
-|-------------|-------------|
-| Число может быть из **другого предложения** того же фрагмента | «72%» в ответе и «72» в таблице про другое — пройдёт |
-| Число может быть из **чужого фрагмента** в top-k | Достаточно совпадения где-то в объединённом контексте |
-| **Текст без цифр** не сверяется с источниками | Модель может перефразировать или выдумать факт без чисел |
-| **Единицы измерения** и контекст числа | «50» в ответе и «50» в «50 сортов» — пройдёт |
-| **Синонимы и пересказ** | «парша» vs «Venturia inaequalis» — не сравнивается |
-| **Вопрос пользователя** | Параметр `question` в Python не используется |
-| **Пустой ответ** | Go: fail («Ответ отсутствует»); Python: pass, если нет чисел — **расхождение реализаций** |
+1. **All numbers** are extracted from the LLM answer (regex `\b\d+(?:\.\d+)?\b`, comma → dot).
+2. Before check, `Source:` lines and disclaimer text are removed.
+3. Each number in the answer must **appear at least once** in a retrieved fragment within **±0.01** tolerance.
+4. If the answer has **no numbers** — verification passes.
 
 ---
 
-## Поведение при провале
+## What is **not** checked
 
-Go (`finalizeRAGAnswer`): пользователю показывается предупреждение вместо сырого ответа LLM с выдуманной цифрой.
+| Limitation | Consequence |
+|------------|-------------|
+| Number may be from **another sentence** in the same fragment | “72%” in answer and “72” in a table about something else — passes |
+| Number may be from **another fragment** in top-k | Match anywhere in combined context is enough |
+| **Text without numbers** is not compared to sources | Model can paraphrase or invent facts without numbers |
+| **Units** and number context | “50” in answer and “50” in “50 varieties” — passes |
+| **Synonyms and paraphrase** | “scab” vs “Venturia inaequalis” — not compared |
+| **User question** | `question` parameter in Python is unused |
+| **Empty answer** | Go: fail (“Answer missing”); Python: pass if no numbers — **implementation mismatch** |
 
 ---
 
-## Синхронизация Go ↔ Python
+## Behavior on failure
 
-- Дисклеймер: константа `ragAnswerDisclaimer` (Go) = `RAG_ANSWER_DISCLAIMER` (Python).
-- При изменении логики — обновить оба файла **и** `tests/fixtures/rag_verify_contract.json`.
-- Регрессии: `go test -run Contract` в `server/`, `pytest tests/test_verify_contract.py`.
+Go (`finalizeRAGAnswer`): user sees a warning instead of raw LLM answer with invented number.
 
 ---
 
-## Связанные документы
+## Optional: claim-level verification (LLM judge)
 
-- [rag-verifier.md](./rag-verifier.md) — разбор API
+`RAG_VERIFY_CLAIMS_ENABLED=true` (Go, requires `LLM_API_KEY`) adds a second pass
+on top of the numeric check — `server/rag_verify_claims.go`:
+
+1. The cleaned answer and the retrieved fragments go to an LLM judge with a strict
+   fact-checking prompt.
+2. The judge returns JSON `{"supported": bool, "unsupported_claims": [...]}`.
+3. If any claim is unsupported, the answer is downgraded to the same soft-fail
+   warning as a failed numeric check (`verify_pass=false`).
+
+This closes the biggest gap above — **non-numeric hallucinations** (invented
+diseases, treatments, procedures) that the regex check cannot catch.
+
+Trade-offs:
+
+| Property | Note |
+|----------|------|
+| Cost / latency | One extra LLM call per answer |
+| **Fail-open** | Judge call/parse errors → keep numeric-only result, count `garden_llm_errors_total`; chat never blocks on judge outage |
+| Judge reliability | LLM judge is itself imperfect; treat as a strong guardrail, not a proof |
+| Streaming | Runs after tokens are streamed (like the numeric check); the final saved message reflects the verdict |
+
+Off by default so retrieval-only deployments keep single-call latency.
+
+---
+
+## Go ↔ Python sync
+
+- Disclaimer: constant `ragAnswerDisclaimer` (Go) = `RAG_ANSWER_DISCLAIMER` (Python).
+- On logic change — update both files **and** `tests/fixtures/rag_verify_contract.json`.
+- Regressions: `go test -run Contract` in `server/`, `pytest tests/test_verify_contract.py`.
+
+---
+
+## Related documents
+
+- [rag-verifier.md](./rag-verifier.md) — API walkthrough
 - [ARCHITECTURE.md](../ARCHITECTURE.md) — core vs domain pack

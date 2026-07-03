@@ -1,26 +1,26 @@
-# Данные и лицензия контента
+# Data and content licensing
 
-## Код проекта
+## Project code
 
-Исходный код репозитория — **Apache License 2.0** (см. [LICENSE](../LICENSE)).
+Repository source code is **Apache License 2.0** (see [LICENSE](LICENSE)).
 
-## Тексты в `data/`
+## Texts in `data/`
 
-### Что в публичном репозитории
+### Included in the public repository
 
-- **`data/demo_hr/`** — синтетические тексты HR-политик для демонстрации платформы (автор проекта).
-- **`data/apple/sample_*.txt`** — короткие **демо-статьи** для локального запуска без полного корпуса.
+- **`data/demo_hr/`** — synthetic HR policy texts to demonstrate the platform (project author).
+- **`data/apple/sample_*.txt`** — short **demo articles** for local run without the full corpus.
 
-### Что не в публичном репозитории
+### Not in the public repository
 
-Полный агро-корпус (~344 статьи яблони, груша, слива), использованный при разработке, основан на материалах журнала *Плодоводство и виноградарство Юга России* (journalkubansad.ru) и **не распространяется** в открытом git.
+The full agro corpus (~344 apple, pear, and plum articles) used during development is based on *Plodovodstvo i vinogradarstvo Yuga Rossii* (journalkubansad.ru) and is **not** distributed in the open git history.
 
-Если вы клонируете репозиторий:
+If you clone this repository:
 
-1. Добавьте **свои** `.txt` с правом на публикацию, или  
-2. Получите корпус отдельно для личного/исследовательского использования вне публичного репо.
+1. Add **your own** `.txt` files you have the right to publish, or  
+2. Obtain the corpus separately for personal/research use outside a public repo.
 
-### Ответственность
+### Responsibility
 
-Владелец форка несёт ответственность за законность текстов в `data/`.  
-Ассистент выдаёт справочную информацию; агрономические решения — с учётом местных норм и очного осмотра.
+The fork owner is responsible for the legality of texts in `data/`.  
+The assistant provides reference information only; agronomic decisions require on-site expert review and compliant product labels.

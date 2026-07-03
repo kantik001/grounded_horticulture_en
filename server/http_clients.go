@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Общий Transport для исходящих HTTP к Python и LLM (keep-alive, пул соединений).
+// Shared Transport for outbound HTTP to Python and LLM (keep-alive, connection pool).
 var outboundTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
 	DialContext: (&net.Dialer{

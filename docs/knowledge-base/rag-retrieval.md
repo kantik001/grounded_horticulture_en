@@ -1,83 +1,83 @@
-# Разбор: `rag/retrieval.py`
+# Walkthrough: `rag/retrieval.py`
 
-**Исходный файл:** `rag/retrieval.py`  
-**Эндпоинт:** `POST /rag/context` в `api/app.py`  
-**Дальше:** Go `server/rag_chat.go` собирает промпт и зовёт LLM
-
----
-
-## Зачем этот файл
-
-Слой **retrieval** в классической схеме RAG:
-
-1. Принять вопрос и `crop_id`.
-2. Найти фрагменты (`vector_store.search` — hybrid vector + BM25 + rerank).
-3. Собрать **context** для LLM.
-4. Подобрать **few-shot** пример по типу вопроса.
-5. Отдать JSON Go — **без генерации ответа**.
+**Source file:** `rag/retrieval.py`  
+**Endpoint:** `POST /rag/context` in `api/app.py`  
+**Next:** Go `server/rag_chat.go` builds prompt and calls LLM
 
 ---
 
-## Главная функция: `retrieve_rag_context(user_question, crop_id)`
+## Why this file exists
 
-### Вход
+**Retrieval** layer in classic RAG:
 
-- `user_question` — текст от пользователя;
-- `crop_id` — культура (по умолчанию `apple`).
+1. Accept question and `crop_id`.
+2. Find fragments (`vector_store.search` — hybrid vector + BM25 + rerank).
+3. Build **context** for LLM.
+4. Pick **few-shot** example by question type.
+5. Return JSON to Go — **no answer generation**.
 
-### Выход (словарь)
+---
 
-| Поле | Назначение |
-|------|------------|
-| `success` | удалось ли собрать контекст |
-| `error` | текст ошибки на русском |
-| `context` | большой текст из фрагментов для промпта |
-| `few_shot` | пример вопрос-ответ из `config/few_shot.json` |
-| `category` | категория вопроса (см. ниже) |
-| `fragments` | список `{filename, content}` для верификации на Go |
-| `crop_id` | нормализованный id |
+## Main function: `retrieve_rag_context(user_question, crop_id)`
 
-### Шаги внутри
+### Input
 
-1. Пустой вопрос → `success: false`.
-2. `normalize_crop_id` — неверная культура → ошибка.
-3. `get_crop` → если `rag_enabled: false` → «база статей не подключена».
-4. `search(q, crop_id, k=8)` — гибридный поиск (см. [rag-hybrid-search.md](./rag-hybrid-search.md)).
-5. Нет фрагментов → «Не нашёл информации в статьях…».
-6. Склейка контекста:
+- `user_question` — user text;
+- `crop_id` — crop (default `apple`).
+
+### Output (dict)
+
+| Field | Purpose |
+|-------|---------|
+| `success` | whether context was assembled |
+| `error` | error text (localized in product) |
+| `context` | large text from fragments for prompt |
+| `few_shot` | Q&A example from `config/few_shot.json` |
+| `category` | question category (see below) |
+| `fragments` | list `{filename, content}` for Go verification |
+| `crop_id` | normalized id |
+
+### Internal steps
+
+1. Empty question → `success: false`.
+2. `normalize_crop_id` — invalid crop → error.
+3. `get_crop` → if `rag_enabled: false` → “article database not connected”.
+4. `search(q, crop_id, k=8)` — hybrid search (see [rag-hybrid-search.md](./rag-hybrid-search.md)).
+5. No fragments → “Could not find information in articles…”.
+6. Context assembly:
 
 ```
-Текст из статьи 'article1.txt':
-<чанк>
+Text from article 'article1.txt':
+<chunk>
 
 ---
 
-Текст из статьи 'article2.txt':
+Text from article 'article2.txt':
 ...
 ```
 
-7. `classify_question(q)` → категория.
-8. `few_shot_for(crop_id, category)` → строка-пример для промпта.
+7. `classify_question(q)` → category.
+8. `few_shot_for(crop_id, category)` → example string for prompt.
 
 ---
 
-## Классификация вопроса: `classify_question`
+## Question classification: `classify_question`
 
-**Rule-based** (ключевые слова из **`config/question_categories.json`**), не ML. Влияет только на **few-shot**, не на поиск.
+**Rule-based** (keywords from **`config/question_categories.json`**), not ML. Affects **few-shot** only, not search.
 
-Категории по умолчанию: `rootstock`, `fertilizer`, `disease`, `irrigation`, `relief`, `variety`, `general`.  
-Переопределение: env `QUESTION_CATEGORIES_CONFIG_PATH`. См. `rag/question_categories.py`.
+Default categories: `rootstock`, `fertilizer`, `disease`, `irrigation`, `relief`, `variety`, `general`.  
+Override: env `QUESTION_CATEGORIES_CONFIG_PATH`. See `rag/question_categories.py`.
 
 ---
 
 ## Few-shot: `few_shot_for`
 
-Читает `config/few_shot.json`:
+Reads `config/few_shot.json`:
 
 ```json
 {
   "apple": {
-    "fertilizer": "Пример вопроса: ... Пример ответа: ...",
+    "fertilizer": "Sample question: ... Sample answer: ...",
     "disease": "...",
     "rootstock": "...",
     "general": "..."
@@ -85,13 +85,13 @@
 }
 ```
 
-Берёт категорию; если нет — fallback на `general`.
+Picks category; if missing — fallback to `general`.
 
-Кэш `_few_shot_cache` — один раз за процесс.
+Cache `_few_shot_cache` — once per process.
 
 ---
 
-## Связь с Go
+## Go integration
 
 ```mermaid
 sequenceDiagram
@@ -106,40 +106,40 @@ sequenceDiagram
     Go->>Go: LLM + verifyRAGAnswer + disclaimer
 ```
 
-Go **не** ходит в Chroma/BM25 напрямую — только через Python.
+Go does **not** hit Chroma/BM25 directly — only through Python.
 
 ---
 
-## Логи
+## Logs
 
 ```
-[RAG:apple] источник: article1.txt
+[RAG:apple] source: article1.txt
 ```
 
-Помогает отладке: какие чанки попали в контекст.
+Helps debugging: which chunks entered context.
 
 ---
 
-## Ошибки vs «нет в материалах»
+## Errors vs “not in materials”
 
-| Ситуация | Где решается |
-|----------|----------------|
-| Нет чанков | `error` здесь, Go не зовёт LLM с пустым контекстом |
-| LLM выдумал цифру | `verifyRAGAnswer` в Go (+ дубль в `verifier.py`) |
-| Нет фактов в статьях | промпт в `rag_chat.go`: «нет в справочных материалах» |
+| Situation | Where handled |
+|-----------|---------------|
+| No chunks | `error` here, Go does not call LLM with empty context |
+| LLM invented a number | `verifyRAGAnswer` in Go (+ duplicate in `verifier.py`) |
+| No facts in articles | prompt in `rag_chat.go`: “not in reference materials” |
 
 ---
 
-## Что читать дальше
+## What to read next
 
-| Тема | Файл |
-|------|------|
+| Topic | File |
+|-------|------|
 | Chroma, BM25, rerank | [rag-vector_store.md](./rag-vector_store.md), [rag-hybrid-search.md](./rag-hybrid-search.md) |
-| Верификация чисел | [rag-verifier.md](./rag-verifier.md), `server/rag_chat.go` |
+| Number verification | [rag-verifier.md](./rag-verifier.md), `server/rag_chat.go` |
 | HTTP | [python-api.md](./python-api.md) |
 
 ---
 
-## Краткий итог
+## Brief summary
 
-`retrieval.py` — **оркестратор RAG-поиска**: культура → hybrid search → context + few-shot + fragments для Go. Генерация ответа — не здесь.
+`retrieval.py` — **RAG search orchestrator**: crop → hybrid search → context + few-shot + fragments for Go. Answer generation is not here.

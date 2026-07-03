@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Подставить человекочитаемые заголовки из config/article_titles.json в метаданные статей."""
+"""Insert human-readable titles from config/article_titles.json into article metadata."""
 from __future__ import annotations
 
 import json
@@ -13,14 +13,15 @@ TITLES_PATH = ROOT / "config" / "article_titles.json"
 CROPS = ("apple", "pear", "plum", "demo_hr")
 
 TITLE_LINE_RE = re.compile(
-    r"(^-\s*Заголовок:\s*)(.+?)(?=\n-\s|\n\n|$)",
+    r"(^-\s*Title:\s*)(.+?)(?=\n-\s|\n\n|$)",
     re.M | re.S,
 )
 STEM_TITLE_RE = re.compile(r"^article\d+_", re.I)
-UDK_TITLE_RE = re.compile(r"^(?:УДК|UDC)\b", re.I)
+UDK_TITLE_RE = re.compile(r"^UDC\b", re.I)
 
 
 def needs_replace(current: str) -> bool:
+    """True if the current title is empty, technical (slug/UDC), or too short."""
     t = current.strip()
     if not t:
         return True
@@ -32,6 +33,7 @@ def needs_replace(current: str) -> bool:
 
 
 def main() -> None:
+    """Replace technical Title lines in articles with pretty titles from config."""
     if not TITLES_PATH.exists():
         print("article_titles.json not found", file=sys.stderr)
         sys.exit(1)

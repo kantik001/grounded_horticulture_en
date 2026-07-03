@@ -1,119 +1,119 @@
-# План: Eval RAG (3B) и логи RAG (3C)
+# Plan: RAG Eval (3B) and RAG logs (3C)
 
-**Статус:** **реализовано** (2026-07-01) — eval-наборы **68 вопросов**, `run_rag_eval.py`, логи `[RAG]`, связка feedback↔RAG в `GET /admin/feedback`, `/metrics`.  
-**Связь:** [../ROADMAP.md](../ROADMAP.md), [server-rag_chat.md](./server-rag_chat.md), [metrics-and-alerts.md](./metrics-and-alerts.md)
-
----
-
-## Зачем это нужно
-
-1. **Воспроизводимый eval** — набор вопросов + прогон после reindex / смены промпта.
-2. **Наблюдаемость** — почему ответ плохой (чанки, verify, 👎, latency).
+**Status:** **implemented** (2026-07-01) — eval suites **68 questions**, `run_rag_eval.py`, `[RAG]` logs, feedback↔RAG in `GET /admin/feedback`, `/metrics`.  
+**Related:** [server-rag_chat.md](./server-rag_chat.md), [metrics-and-alerts.md](./metrics-and-alerts.md)
 
 ---
 
-## Фаза 3B — Eval-набор
+## Why this matters
 
-### Файлы (реализовано)
+1. **Reproducible eval** — question set + run after reindex / prompt change.
+2. **Observability** — why an answer is bad (chunks, verify, 👎, latency).
 
-| Файл | Вопросов | `crop_id` |
-|------|----------|-----------|
+---
+
+## Phase 3B — Eval suite
+
+### Files (implemented)
+
+| File | Questions | `crop_id` |
+|------|-----------|-----------|
 | `eval/rag_apple_baseline.jsonl` | **45** | apple |
 | `eval/rag_pear_baseline.jsonl` | 8 | pear |
 | `eval/rag_plum_baseline.jsonl` | 10 | plum |
 | `eval/rag_demo_hr_baseline.jsonl` | 5 | demo_hr |
-| **Итого** | **68** | |
+| **Total** | **68** | |
 
-Формат строки JSON:
+JSON line format:
 
 ```json
 {
   "crop_id": "apple",
-  "question": "Какие признаки парши на листьях?",
-  "expect_contains": ["пятн", "парша"],
+  "question": "What are scab symptoms on leaves?",
+  "expect_contains": ["spot", "scab"],
   "expect_context": true,
   "expect_out_of_scope": false,
   "category": "disease"
 }
 ```
 
-- `expect_contains` — подстроки в **контексте** retrieval (стемминг RU).
-- `expect_contains_any` — достаточно одной из синонимов.
-- `expect_out_of_scope: true` — вопрос вне KB.
+- `expect_contains` — substrings in retrieval **context** (RU stemming).
+- `expect_contains_any` — any one synonym is enough.
+- `expect_out_of_scope: true` — question outside KB.
 
-### Метрики прогона
+### Run metrics
 
-| Метрика | Как считать |
-|---------|-------------|
-| **retrieval pass** | `expect_contains` / out-of-scope в контексте |
-| **verify pass rate** | доля ответов без ⚠️ verify (режим `--full` через Go) |
-| **manual score 1–5** | выборочно 10 ответов (рекомендуется перед демо/пилотом) |
+| Metric | How to compute |
+|--------|----------------|
+| **retrieval pass** | `expect_contains` / out-of-scope in context |
+| **verify pass rate** | share of answers without ⚠️ verify (`--full` mode via Go) |
+| **manual score 1–5** | sample 10 answers (recommended before demo/pilot) |
 
-### Когда гонять
+### When to run
 
-- после **reindex** с новыми статьями;
-- после смены **`LLM_MODEL`** или `prompts.json`;
-- перед **пилотом**, **демо для работодателя**, merge крупных PR по RAG.
+- after **reindex** with new articles;
+- after changing **`LLM_MODEL`** or `prompts.json`;
+- before **pilot**, **employer demo**, merge of large RAG PRs.
 
-### Запуск
+### Run
 
 ```bash
-# Локально (classifier на :5000)
+# Locally (classifier on :5000)
 python scripts/run_rag_eval.py --suite all --timeout 300
 
-# Или in-process (без HTTP)
+# Or in-process (no HTTP)
 python scripts/run_rag_eval.py --suite apple --in-process --fast
 
-# CI: GitHub Actions → workflow RAG Eval (ручной)
+# CI: GitHub Actions → workflow RAG Eval (manual)
 ```
 
-Отчёты: `eval/results/<timestamp>_<suite>.json`.  
-См. [eval/README.md](../../eval/README.md).
+Reports: `eval/results/<timestamp>_<suite>.json`.  
+See [eval/README.md](../../eval/README.md).
 
-**Целевой порог:** 100% retrieval pass (последний зафиксированный прогон — 68/68; переподтверждать после смен KB).
+**Target threshold:** 100% retrieval pass (last recorded run — 68/68; reconfirm after KB changes).
 
-**В плане:** автоматический порог pass rate в CI на каждый PR (отклонено из-за времени; см. [github-ci.yml.md](./github-ci.yml.md)).
+**Planned:** automatic pass-rate threshold in CI on every PR (rejected due to time; see [github-ci.yml.md](./github-ci.yml.md)).
 
 ---
 
-## Фаза 3C — Логи и аналитика RAG
+## Phase 3C — RAG logs and analytics
 
 ### Stdout (`rag_log.go`)
 
-На каждый текстовый ответ: `crop_id`, `session_id`, `fragments`, `verify_pass`, `verify_reason`, `soft_fail`.  
-**Не логируется:** полный промпт и тело LLM.
+On each text answer: `crop_id`, `session_id`, `fragments`, `verify_pass`, `verify_reason`, `soft_fail`.  
+**Not logged:** full prompt and LLM body.
 
 ### Prometheus (`server/metrics.go`)
 
-`GET /metrics` — счётчики HTTP, LLM errors, RAG requests, verify pass/fail, latency sums.  
-См. [metrics-and-alerts.md](./metrics-and-alerts.md).
+`GET /metrics` — HTTP counters, LLM errors, RAG requests, verify pass/fail, latency sums.  
+See [metrics-and-alerts.md](./metrics-and-alerts.md).
 
-### Feedback + RAG в админке
+### Feedback + RAG in admin
 
-`GET /admin/feedback?rating=-1&limit=50` — для каждой оценки поле **`rag`** (если есть `rag_answer` в `analytics_events`):
+`GET /admin/feedback?rating=-1&limit=50` — for each rating field **`rag`** (if `rag_answer` exists in `analytics_events`):
 
 - `category`, `fragments`, `verify_pass`, `retrieval_ms`, `llm_ms`
 
-Разбор 👎: админка → негативные оценки → метрики RAG по сообщению.
+Debugging 👎: admin → negative ratings → RAG metrics per message.
 
-### Postgres (опционально на будущее)
+### Postgres (optional future)
 
-Отдельная таблица `rag_query_log` — не реализована; сейчас достаточно stdout + metrics + analytics_events.
-
----
-
-## Чеклист «готово к пилоту / демо» (качество)
-
-- [x] Корпус ПВЮР (~344 apple, ~42 pear, ~108 plum), reindex Chroma+BM25
-- [x] Eval **68** вопросов, скрипт прогона
-- [x] Retrieval baseline **100%** (переподтвердить на живом индексе)
-- [ ] Verify pass rate известен (выборочно `--full` или ручной чат)
-- [x] Логи `[RAG]` + `/metrics`
-- [x] Feedback ↔ RAG в админ-отчёте
-- [ ] 5–10 ручных вопросов перед демо работодателю
+Separate `rag_query_log` table — not implemented; stdout + metrics + analytics_events are enough for now.
 
 ---
 
-## Краткий итог
+## “Ready for pilot / demo” checklist (quality)
 
-**3B Eval** — 68 эталонных вопросов, регрессия retrieval. **3C** — логи, метрики, связка с feedback. Полный eval в CI — только вручную (**RAG Eval** workflow).
+- [x] PVYUR corpus (~344 apple, ~42 pear, ~108 plum), reindex Chroma+BM25
+- [x] Eval **68** questions, run script
+- [x] Retrieval baseline **100%** (reconfirm on live index)
+- [ ] Verify pass rate known (sample `--full` or manual chat)
+- [x] `[RAG]` logs + `/metrics`
+- [x] Feedback ↔ RAG in admin report
+- [ ] 5–10 manual questions before employer demo
+
+---
+
+## Brief summary
+
+**3B Eval** — 68 baseline questions, retrieval regression. **3C** — logs, metrics, feedback linkage. Full eval in CI — manual only (**RAG Eval** workflow).

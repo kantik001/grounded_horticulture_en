@@ -1,4 +1,4 @@
-"""Загрузка config/question_categories.json — domain pack для classify_question."""
+"""Load config/question_categories.json — domain pack for classify_question."""
 
 import json
 import os
@@ -11,6 +11,7 @@ _CONFIG_MTIME: Optional[float] = None
 
 
 def _config_path() -> str:
+    """Path to question_categories.json (env override, then standard locations)."""
     env = os.environ.get("QUESTION_CATEGORIES_CONFIG_PATH")
     if env and os.path.isfile(env):
         return env
@@ -24,6 +25,7 @@ def _config_path() -> str:
 
 
 def load_question_categories_config() -> Dict[str, Any]:
+    """Load the categories config with mtime-based caching."""
     global _CONFIG, _CONFIG_MTIME
     path = _config_path()
     try:
@@ -39,7 +41,7 @@ def load_question_categories_config() -> Dict[str, Any]:
 
 
 def reload_question_categories_config() -> Dict[str, Any]:
-    """Сброс кэша (тесты)."""
+    """Clear cache (tests)."""
     global _CONFIG, _CONFIG_MTIME
     _CONFIG = None
     _CONFIG_MTIME = None
@@ -47,17 +49,19 @@ def reload_question_categories_config() -> Dict[str, Any]:
 
 
 def category_rules() -> List[Dict[str, Any]]:
+    """Category rule list from the config (order matters)."""
     cfg = load_question_categories_config()
     return list(cfg.get("categories") or [])
 
 
 def default_category() -> str:
+    """Fallback category when no keywords match."""
     cfg = load_question_categories_config()
     return str(cfg.get("default_category") or "general")
 
 
 def classify_question(question: str) -> str:
-    """Категория вопроса по ключевым словам из domain pack (порядок категорий важен)."""
+    """Question category by keywords from the domain pack (category order matters)."""
     q_lower = (question or "").lower()
     for rule in category_rules():
         cat_id = str(rule.get("id") or "").strip()

@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Verifies that stale keys are removed by GC.
 func TestRateLimiterGCRemovesStaleKeys(t *testing.T) {
 	rl := newRateLimiter(5, time.Minute)
 	rl.allow("tg:1")
@@ -26,6 +27,7 @@ func TestRateLimiterGCRemovesStaleKeys(t *testing.T) {
 	}
 }
 
+// Verifies that a blocked key is allowed again after its window expires.
 func TestRateLimiterDeletesKeyWhenWindowEmpty(t *testing.T) {
 	rl := newRateLimiter(1, 10*time.Millisecond)
 	if !rl.allow("tg:1") {
@@ -44,10 +46,13 @@ func TestRateLimiterDeletesKeyWhenWindowEmpty(t *testing.T) {
 	}
 }
 
+// Verifies that requests over the limit are blocked within the window.
 func TestRateLimiterEnforcesLimit(t *testing.T) {
 	rl := newRateLimiter(2, time.Minute)
-	if !rl.allow("tg:9") || !rl.allow("tg:9") {
-		t.Fatal("first two requests should pass")
+	for i := 1; i <= 2; i++ {
+		if !rl.allow("tg:9") {
+			t.Fatalf("request %d should pass", i)
+		}
 	}
 	if rl.allow("tg:9") {
 		t.Fatal("third request should be blocked")

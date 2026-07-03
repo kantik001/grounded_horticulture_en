@@ -1,4 +1,4 @@
-"""Pytest: корень проекта в PYTHONPATH."""
+"""Pytest: project root on PYTHONPATH."""
 
 import os
 import sys

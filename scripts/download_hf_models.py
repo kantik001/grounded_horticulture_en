@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Скачивает HF-модели RAG (e5 + reranker) в HF_HOME. Используется при docker build."""
+"""Download HF RAG models (e5 + reranker) into HF_HOME. Used during docker build."""
 
 from __future__ import annotations
 
@@ -11,12 +11,14 @@ sys.path.insert(0, _ROOT)
 
 
 def _apply_hf_token() -> None:
+    """Propagate HF_TOKEN to HUGGING_FACE_HUB_TOKEN if set."""
     token = (os.environ.get("HF_TOKEN") or "").strip()
     if token:
         os.environ["HUGGING_FACE_HUB_TOKEN"] = token
 
 
 def download_models() -> None:
+    """Download the e5 embedding model and the reranker into HF_HOME."""
     hf_home = os.environ.get("HF_HOME") or os.path.join(_ROOT, "hf_cache")
     os.makedirs(hf_home, exist_ok=True)
     os.environ["HF_HOME"] = hf_home
@@ -34,15 +36,16 @@ def download_models() -> None:
     snapshot_download(repo_id=E5_MODEL, token=token)
     print(f"HF bake: reranker {RERANK_MODEL}")
     CrossEncoder(RERANK_MODEL, max_length=512)
-    print("HF bake: готово")
+    print("HF bake: done")
 
 
 def main() -> int:
+    """Run the model download and return a process exit code."""
     try:
         download_models()
         return 0
     except Exception as exc:
-        print(f"HF bake: ошибка — {exc}", file=sys.stderr)
+        print(f"HF bake: error — {exc}", file=sys.stderr)
         return 1
 
 

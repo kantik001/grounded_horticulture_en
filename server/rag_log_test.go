@@ -5,18 +5,20 @@ import (
 	"testing"
 )
 
+// Verifies whitespace trimming and 120-rune truncation with an ellipsis.
 func TestTruncateRAGQuestion(t *testing.T) {
-	short := truncateRAGQuestion("  парша  ")
-	if short != "парша" {
+	short := truncateRAGQuestion("  scab  ")
+	if short != "scab" {
 		t.Fatalf("got %q", short)
 	}
-	long := strings.Repeat("а", 130)
+	long := strings.Repeat("a", 130)
 	out := truncateRAGQuestion(long)
 	if len([]rune(out)) != 121 || !strings.HasSuffix(out, "…") {
 		t.Fatalf("expected 121 runes with ellipsis, got runes=%d %q", len([]rune(out)), out)
 	}
 }
 
+// Verifies that trace fields and extra keys land in the analytics payload.
 func TestRAGTraceAnalyticsPayload(t *testing.T) {
 	p := ragTraceAnalyticsPayload(RAGTrace{
 		CropID:        "apple",

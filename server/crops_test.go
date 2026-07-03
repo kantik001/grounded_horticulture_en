@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// cropsConfigForTest locates config/crops.json or skips the test.
 func cropsConfigForTest(t *testing.T) string {
 	t.Helper()
 	wd, err := os.Getwd()
@@ -28,12 +29,16 @@ func cropsConfigForTest(t *testing.T) string {
 	return ""
 }
 
+// Verifies that normalizeCropID accepts known crops and rejects unknown ones.
 func TestNormalizeCropID(t *testing.T) {
 	t.Setenv("CROPS_CONFIG_PATH", cropsConfigForTest(t))
-	cropCatalog = cropsFile{}
-	if err := loadCropCatalog(); err != nil {
+	crops, err := loadCropCatalog()
+	if err != nil {
 		t.Fatalf("loadCropCatalog: %v", err)
 	}
+	old := catalogsPtr.Load()
+	catalogsPtr.Store(&runtimeCatalogs{Crops: crops})
+	defer catalogsPtr.Store(old)
 
 	id, err := normalizeCropID("apple")
 	if err != nil || id != "apple" {

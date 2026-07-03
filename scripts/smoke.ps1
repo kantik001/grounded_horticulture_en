@@ -1,5 +1,5 @@
-# Smoke-тест API (локальный Docker или Go на :8080).
-# Использование: .\scripts\smoke.ps1 [-BaseUrl "http://localhost:8080"]
+# API smoke test (local Docker or Go on :8080).
+# Usage: .\scripts\smoke.ps1 [-BaseUrl "http://localhost:8080"]
 
 param(
     [string]$BaseUrl = "http://localhost:8080"

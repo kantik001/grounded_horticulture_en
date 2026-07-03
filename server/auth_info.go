@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GET /auth/info: which auth methods are available (Telegram, API key, dev mode).
 func handleAuthInfo(c *gin.Context) {
 	telegram := !config.TelegramAuthDisabled && config.TelegramBotToken != ""
 	c.JSON(http.StatusOK, gin.H{

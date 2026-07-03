@@ -1,4 +1,4 @@
-"""Gunicorn: production WSGI для classifier (1 worker + threads — общая память ML-моделей)."""
+"""Gunicorn: production WSGI for classifier (1 worker + threads — shared ML model memory)."""
 
 import os
 
@@ -9,7 +9,7 @@ timeout = max(30, int(os.environ.get("GUNICORN_TIMEOUT", "300")))
 graceful_timeout = 30
 keepalive = 5
 worker_class = "gthread" if threads > 1 else "sync"
-# PyTorch / sentence-transformers нельзя инициализировать в master до fork — deadlock в worker.
+# PyTorch / sentence-transformers must not initialize in master before fork — worker deadlock.
 preload_app = False
 accesslog = "-"
 errorlog = "-"
@@ -17,7 +17,7 @@ capture_output = True
 
 
 def post_fork(server, worker):
-    """Прогрев RAG в worker-процессе, который обрабатывает /rag/context."""
+    """Warm up RAG in the worker process that serves /rag/context."""
     from rag.warmup import warmup_rag
 
     warmup_rag()

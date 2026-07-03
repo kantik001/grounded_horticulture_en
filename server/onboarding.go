@@ -9,19 +9,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var onboardingQuestions map[string][]string
-
-// Загружает config/onboarding.json (подсказки-вопросы по культурам).
-func loadOnboardingConfig() error {
+// Loads config/onboarding.json (sample questions per crop).
+func loadOnboardingConfig() (map[string][]string, error) {
 	path := onboardingConfigPath()
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return json.Unmarshal(body, &onboardingQuestions)
+	var questions map[string][]string
+	if err := json.Unmarshal(body, &questions); err != nil {
+		return nil, err
+	}
+	return questions, nil
 }
 
-// Возвращает путь к onboarding.json.
+// Returns the path to onboarding.json.
 func onboardingConfigPath() string {
 	if p := os.Getenv("ONBOARDING_CONFIG_PATH"); p != "" {
 		return p
@@ -38,14 +40,14 @@ func onboardingConfigPath() string {
 	return filepath.Join("config", "onboarding.json")
 }
 
-// GET /onboarding: примеры вопросов для выбранной культуры.
+// GET /onboarding: sample questions for the selected crop.
 func handleOnboarding(c *gin.Context) {
 	cropID, err := normalizeCropID(c.Query("crop_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	questions := onboardingQuestions[cropID]
+	questions := currentCatalogs().Onboarding[cropID]
 	if questions == nil {
 		questions = []string{}
 	}

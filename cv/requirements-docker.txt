@@ -1,6 +1,6 @@
-# Зависимости classifier-образа без torch/torchvision.
-# torch/torchvision ставятся отдельно с CPU index в Dockerfile.classifier.
-# При изменении cv/requirements.txt синхронизируйте этот файл (без строк torch/torchvision).
+# Classifier image dependencies without torch/torchvision.
+# torch/torchvision installed separately from CPU index in Dockerfile.classifier.
+# When changing cv/requirements.txt, sync this file (without torch/torchvision lines).
 python-dotenv==1.2.1
 
 flask>=3.0.0,<4

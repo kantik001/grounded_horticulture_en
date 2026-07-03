@@ -1,4 +1,4 @@
-"""Обучение MobileNetV2 на датасете болезней яблони (подпапки = классы)."""
+"""Train MobileNetV2 on apple disease dataset (subfolders = classes)."""
 
 import torch
 import torch.nn as nn
@@ -7,8 +7,6 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms, models
 from PIL import Image
 import os
-from typing import Tuple, List
-import json
 
 from cv.labels_config import default_class_labels_for_crop
 
@@ -16,9 +14,10 @@ DEFAULT_CLASS_LABELS = default_class_labels_for_crop("apple")
 
 
 class AppleDataset(Dataset):
-    """Датасет: подпапки = классы; индексы совпадают с DEFAULT_CLASS_LABELS."""
+    """Dataset: subfolders = classes; indices match DEFAULT_CLASS_LABELS."""
 
     def __init__(self, root_dir: str, transform=None):
+        """Scan class subfolders under root_dir and collect image paths with labels."""
         self.root_dir = root_dir
         self.transform = transform
         self.class_labels = list(DEFAULT_CLASS_LABELS)
@@ -34,14 +33,14 @@ class AppleDataset(Dataset):
                     self.image_paths.append(os.path.join(class_dir, img_name))
                     self.labels.append(idx)
 
-        print(f"Загружено {len(self.image_paths)} изображений, классов: {len(self.class_labels)}")
-        print(f"Классы: {self.class_labels}")
+        print(f"Loaded {len(self.image_paths)} images, classes: {len(self.class_labels)}")
+        print(f"Classes: {self.class_labels}")
 
-    # Возвращает число образцов в датасете.
+    # Returns the number of samples in the dataset.
     def __len__(self):
         return len(self.image_paths)
 
-    # Возвращает пару (тензор изображения, индекс класса) по индексу.
+    # Returns (image tensor, class index) by index.
     def __getitem__(self, idx):
         img_path = self.image_paths[idx]
         image = Image.open(img_path).convert('RGB')
@@ -53,7 +52,7 @@ class AppleDataset(Dataset):
         return image, label
 
 
-# Обучает MobileNetV2 на train/val и сохраняет лучшую модель в save_path.
+# Trains MobileNetV2 on train/val and saves the best model to save_path.
 def train_model(
     train_dir: str,
     val_dir: str,
@@ -166,7 +165,7 @@ def train_model(
 
         scheduler.step()
 
-    print(f"\nОбучение завершено. Лучшая точность на val: {best_val_acc:.4f}")
+    print(f"\nTraining complete. Best val accuracy: {best_val_acc:.4f}")
     return model
 
 
@@ -182,4 +181,4 @@ if __name__ == "__main__":
         save_path='apple_classifier.pth'
     )
     """
-    print("Укажите пути train/val и раскомментируйте вызов train_model().")
+    print("Set train/val paths and uncomment the train_model() call.")

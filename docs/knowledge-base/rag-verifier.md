@@ -1,73 +1,73 @@
-# Разбор: `rag/verifier.py`
+# Walkthrough: `rag/verifier.py`
 
-**Исходный файл:** `rag/verifier.py`  
-**Тесты:** `tests/test_verifier.py`  
-**В проде:** основная проверка в Go — `server/rag_chat.go` (`verifyRAGAnswer`, `appendRAGDisclaimer`)
-
----
-
-## Зачем этот файл
-
-Защита от **галлюцинаций с цифрами**: если LLM написала «72%» или «748,5 см», это число должно **встречаться в retrieved-фрагментах**.
-
-Названия статей (`Источник: "..."`) пользователю **не показываются** — вместо них общий дисклеймер (на Go; константа продублирована здесь для тестов).
+**Source file:** `rag/verifier.py`  
+**Tests:** `tests/test_verifier.py`  
+**In production:** main check in Go — `server/rag_chat.go` (`verifyRAGAnswer`, `appendRAGDisclaimer`)
 
 ---
 
-## Константа `RAG_ANSWER_DISCLAIMER`
+## Why this file exists
 
-Текст в конце ответа (добавляет Go в `appendRAGDisclaimer`):
+Protection against **numeric hallucinations**: if the LLM wrote “72%” or “748.5 cm”, that number must **appear in retrieved fragments**.
 
-> Справочная информация из базы знаний. Не заменяет очный осмотр агронома; …
+Article names (`Source: "..."`) are **not** shown to the user — replaced by a general disclaimer (on Go; constant duplicated here for tests).
 
-В `verifier.py` используется при `strip_source_attribution` — чтобы числа из дисклеймера не мешали проверке.
+---
+
+## Constant `RAG_ANSWER_DISCLAIMER`
+
+Text at end of answer (Go adds in `appendRAGDisclaimer`):
+
+> Reference information from the knowledge base. Does not replace an in-person agronomist visit; …
+
+In `verifier.py` used in `strip_source_attribution` — so disclaimer numbers do not affect verification.
 
 ---
 
 ## `extract_numbers(text)`
 
-- Заменяет `,` на `.` (десятичные по-русски).
-- Ищет числа regex: `\b\d+(?:\.\d+)?\b`.
-- Возвращает список `float`.
+- Replaces `,` with `.` (decimal comma).
+- Finds numbers with regex: `\b\d+(?:\.\d+)?\b`.
+- Returns list of `float`.
 
-Примеры: `72`, `748.5`, `496,0` → `496.0`.
+Examples: `72`, `748.5`, `496,0` → `496.0`.
 
 ---
 
 ## `strip_source_attribution(answer)`
 
-1. Удаляет строки `Источник: ...` (regex `_SOURCE_LINE_RE`).
-2. Убирает текст дисклеймера.
-3. Схлопывает пробелы.
+1. Removes `Source: ...` lines (regex `_SOURCE_LINE_RE`).
+2. Strips disclaimer text.
+3. Collapses whitespace.
 
-Нужно для проверки **тела ответа**, без служебных хвостов.
+Needed to verify **answer body** without service footers.
 
 ---
 
 ## `verify_answer(question, answer, fragments)`
 
-### Вход
+### Input
 
-- `question` — сейчас **не используется** в логике (зарезервировано);
-- `answer` — строка от LLM;
-- `fragments` — список LangChain `Document` или совместимых объектов с `page_content`.
+- `question` — currently **unused** in logic (reserved);
+- `answer` — string from LLM;
+- `fragments` — list of LangChain `Document` or compatible objects with `page_content`.
 
-### Алгоритм
+### Algorithm
 
-1. Склеить `page_content` всех фрагментов → `context_text`.
-2. Очистить ответ → `body`.
-3. Извлечь числа из `body` и из `context_text`.
-4. Для каждого числа в ответе: есть ли в контексте с точностью **±0.01**?
-5. Если есть «лишние» числа → `(False, "Число(а) [...] не найдены в источниках.")`.
-6. Если чисел в ответе нет → `(True, "Верификация пройдена")`.
+1. Concatenate `page_content` of all fragments → `context_text`.
+2. Clean answer → `body`.
+3. Extract numbers from `body` and `context_text`.
+4. For each number in answer: is it in context within **±0.01**?
+5. If extra numbers → `(False, "Number(s) [...] not found in sources.")`.
+6. If no numbers in answer → `(True, "Verification passed")`.
 
-### Примеры
+### Examples
 
-| Ответ | Контекст | Результат |
-|-------|----------|-----------|
-| «Парша — пятна на листьях» | без цифр | ✅ |
-| «Рентабельность 496%» | 496 в статье | ✅ |
-| «Рентабельность 72%» | нет 72 | ❌ |
+| Answer | Context | Result |
+|--------|---------|--------|
+| “Scab — spots on leaves” | no digits | ✅ |
+| “Profitability 496%” | 496 in article | ✅ |
+| “Profitability 72%” | no 72 | ❌ |
 
 ---
 
@@ -75,45 +75,45 @@
 
 | | `rag/verifier.py` | `server/rag_verify.go` (+ `rag_chat.go`) |
 |--|-------------------|----------------------|
-| Где в проде | только тесты / возможное будущее | **да**, после каждого RAG-ответа |
-| Логика чисел | та же идея | `verifyRAGAnswer`, `extractNumbersFromText` |
-| Дисклеймер | константа для strip | `appendRAGDisclaimer` |
+| In production | tests / possible future | **yes**, after every RAG answer |
+| Number logic | same idea | `verifyRAGAnswer`, `extractNumbersFromText` |
+| Disclaimer | constant for strip | `appendRAGDisclaimer` |
 
-Держите логику **синхронной** при изменениях: общий контракт `tests/fixtures/rag_verify_contract.json`, тесты `server/verify_contract_test.go` и `tests/test_verify_contract.py`.
+Keep logic **in sync** on changes: shared contract `tests/fixtures/rag_verify_contract.json`, tests `server/verify_contract_test.go` and `tests/test_verify_contract.py`.
 
-**Ограничения эвристики** (что не ловится): [rag-verify-limits.md](./rag-verify-limits.md).
-
----
-
-## Почему ответ иногда «В справочных материалах нет…» при verify fail
-
-Go при failed verify может **не отдавать** сырой ответ LLM пользователю (см. `rag_chat.go`) — это отдельно от verifier, но связано: модель придумала цифру → верификатор ловит.
+**Heuristic limits** (what is not caught): [rag-verify-limits.md](./rag-verify-limits.md).
 
 ---
 
-## Тесты
+## Why answer sometimes says “Not in reference materials…” on verify fail
+
+Go on failed verify may **not return** raw LLM answer to user (see `rag_chat.go`) — separate from verifier but related: model invented a number → verifier catches it.
+
+---
+
+## Tests
 
 `tests/test_verifier.py`:
 
 - decimal comma;
-- pass с числом в контексте;
-- fail на 72 без 72 в контексте;
-- strip `Источник:`.
+- pass with number in context;
+- fail on 72 without 72 in context;
+- strip `Source:`.
 
-Запуск: `pytest tests/test_verifier.py` (без Chroma, без LLM).
-
----
-
-## Что читать дальше
-
-| Тема | Файл |
-|------|------|
-| Промпт и постобработка | `server/rag_chat.go` (статья позже) |
-| Откуда fragments | [rag-retrieval.md](./rag-retrieval.md) |
-| Почему нет «Источник» в чате | обсуждение + `appendRAGDisclaimer` |
+Run: `pytest tests/test_verifier.py` (no Chroma, no LLM).
 
 ---
 
-## Краткий итог
+## What to read next
 
-`verifier.py` — **анти-галлюцинация для чисел** и утилиты очистки ответа. В бою дублируется на Go; в Python — эталон для pytest и документации логики.
+| Topic | File |
+|-------|------|
+| Prompt and post-processing | `server/rag_chat.go` |
+| Where fragments come from | [rag-retrieval.md](./rag-retrieval.md) |
+| Why no “Source” in chat | discussion + `appendRAGDisclaimer` |
+
+---
+
+## Brief summary
+
+`verifier.py` — **anti-hallucination for numbers** and answer cleanup utilities. Duplicated in Go in production; in Python — reference for pytest and logic documentation.

@@ -1,4 +1,4 @@
-"""Метки классов CV по культурам из config/cv_class_labels.json."""
+"""CV class labels per crop from config/cv_class_labels.json."""
 
 import json
 import os
@@ -9,7 +9,7 @@ _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _LABELS_CACHE: Optional[Dict[str, List[str]]] = None
 _LABELS_MTIME: Optional[float] = None
 
-# Fallback, если файл меток недоступен (совместимость с прежним кодом).
+# Fallback when the labels file is unavailable (backward compatibility).
 _FALLBACK_APPLE = [
     "healthy_apple",
     "apple_scab",
@@ -25,6 +25,7 @@ _FALLBACK_APPLE = [
 
 
 def _labels_path() -> str:
+    """Path to cv_class_labels.json (env override, then standard locations)."""
     env = os.environ.get("CV_CLASS_LABELS_PATH")
     if env and os.path.isfile(env):
         return env
@@ -38,6 +39,7 @@ def _labels_path() -> str:
 
 
 def _load_labels_file() -> Dict[str, List[str]]:
+    """Load labels file with mtime-based caching; falls back to apple defaults."""
     global _LABELS_CACHE, _LABELS_MTIME
     path = _labels_path()
     try:
@@ -60,7 +62,7 @@ def _load_labels_file() -> Dict[str, List[str]]:
 
 
 def default_class_labels_for_crop(crop_id: str) -> List[str]:
-    """Список меток классов для культуры (порядок = индекс при обучении)."""
+    """Class label list for a crop (order = training index)."""
     cid = (crop_id or "apple").strip().lower() or "apple"
     catalog = _load_labels_file()
     if cid in catalog:
@@ -71,7 +73,7 @@ def default_class_labels_for_crop(crop_id: str) -> List[str]:
 
 
 def reload_class_labels_cache() -> None:
-    """Сброс кэша (тесты или принудительная перезагрузка)."""
+    """Clear cache (tests or forced reload)."""
     global _LABELS_CACHE, _LABELS_MTIME
     _LABELS_CACHE = None
     _LABELS_MTIME = None

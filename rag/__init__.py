@@ -1,1 +1,1 @@
-# RAG-модуль для текстовых ответов по статьям.
+# RAG module for text answers from articles.

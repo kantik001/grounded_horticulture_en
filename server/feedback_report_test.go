@@ -9,13 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Verifies that RAG metrics are parsed from a rag_answer analytics payload.
 func TestParseFeedbackRAGMeta(t *testing.T) {
 	raw, _ := json.Marshal(map[string]any{
 		"message_id":    float64(42),
 		"category":      "disease",
 		"fragments":     float64(8),
 		"verify_pass":   false,
-		"verify_reason": "Число(а) [72] не найдены",
+		"verify_reason": "Number(s) [72] not found in sources.",
 		"retrieval_ms":  float64(1200),
 		"llm_ms":        float64(800),
 		"total_ms":      float64(2100),
@@ -33,6 +34,7 @@ func TestParseFeedbackRAGMeta(t *testing.T) {
 	}
 }
 
+// Verifies that GET /metrics returns Prometheus counters.
 func TestHandleMetrics(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()

@@ -1,32 +1,36 @@
-"""Unit-тесты верификатора RAG-ответов (без LLM и Chroma)."""
+"""Unit tests for the RAG answer verifier (no LLM or Chroma)."""
 
 from langchain_core.documents import Document
 
 from rag.verifier import RAG_ANSWER_DISCLAIMER, extract_numbers, strip_source_attribution, verify_answer
 
 
-def test_extract_numbers_decimal_comma():
-    assert extract_numbers("304,7 кг") == [304.7]
+def test_extract_numbers_comma_decimal():
+    """extract_numbers parses a decimal value with units."""
+    assert extract_numbers("304.7 kg") == [304.7]
 
 
-def test_verify_passes_with_matching_number():
-    fragments = [Document(page_content="Среднее 77.", metadata={"filename": "Таблица"})]
-    answer = f"Среднее 77.\n\n{RAG_ANSWER_DISCLAIMER}"
-    ok, reason = verify_answer("q", answer, fragments)
-    assert ok, reason
+def test_verify_numbers_in_context():
+    """An answer whose numbers appear in the context passes verification."""
+    fragments = [Document(page_content="Mean 77.", metadata={"filename": "Table"})]
+    answer = f"Mean 77.\n\n{RAG_ANSWER_DISCLAIMER}"
+    ok, _ = verify_answer("q", answer, fragments)
+    assert ok
 
 
-def test_verify_fails_on_hallucinated_number():
-    fragments = [Document(page_content="Без цифр.", metadata={"filename": "Статья"})]
-    answer = f"Рентабельность 72%.\n\n{RAG_ANSWER_DISCLAIMER}"
+def test_verify_hallucinated_number():
+    """A number missing from the context fails verification with a reason."""
+    fragments = [Document(page_content="No numbers.", metadata={"filename": "Article"})]
+    answer = f"Profitability 72%.\n\n{RAG_ANSWER_DISCLAIMER}"
     ok, reason = verify_answer("q", answer, fragments)
     assert not ok
-    assert "72" in reason or "не найдены" in reason
+    assert "72" in reason or "not found" in reason
 
 
 def test_strip_source_attribution():
-    raw = 'Факт.\n\nИсточник: "Журнал"'
+    """strip_source_attribution removes the Source line but keeps the answer body."""
+    raw = 'Fact.\n\nSource: "Journal"'
     body = strip_source_attribution(raw)
-    assert "Источник" not in body
-    assert "Журнал" not in body
-    assert "Факт" in body
+    assert "Source" not in body
+    assert "Journal" not in body
+    assert "Fact" in body

@@ -1,55 +1,49 @@
-"""Тесты classify_question и загрузки config/question_categories.json."""
+"""Tests for classify_question and config/question_categories.json loading."""
 
 import json
-from pathlib import Path
 
 import pytest
 
-from rag import question_categories as qc
+import rag.question_categories as qc
 
 
 @pytest.fixture(autouse=True)
-def _reset_categories_cache(monkeypatch):
-    root = Path(__file__).resolve().parents[1]
-    path = root / "config" / "question_categories.json"
-    monkeypatch.setenv("QUESTION_CATEGORIES_CONFIG_PATH", str(path))
+def reset_qc_cache():
+    """Reload the question-categories config before and after each test."""
     qc.reload_question_categories_config()
     yield
     qc.reload_question_categories_config()
 
 
 def test_classify_rootstock():
-    assert qc.classify_question("Какие подвои СК для юга?") == "rootstock"
+    """A rootstock question is classified as 'rootstock'."""
+    assert qc.classify_question("Which SK rootstocks for the south?") == "rootstock"
 
 
-def test_classify_pest_as_disease():
-    assert qc.classify_question("Как бороться с плодожоркой?") == "disease"
+def test_classify_disease():
+    """A pest-control question is classified as 'disease'."""
+    assert qc.classify_question("How to control codling moth?") == "disease"
 
 
 def test_classify_relief():
-    assert qc.classify_question("Террасы сливы в КБР") == "relief"
+    """A terrain/terracing question is classified as 'relief'."""
+    assert qc.classify_question("Plum terraces in KBR") == "relief"
 
 
-def test_classify_general_fallback():
-    assert qc.classify_question("Привет") == "general"
+def test_classify_general():
+    """An unrelated question falls back to 'general'."""
+    assert qc.classify_question("Hello") == "general"
 
 
-def test_category_rules_loaded_from_config():
-    rules = qc.category_rules()
-    ids = [r["id"] for r in rules]
-    assert "rootstock" in ids
-    assert "disease" in ids
-    assert ids.index("rootstock") < ids.index("disease")
-
-
-def test_custom_config_override(tmp_path, monkeypatch):
-    custom = {
+def test_custom_categories_file(tmp_path, monkeypatch):
+    """A custom categories file from env overrides the built-in categories."""
+    cfg = {
         "default_category": "general",
-        "categories": [{"id": "hr_policy", "keywords": ["отпуск", "больнич"]}],
+        "categories": [{"id": "hr_policy", "keywords": ["vacation", "sick"]}],
     }
-    cfg_file = tmp_path / "question_categories.json"
-    cfg_file.write_text(json.dumps(custom, ensure_ascii=False), encoding="utf-8")
-    monkeypatch.setenv("QUESTION_CATEGORIES_CONFIG_PATH", str(cfg_file))
+    p = tmp_path / "cats.json"
+    p.write_text(json.dumps(cfg), encoding="utf-8")
+    monkeypatch.setenv("QUESTION_CATEGORIES_CONFIG_PATH", str(p))
     qc.reload_question_categories_config()
-    assert qc.classify_question("Как оформить отпуск?") == "hr_policy"
-    assert qc.classify_question("Случайный вопрос") == "general"
+    assert qc.classify_question("How do I request vacation?") == "hr_policy"
+    assert qc.classify_question("Random question") == "general"

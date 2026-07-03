@@ -1,29 +1,29 @@
-﻿# Разбор: `cv/train_classifier.py`
+﻿# Walkthrough: `cv/train_classifier.py`
 
-**Исходный файл:** `cv/train_classifier.py`  
-**Язык:** Python (PyTorch)  
-**Связанные модули:** `cv/apple_classifier.py`, `cv/registry.py`  
-**Когда запускать:** локально на машине с GPU/CPU, **не** в прод-контейнере при каждом запросе
-
----
-
-## Зачем этот файл
-
-Скрипт **обучает** MobileNetV2 под ваши 10 классов болезней/состояний яблони и сохраняет файл **`apple_classifier.pth`**.
-
-После обучения:
-
-1. Положить `.pth` в `models/` (или другой путь).
-2. Указать `MODEL_PATH` в `.env`.
-3. Перезапустить `classifier` — `registry.py` подхватит веса.
-
-В проде этот файл **не вызывается** автоматически; это offline-задача (сессия 4 в roadmap).
+**Source file:** `cv/train_classifier.py`  
+**Language:** Python (PyTorch)  
+**Related modules:** `cv/apple_classifier.py`, `cv/registry.py`  
+**When to run:** locally on machine with GPU/CPU, **not** in prod container on each request
 
 ---
 
-## Структура датасета: `AppleDataset`
+## Why this file exists
 
-Ожидаемые папки (train и val — отдельно):
+Script **trains** MobileNetV2 for your 10 apple disease/condition classes and saves **`apple_classifier.pth`**.
+
+After training:
+
+1. Put `.pth` in `models/` (or another path).
+2. Set `MODEL_PATH` in `.env`.
+3. Restart `classifier` — `registry.py` loads weights.
+
+This file is **not** called automatically in production; it is an offline task (roadmap session 4).
+
+---
+
+## Dataset structure: `AppleDataset`
+
+Expected folders (train and val separate):
 
 ```
 data/train/
@@ -36,64 +36,64 @@ data/val/
     ...
 ```
 
-### Как строится индекс классов
+### How class index is built
 
 ```python
 from cv.labels_config import default_class_labels_for_crop
 
 DEFAULT_CLASS_LABELS = default_class_labels_for_crop("apple")
 
-for idx, class_name in enumerate(self.class_labels):  # фиксированный порядок
+for idx, class_name in enumerate(self.class_labels):  # fixed order
     class_dir = os.path.join(root_dir, class_name)
 ```
 
-- Имена **подпапок** должны совпадать с метками из **`DEFAULT_CLASS_LABELS`** в `apple_classifier.py`.
-- Индекс `idx` (0, 1, 2, …) — **тот же порядок**, что при инференсе (не `sorted()` по имени папки).
-- Если папки класса нет в `train_dir` — класс пропускается (0 фото), но индекс в списке сохраняется.
+- **Subfolder names** must match labels in **`DEFAULT_CLASS_LABELS`** in `apple_classifier.py`.
+- Index `idx` (0, 1, 2, …) — **same order** as at inference (not `sorted()` by folder name).
+- If class folder missing in `train_dir` — class skipped (0 photos), but index in list remains.
 
-| Индекс | Метка (`DEFAULT_CLASS_LABELS`) |
-|--------|--------------------------------|
+| Index | Label (`DEFAULT_CLASS_LABELS`) |
+|-------|--------------------------------|
 | 0 | `healthy_apple` |
 | 1 | `apple_scab` |
 | 2 | `black_rot` |
 | … | … |
 
-Поддерживаемые расширения: `.png`, `.jpg`, `.jpeg`.
+Supported extensions: `.png`, `.jpg`, `.jpeg`.
 
 ---
 
-## Аугментации и препроцессинг
+## Augmentations and preprocessing
 
 ### Train
 
 - Resize 224×224  
 - RandomHorizontalFlip, RandomRotation(10°)  
-- ColorJitter (яркость/контраст/насыщенность)  
+- ColorJitter (brightness/contrast/saturation)  
 - ToTensor + Normalize (ImageNet mean/std)
 
 ### Validation
 
-- Только Resize + ToTensor + Normalize (без случайных искажений)
+- Resize + ToTensor + Normalize only (no random distortion)
 
-Те же mean/std, что в `apple_classifier.py` при inference — **обязательно** для согласованности.
+Same mean/std as `apple_classifier.py` at inference — **required** for consistency.
 
 ---
 
-## Функция `train_model`
+## Function `train_model`
 
-### Параметры
+### Parameters
 
-| Параметр | По умолчанию | Смысл |
-|----------|--------------|--------|
-| `train_dir` | — | Папка с подпапками классов для обучения |
-| `val_dir` | — | Папка для валидации |
-| `num_classes` | — | Число классов (для яблони = **10**) |
-| `epochs` | 25 | Эпох |
-| `batch_size` | 32 | Размер батча |
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `train_dir` | — | Folder with class subfolders for training |
+| `val_dir` | — | Validation folder |
+| `num_classes` | — | Class count (for apple = **10**) |
+| `epochs` | 25 | Epochs |
+| `batch_size` | 32 | Batch size |
 | `learning_rate` | 0.001 | Adam |
-| `save_path` | `apple_classifier.pth` | Куда писать лучший чекпоинт |
+| `save_path` | `apple_classifier.pth` | Best checkpoint path |
 
-### Архитектура (как в inference)
+### Architecture (same as inference)
 
 ```python
 model = models.mobilenet_v2(weights=IMAGENET1K_V1)
@@ -103,21 +103,21 @@ model.classifier = nn.Sequential(
 )
 ```
 
-Та же схема, что `_load_model` в `apple_classifier.py` — веса совместимы.
+Same scheme as `_load_model` in `apple_classifier.py` — weights are compatible.
 
-### Оптимизация
+### Optimization
 
 - **Loss:** `CrossEntropyLoss`
 - **Optimizer:** Adam
-- **Scheduler:** StepLR (каждые 7 эпох lr × 0.1)
+- **Scheduler:** StepLR (every 7 epochs lr × 0.1)
 
-### Цикл обучения (каждая эпоха)
+### Training loop (each epoch)
 
-1. **Train:** `model.train()`, forward, backward, метрики loss/accuracy.
+1. **Train:** `model.train()`, forward, backward, loss/accuracy metrics.
 2. **Val:** `model.eval()`, `torch.no_grad()`, val loss/accuracy.
-3. Если `val_acc` лучше предыдущего best → **сохранить чекпоинт**.
+3. If `val_acc` beats previous best → **save checkpoint**.
 
-### Формат сохранённого файла
+### Saved file format
 
 ```python
 torch.save({
@@ -128,14 +128,14 @@ torch.save({
 }, save_path)
 ```
 
-При инференсе `AppleClassifier` читает **`state_dict`** и, если есть, **`class_labels`** из checkpoint — список меток подменяет `DEFAULT_CLASS_LABELS`.  
-Поле `val_acc` — только для отладки.
+At inference `AppleClassifier` reads **`state_dict`** and, if present, **`class_labels`** from checkpoint — list replaces `DEFAULT_CLASS_LABELS`.  
+Field `val_acc` — debugging only.
 
 ---
 
-## Как запустить обучение
+## How to run training
 
-В `if __name__ == '__main__'` сейчас закомментирован пример. Раскомментируйте и подставьте пути:
+In `if __name__ == '__main__'` example is commented. Uncomment and set paths:
 
 ```python
 train_model(
@@ -149,7 +149,7 @@ train_model(
 )
 ```
 
-Пример из корня проекта:
+Example from project root:
 
 ```bash
 cd cv
@@ -157,16 +157,16 @@ pip install -r requirements.txt
 python train_classifier.py
 ```
 
-Для GPU нужен PyTorch с CUDA (см. pytorch.org).
+For GPU need PyTorch with CUDA (see pytorch.org).
 
-### После обучения
+### After training
 
 ```bash
 mkdir -p ../models
 mv apple_classifier.pth ../models/
 ```
 
-В `.env`:
+In `.env`:
 
 ```env
 MODEL_PATH=models/apple_classifier.pth
@@ -176,16 +176,16 @@ MODEL_PATH=models/apple_classifier.pth
 docker compose up -d --build classifier
 ```
 
-Проверьте лог: `[CV:apple] Загрузка весов: ...`
+Check log: `[CV:apple] Loading weights: ...`
 
 ---
 
-## Связь train → registry → api/app.py
+## train → registry → api/app.py chain
 
 ```mermaid
 flowchart LR
     A[train_classifier.py] --> B[apple_classifier.pth]
-    B --> C[MODEL_PATH в .env]
+    B --> C[MODEL_PATH in .env]
     C --> D[registry.get_classifier_for_crop]
     D --> E[AppleClassifier.load state_dict]
     E --> F[api/app.py predict_from_bytes]
@@ -193,58 +193,58 @@ flowchart LR
 
 ---
 
-## Советы по датасету (сессия 4)
+## Dataset tips (session 4)
 
-- **Минимум:** десятки фото на класс; лучше сотни на частые болезни.
-- **Баланс классов:** иначе модель «любит» частый класс.
-- **Val:** отдельные фото, не дубликаты train (другие ракурсы/свет).
-- **Метрики:** смотрите `Val Acc` в логе; для продакшена планируется порог confidence (в `apple_classifier` пока нет).
-
----
-
-## `num_workers=4` в DataLoader
-
-Ускоряет загрузку батчей на Linux. На Windows при ошибках можно поставить `num_workers=0`.
+- **Minimum:** tens of photos per class; hundreds better for common diseases.
+- **Class balance:** otherwise model favors frequent class.
+- **Val:** separate photos, not train duplicates (other angles/light).
+- **Metrics:** watch `Val Acc` in log; production confidence threshold planned (not in `apple_classifier` yet).
 
 ---
 
-## Отличия от `apple_classifier.py`
+## `num_workers=4` in DataLoader
+
+Speeds batch loading on Linux. On Windows on errors set `num_workers=0`.
+
+---
+
+## Differences from `apple_classifier.py`
 
 | | train_classifier | apple_classifier |
 |--|------------------|------------------|
-| Режим | обучение, градиенты | только inference, `eval()` |
-| Аугментации | да (train) | нет |
-| Сохранение весов | да | загрузка весов |
-| HTTP | нет | через registry + api/app.py |
+| Mode | training, gradients | inference only, `eval()` |
+| Augmentations | yes (train) | no |
+| Save weights | yes | load weights |
+| HTTP | no | via registry + api/app.py |
 
 ---
 
-## Частые ошибки
+## Common mistakes
 
-### Val accuracy низкая, train высокая
+### Val accuracy low, train high
 
-Переобучение: больше данных, аугментации, меньше epochs, early stopping (в коде нет — можно добавить).
+Overfitting: more data, augmentations, fewer epochs, early stopping (not in code — can add).
 
-### Модель в API «не та болезнь»
+### API predicts wrong disease
 
-Проверьте: имена папок = `DEFAULT_CLASS_LABELS`, в checkpoint есть `class_labels`, лог registry — «Загрузка весов», а не «только backbone ImageNet».
+Check: folder names = `DEFAULT_CLASS_LABELS`, checkpoint has `class_labels`, registry log — “Loading weights”, not “ImageNet backbone only”.
 
-### Файл не подхватывается
+### File not picked up
 
-Неверный путь, относительный путь не от `cv/`, не перезапущен контейнер, кэш `_classifiers`.
+Wrong path, relative path not from `cv/`, container not restarted, cache `_classifiers`.
 
 ---
 
-## Что читать дальше
+## What to read next
 
-| Тема | Файл |
-|------|------|
-| Загрузка весов в runtime | [cv-registry.md](./cv-registry.md) |
+| Topic | File |
+|-------|------|
+| Runtime weight load | [cv-registry.md](./cv-registry.md) |
 | Inference | [cv-apple_classifier.md](./cv-apple_classifier.md) |
-| Проверка в чате | [python-api.md](./python-api.md) |
+| Chat verification | [python-api.md](./python-api.md) |
 
 ---
 
-## Краткий итог
+## Brief summary
 
-`train_classifier.py` — **offline-обучение** MobileNetV2: датасет по папкам, аугментации, val accuracy, сохранение `state_dict` в `.pth`. Без этого файла в проде работает только «пустая» голова ImageNet; с ним — ваша обученная модель через `MODEL_PATH`.
+`train_classifier.py` — **offline MobileNetV2 training**: folder dataset, augmentations, val accuracy, save `state_dict` to `.pth`. Without this file production runs only empty ImageNet head; with it — your trained model via `MODEL_PATH`.

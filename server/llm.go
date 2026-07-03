@@ -12,25 +12,25 @@ import (
 	"time"
 )
 
-// LLMRequest — тело запроса к OpenAI-совместимому chat/completions.
+// LLMRequest is the body for an OpenAI-compatible chat/completions request.
 type LLMRequest struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
 	Stream   bool      `json:"stream,omitempty"`
 }
 
-// Message — одно сообщение в диалоге для LLM.
+// Message is one dialog message for the LLM.
 type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-// LLMResponse — ответ chat/completions.
+// LLMResponse is a chat/completions response.
 type LLMResponse struct {
 	Choices []Choice `json:"choices"`
 }
 
-// Choice — один вариант ответа модели.
+// Choice is one model response variant.
 type Choice struct {
 	Message Message `json:"message"`
 }
@@ -48,12 +48,12 @@ var llmHTTPClient = &http.Client{
 	Transport: outboundTransport,
 }
 
-// callLLMCompletion отправляет запрос в LLM API (OpenAI-совместимый).
-func callLLMCompletion(messages []Message) (string, error) {
-	return callLLMCompletionStream(context.Background(), messages, nil)
+// callLLMCompletion sends a request to the LLM API (OpenAI-compatible).
+func callLLMCompletion(ctx context.Context, messages []Message) (string, error) {
+	return callLLMCompletionStream(ctx, messages, nil)
 }
 
-// callLLMCompletionStream стримит токены LLM; onDelta вызывается для каждого фрагмента.
+// callLLMCompletionStream streams LLM tokens; onDelta is called for each chunk.
 func callLLMCompletionStream(ctx context.Context, messages []Message, onDelta func(string) error) (string, error) {
 	if config.LLMAPIKey == "" {
 		return "", fmt.Errorf("LLM API key not configured")
@@ -91,6 +91,7 @@ func callLLMCompletionStream(ctx context.Context, messages []Message, onDelta fu
 	return readLLMStream(resp.Body, onDelta)
 }
 
+// readLLMCompletionBody parses a non-streaming chat/completions response.
 func readLLMCompletionBody(resp *http.Response) (string, error) {
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -109,6 +110,7 @@ func readLLMCompletionBody(resp *http.Response) (string, error) {
 	return llmResp.Choices[0].Message.Content, nil
 }
 
+// llmHTTPError builds an error from a non-200 LLM API response.
 func llmHTTPError(status int, body []byte) error {
 	var errPayload struct {
 		Error struct {
@@ -121,6 +123,7 @@ func llmHTTPError(status int, body []byte) error {
 	return fmt.Errorf("LLM API HTTP %d: %s", status, string(body))
 }
 
+// readLLMStream reads SSE lines, concatenating deltas and invoking onDelta per chunk.
 func readLLMStream(body io.Reader, onDelta func(string) error) (string, error) {
 	var full strings.Builder
 	scanner := bufio.NewScanner(body)
@@ -160,6 +163,7 @@ func readLLMStream(body io.Reader, onDelta func(string) error) (string, error) {
 	return full.String(), nil
 }
 
+// parseLLMStreamData extracts the delta content from one SSE data payload.
 func parseLLMStreamData(data string) (string, error) {
 	var chunk llmStreamChunk
 	if err := json.Unmarshal([]byte(data), &chunk); err != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// BrandingConfig — тексты Web App (domain pack, не core).
+// BrandingConfig holds Web App copy (domain pack, not core).
 type BrandingConfig struct {
 	AppTitle         string `json:"app_title"`
 	HeaderEmoji      string `json:"header_emoji"`
@@ -21,17 +21,21 @@ type BrandingConfig struct {
 	PhotoBetaNotice  string `json:"photo_beta_notice"`
 }
 
-var brandingCatalog BrandingConfig
-
-func loadBrandingConfig() error {
+// loadBrandingConfig reads branding.json into BrandingConfig.
+func loadBrandingConfig() (BrandingConfig, error) {
+	var branding BrandingConfig
 	path := brandingConfigPath()
 	body, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return branding, err
 	}
-	return json.Unmarshal(body, &brandingCatalog)
+	if err := json.Unmarshal(body, &branding); err != nil {
+		return branding, err
+	}
+	return branding, nil
 }
 
+// brandingConfigPath resolves branding.json via env override or known locations.
 func brandingConfigPath() string {
 	if p := os.Getenv("BRANDING_CONFIG_PATH"); p != "" {
 		return p
@@ -48,10 +52,10 @@ func brandingConfigPath() string {
 	return filepath.Join("config", "branding.json")
 }
 
-// GET /branding — публичные тексты UI для Web App.
+// GET /branding returns public Web App UI copy.
 func handleBranding(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":  true,
-		"branding": brandingCatalog,
+		"branding": currentCatalogs().Branding,
 	})
 }

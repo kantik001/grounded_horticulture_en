@@ -1,92 +1,92 @@
 # RAG: BM25 hybrid + reranker
 
-**Модули:** `rag/chunking.py`, `rag/bm25_store.py`, `rag/hybrid.py`, `rag/reranker.py`  
-**Оркестрация:** `rag/vector_store.py` → `search()`  
-**Хранилище BM25:** `bm25_db/` (в Docker — volume `bm25_data`)
+**Modules:** `rag/chunking.py`, `rag/bm25_store.py`, `rag/hybrid.py`, `rag/reranker.py`  
+**Orchestration:** `rag/vector_store.py` → `search()`  
+**BM25 store:** `bm25_db/` (in Docker — volume `bm25_data`)
 
-См. также: [rag-vector_store.md](./rag-vector_store.md), [rag-retrieval.md](./rag-retrieval.md).
-
----
-
-## Зачем
-
-Чистый **vector search** (e5 embeddings) хорошо ловит смысл, но слабее на:
-
-- кодах подвоев (**М9**, **СК-4**, **ПК СК-1**);
-- редких терминах и фамилиях;
-- точных названиях сортов в вопросе.
-
-**BM25 hybrid** добавляет keyword-поиск и объединяет результаты с векторным через **RRF** (Reciprocal Rank Fusion).  
-**Cross-encoder reranker** пересортировывает пары «вопрос ↔ фрагмент» перед отбором финальных 8 чанков.
+See also: [rag-vector_store.md](./rag-vector_store.md), [rag-retrieval.md](./rag-retrieval.md).
 
 ---
 
-## Пайплайн поиска
+## Why
+
+Pure **vector search** (e5 embeddings) captures meaning well but is weaker on:
+
+- rootstock codes (**M9**, **SK-4**, **PK SK-1**);
+- rare terms and names;
+- exact variety names in the question.
+
+**BM25 hybrid** adds keyword search and merges with vector via **RRF** (Reciprocal Rank Fusion).  
+**Cross-encoder reranker** re-sorts “question ↔ fragment” pairs before picking final 8 chunks.
+
+---
+
+## Search pipeline
 
 ```mermaid
 flowchart LR
-    Q[Вопрос] --> V[Chroma vector FETCH_K]
+    Q[Question] --> V[Chroma vector FETCH_K]
     Q --> B[BM25 FETCH_K]
-    V --> RRF[RRF по chunk_id]
+    V --> RRF[RRF by chunk_id]
     B --> RRF
-    RRF --> CE[Cross-encoder до RERANK_TOP_N]
-    CE --> D[diversify max 2/статья]
-    D --> K[top 8 в контекст LLM]
+    RRF --> CE[Cross-encoder up to RERANK_TOP_N]
+    CE --> D[diversify max 2/article]
+    D --> K[top 8 in LLM context]
 ```
 
-| Этап | По умолчанию | Env |
-|------|--------------|-----|
-| Кандидаты vector | 24 | `RAG_FETCH_K` |
-| Кандидаты BM25 | 24 | `RAG_BM25_FETCH_K` |
+| Stage | Default | Env |
+|-------|---------|-----|
+| Vector candidates | 24 | `RAG_FETCH_K` |
+| BM25 candidates | 24 | `RAG_BM25_FETCH_K` |
 | RRF constant | 60 | `RAG_RRF_K` |
-| Пул для rerank | 32 | `RAG_RERANK_TOP_N` |
-| Финальный контекст | 8 | жёстко в `retrieval.py` |
-| Max чанков с одной статьи | 2 | `RAG_MAX_CHUNKS_PER_SOURCE` |
+| Rerank pool | 32 | `RAG_RERANK_TOP_N` |
+| Final context | 8 | hardcoded in `retrieval.py` |
+| Max chunks per article | 2 | `RAG_MAX_CHUNKS_PER_SOURCE` |
 
 ---
 
 ## `rag/chunking.py`
 
-Общее чанкование для Chroma и BM25 (одинаковые фрагменты):
+Shared chunking for Chroma and BM25 (same fragments):
 
 - `chunk_size=650`, `chunk_overlap=80`;
-- приоритетные разделители: «Кратко для садовода», «Практические выводы», таблицы;
-- `chunk_id` в metadata: `{crop_id}:{source_file}:{md5(content)[:12]}`.
+- priority delimiters: section headers for gardener summaries, practical takeaways, tables;
+- `chunk_id` in metadata: `{crop_id}:{source_file}:{md5(content)[:12]}`.
 
-Без стабильного `chunk_id` RRF не сможет объединить vector и BM25.
+Without stable `chunk_id` RRF cannot merge vector and BM25.
 
 ---
 
 ## `rag/bm25_store.py`
 
-- Индекс **по культурам** (`crop_id`), те же чанки, что в Chroma.
-- При `create_vector_store()` → `save_bm25_indexes()` в `bm25_db/index.pkl` + `meta.json`.
-- При `FORCE_RAG_REINDEX` папка `bm25_db/` удаляется вместе с `chroma_db/`.
-- Токенизация: `\w+` с Unicode (русский + латиница + цифры).
+- Index **per crop** (`crop_id`), same chunks as Chroma.
+- On `create_vector_store()` → `save_bm25_indexes()` to `bm25_db/index.pkl` + `meta.json`.
+- On `FORCE_RAG_REINDEX` folder `bm25_db/` is deleted with `chroma_db/`.
+- Tokenization: `\w+` with Unicode (Cyrillic + Latin + digits).
 
-Если BM25-индекса нет (старый деплой без reindex) — `search()` работает **vector-only**, reranker при этом может работать.
+If BM25 index missing (old deploy without reindex) — `search()` runs **vector-only**; reranker may still work.
 
 ---
 
 ## `rag/hybrid.py`
 
-- `tokenize()` — нормализация текста для BM25.
-- `rrf_merge()` — объединение ранжированных списков `chunk_id`.
-- `hybrid_enabled()` / `rerank_enabled()` — флаги из env.
+- `tokenize()` — text normalization for BM25.
+- `rrf_merge()` — merge ranked lists by `chunk_id`.
+- `hybrid_enabled()` / `rerank_enabled()` — flags from env.
 
 ---
 
 ## `rag/reranker.py`
 
-- Модель по умолчанию: **`BAAI/bge-reranker-base`** (multilingual).
-- Lazy-load при первом запросе (как e5 embeddings).
-- При ошибке загрузки — поиск без пересортировки, без падения API.
+- Default model: **`BAAI/bge-reranker-base`** (multilingual).
+- Lazy-load on first request (like e5 embeddings).
+- On load error — search without rerank, API does not crash.
 
-Первый запрос после старта classifier может занять **дополнительные секунды** (скачивание reranker с HuggingFace).
+First request after classifier start may take **extra seconds** (download reranker from HuggingFace).
 
 ---
 
-## Переменные окружения
+## Environment variables
 
 ```env
 RAG_HYBRID_ENABLED=true
@@ -99,20 +99,20 @@ RAG_RERANK_MODEL=BAAI/bge-reranker-base
 RAG_MAX_CHUNKS_PER_SOURCE=2
 ```
 
-См. `.env.example`.
+See `.env.example`.
 
 ---
 
 ## Docker
 
-В `docker-compose.yml` для classifier:
+In `docker-compose.yml` for classifier:
 
 - `chroma_data:/app/chroma_db`
 - `bm25_data:/app/bm25_db`
 
-После reindex **оба** индекса должны быть в volumes. Иначе после `restart` без reindex hybrid отключится (нет BM25 на диске).
+After reindex **both** indexes must be in volumes. Otherwise after `restart` without reindex hybrid disables (no BM25 on disk).
 
-Команда:
+Command:
 
 ```bash
 make docker-reindex-apply
@@ -120,21 +120,21 @@ make docker-reindex-apply
 
 ---
 
-## Зависимости
+## Dependencies
 
 - `rank-bm25` — BM25Okapi (`cv/requirements.txt`, `tests/requirements-test.txt`);
-- `sentence-transformers` — CrossEncoder (уже был для embeddings stack).
+- `sentence-transformers` — CrossEncoder (already in embeddings stack).
 
 ---
 
-## Тесты
+## Tests
 
-`tests/test_hybrid_search.py` — токенизация, RRF, BM25 на мини-корпусе (без Chroma/HF).
+`tests/test_hybrid_search.py` — tokenization, RRF, BM25 on mini corpus (no Chroma/HF).
 
-`tests/test_rag_retrieval.py` — категории вопросов, `diversify_fragments`.
+`tests/test_rag_retrieval.py` — question categories, `diversify_fragments`.
 
 ---
 
-## Краткий итог
+## Brief summary
 
-Hybrid + reranker — **второй уровень** качества retrieval поверх e5 + chunking. Включается после переиндексации; настраивается через env без правки кода.
+Hybrid + reranker — **second quality layer** on top of e5 + chunking. Enabled after reindex; configured via env without code changes.
